@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quản Lý Việc Nhà 4 Người</title>
+    <style>
+        /* CSS KHUNG GIAO DIỆN & STYLE */
+        :root {
+            --bg-body: #f3f4f6;
+            --bg-app: #f9fafb;
+            --primary: #2563eb;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --white: #ffffff;
+            --border: #e5e7eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 480px; /* Giao diện Mobile-first */
+            background-color: var(--bg-app);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* Header */
+        header {
+            background-color: var(--white);
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            color: var(--text-main);
+        }
+
+        .btn-add {
+            background-color: #dbeafe;
+            color: var(--primary);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 80px; /* Chừa chỗ cho Bottom Nav */
+        }
+
+        /* Card Section */
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: var(--text-main);
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+
+        /* Users Grid */
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            text-align: center;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 0 auto 8px auto;
+        }
+        
+        .bg-blue { background-color: #3b82f6; }
+        .bg-red { background-color: #ef4444; }
+        .bg-green { background-color: #10b981; }
+        .bg-yellow { background-color: #f59e0b; }
+
+        .user-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        /* Task Item */
+        .task-item {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-left: 4px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .task-item.status-overdue { border-left-color: #ef4444; }
+        .task-item.status-doing { border-left-color: #f59e0b; }
+        .task-item.status-unassigned { border-left-color: #8b5cf6; }
+
+        .task-title {
+            font-weight: bold;
+            font-size: 1rem;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .point-badge {
+            background: #f3f4f6;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .task-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .task-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn {
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        .btn:active { opacity: 0.7; }
+        .btn-done { background: #10b981; color: white; }
+        .btn-swap { background: #f3f4f6; color: var(--text-main); border: 1px solid var(--border); }
+        .btn-claim { background: #8b5cf6; color: white; }
+
+        /* Leaderboard (FairPlay) */
+        .leaderboard-bg {
+            background: #1f2937;
+            color: white;
+            padding: 20px;
+            border-radius: 16px;
+        }
+        
+        .lb-item {
+            background: #374151;
+            padding: 12px 16px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .lb-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .lb-rank {
+            color: #9ca3af;
+            font-weight: bold;
+            width: 16px;
+        }
+
+        .lb-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .lb-score {
+            text-align: right;
+        }
+
+        .lb-points { font-size: 1.1rem; font-weight: bold; }
+        .lb-debt-green { color: #34d399; font-size: 0.75rem; }
+        .lb-debt-red { color: #f87171; font-size: 0.75rem; }
+
+        /* Bottom Navigation */
+        nav {
+            background-color: var(--white);
+            border-top: 1px solid var(--border);
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            z-index: 10;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #9ca3af;
+            text-decoration: none;
+            font-size: 0.7rem;
+            font-weight: bold;
+            gap: 4px;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .nav-icon {
+            font-size: 1.25rem;
+        }
+
+        /* Coming soon placeholder */
+        .coming-soon {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: 50px;
+        }
+        .coming-soon h2 { margin-top: 10px; color: var(--text-main); }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1 id="header-title">🏠 Tổng quan</h1>
+            <button class="btn-add" onclick="alert('Mở form tạo việc phát sinh')">+ Phát sinh</button>
+        </header>
+
+        <main id="main-content">
+            </main>
+
+        <nav>
+            <button class="nav-item active" onclick="switchTab('dashboard', this)">
+                <span class="nav-icon">🏠</span>
+                <span>Home</span>
+            </button>
+            <button class="nav-item" onclick="switchTab('tasks', this)">
+                <span class="nav-icon">🧹</span>
+                <span>Việc</span>
+            </button>
+            <button class="nav-item" onclick="switchTab('schedule', this)">
+                <span class="nav-icon">📅</span>
+                <span>Lịch</span>
+            </button>
+            <button class="nav-item" onclick="switchTab('fairplay', this)">
+                <span class="nav-icon">⚖️</span>
+                <span>Điểm</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        // --- 1. MOCK DATABASE (CƠ SỞ DỮ LIỆU GIẢ LẬP) ---
+        let users = [
+            { id: 1, name: 'Tiến', colorClass: 'bg-blue', status: '🟢', points: 18, debt: 0 },
+            { id: 2, name: 'Tài', colorClass: 'bg-red', status: '🟡', points: 20, debt: -1 },
+            { id: 3, name: 'Bách', colorClass: 'bg-green', status: '🟢', points: 19, debt: 1 },
+            { id: 4, name: 'Khoa', colorClass: 'bg-yellow', status: '🏖️', points: 18, debt: 0 },
+        ];
+
+        let tasks = [
+            { id: 101, title: 'Lau nhà', assignee: 'Bách', time: '19:00', deadline: '22:00', status: 'pending', points: 3, isUrgent: false },
+            { id: 102, title: 'Rửa bát', assignee: 'Tài', time: '18:30', deadline: '20:00', status: 'overdue', points: 1, isUrgent: false },
+            { id: 103, title: 'Đổ rác', assignee: 'Tiến', time: '21:00', deadline: '23:00', status: 'doing', points: 1, isUrgent: false },
+            { id: 104, title: 'Thông bồn cầu', assignee: 'Cần người', time: 'ASAP', deadline: 'Hôm nay', status: 'unassigned', points: 5, isUrgent: true },
+        ];
+
+
+        // --- 2. CÁC HÀM XỬ LÝ LOGIC (ACTIONS) ---
+
+        // Hàm xác nhận hoàn thành công việc
+        function completeTask(taskId, assigneeName) {
+            // Cập nhật trạng thái việc
+            tasks = tasks.map(t => t.id === taskId ? { ...t, status: 'completed' } : t);
+            
+            // Tìm task vừa làm để lấy điểm
+            const taskCompleted = tasks.find(t => t.id === taskId);
+            
+            // Cộng điểm cho người làm
+            users = users.map(u => {
+                if (u.name === assigneeName) {
+                    return { ...u, points: u.points + taskCompleted.points };
+                }
+                return u;
+            });
+
+            // Render lại màn hình hiện tại
+            renderDashboard();
+        }
+
+        // Hàm xin đổi ca
+        function requestSwap(taskId, assigneeName) {
+            alert(`Đã gửi yêu cầu đổi ca cho việc của ${assigneeName}. Đang chờ thành viên khác xác nhận...`);
+        }
+
+        // Hàm nhận việc phát sinh
+        function claimTask(taskId) {
+            tasks = tasks.map(t => {
+                if(t.id === taskId) {
+                    return { ...t, assignee: 'Tôi', status: 'pending' };
+                }
+                return t;
+            });
+            alert('Bạn đã nhận việc phát sinh này thành công!');
+            renderDashboard();
+        }
+
+
+        // --- 3. CÁC HÀM RENDER GIAO DIỆN (UI RENDERERS) ---
+        const mainContent = document.getElementById('main-content');
+        const headerTitle = document.getElementById('header-title');
+
+        // Render Màn hình Dashboard (Home)
+        function renderDashboard() {
+            headerTitle.innerText = "🏠 Tổng quan";
+            
+            // Generate HTML Thành viên
+            const usersHTML = users.map(u => `
+                <div class="user-card">
+                    <div class="avatar ${u.colorClass}">${u.name.charAt(0)}</div>
+                    <div class="user-name">${u.name} ${u.status}</div>
+                </div>
+            `).join('');
+
+            // Generate HTML Danh sách Việc hôm nay (Bỏ qua việc đã hoàn thành)
+            const tasksHTML = tasks.filter(t => t.status !== 'completed').map(task => {
+                
+                // Logic hiển thị nút tùy theo trạng thái
+                let buttonsHTML = '';
+                if (task.status === 'unassigned') {
+                    buttonsHTML = `<button class="btn btn-claim" onclick="claimTask(${task.id})">Nhận việc</button>`;
+                } else {
+                    buttonsHTML = `
+                        <button class="btn btn-done" onclick="completeTask(${task.id}, '${task.assignee}')">✅ Xong</button>
+                        <button class="btn btn-swap" onclick="requestSwap(${task.id}, '${task.assignee}')">🔄 Đổi ca</button>
+                    `;
+                }
+
+                return `
+                    <div class="task-item status-${task.status}">
+                        <div>
+                            <div class="task-title">
+                                ${task.isUrgent ? '🚨' : ''} ${task.title} 
+                                <span class="point-badge">+${task.points}đ</span>
+                            </div>
+                            <div class="task-meta">
+                                👤 ${task.assignee} • ⏰ ${task.time} (Hạn: ${task.deadline})
+                            </div>
+                        </div>
+                        <div class="task-actions">
+                            ${buttonsHTML}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Gắn vào DOM
+            mainContent.innerHTML = `
+                <h2 class="section-title">👥 Trạng thái thành viên</h2>
+                <div class="card users-grid">
+                    ${usersHTML}
+                </div>
+
+                <h2 class="section-title">🧹 Việc cần làm hôm nay</h2>
+                <div class="tasks-list">
+                    ${tasksHTML}
+                </div>
+            `;
+        }
+
+        // Render Màn hình Bảng Công Bằng (FairPlay)
+        function renderFairPlay() {
+            headerTitle.innerText = "⚖️ Bảng Công Bằng";
+            
+            // Sắp xếp người dùng theo điểm giảm dần
+            const sortedUsers = [...users].sort((a, b) => b.points - a.points);
+            
+            const leaderboardHTML = sortedUsers.map((u, index) => {
+                let debtText = '';
+                if (u.debt > 0) debtText = `<div class="lb-debt-green">Làm bù ${u.debt} ca</div>`;
+                else if (u.debt < 0) debtText = `<div class="lb-debt-red">Nợ ${Math.abs(u.debt)} ca</div>`;
+
+                return `
+                    <div class="lb-item">
+                        <div class="lb-left">
+                            <span class="lb-rank">${index + 1}</span>
+                            <div class="lb-avatar ${u.colorClass}">${u.name.charAt(0)}</div>
+                            <span style="font-weight: 600;">${u.name}</span>
+                        </div>
+                        <div class="lb-score">
+                            <div class="lb-points">${u.points} XP</div>
+                            ${debtText}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            mainContent.innerHTML = `
+                <div class="leaderboard-bg">
+                    <h2 style="margin-bottom: 5px;">Hệ thống Điểm</h2>
+                    <p style="font-size: 0.85rem; color: #9ca3af; margin-bottom: 20px;">Thuật toán tự động ưu tiên phân việc cho người ít điểm hơn để cân bằng.</p>
+                    ${leaderboardHTML}
+                </div>
+            `;
+        }
+
+        // Render Màn hình Coming Soon (Cho các tab chưa code)
+        function renderComingSoon(title) {
+            headerTitle.innerText = title;
+            mainContent.innerHTML = `
+                <div class="coming-soon">
+                    <div style="font-size: 3rem;">🚧</div>
+                    <h2>Đang phát triển</h2>
+                    <p style="font-size: 0.9rem; margin-top: 10px;">Tính năng này sẽ sớm được hoàn thiện.</p>
+                </div>
+            `;
+        }
+
+        // --- 4. HỆ THỐNG ĐIỀU HƯỚNG TABS (NAVIGATION) ---
+        function switchTab(tabName, element) {
+            // Xóa class active của tất cả nav item
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            // Thêm class active cho tab được click
+            element.classList.add('active');
+
+            // Hiển thị nội dung tương ứng
+            if (tabName === 'dashboard') {
+                renderDashboard();
+            } else if (tabName === 'fairplay') {
+                renderFairPlay();
+            } else if (tabName === 'tasks') {
+                renderComingSoon("🧹 Quản lý Việc nhà");
+            } else if (tabName === 'schedule') {
+                renderComingSoon("📅 Lịch & Xung đột");
+            }
+        }
+
+        // Khởi chạy app ban đầu: Mở tab Dashboard
+        renderDashboard();
+
+    </script>
+</body>
+</html>
