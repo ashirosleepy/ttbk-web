@@ -3,7 +3,10 @@
 // Toàn bộ logic: đăng nhập, công việc (tasks), chi tiêu (expenses)
 // ============================================================
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
 let currentUser = null;   // auth user
 let currentProfile = null; // row in profiles
