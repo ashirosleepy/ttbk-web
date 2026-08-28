@@ -3,7 +3,7 @@
 // Toàn bộ logic: đăng nhập, công việc (tasks), chi tiêu (expenses)
 // ============================================================
 
-const db = window.supabase.createClient(
+const db = window.db.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
@@ -55,7 +55,7 @@ $('loginForm').addEventListener('submit', async (e) => {
   hideAuthError();
   const email = $('loginEmail').value.trim();
   const password = $('loginPassword').value;
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await db.auth.signInWithPassword({ email, password });
   if (error) showAuthError('Đăng nhập thất bại: ' + error.message);
 });
 
@@ -65,7 +65,7 @@ $('signupForm').addEventListener('submit', async (e) => {
   const full_name = $('signupName').value.trim();
   const email = $('signupEmail').value.trim();
   const password = $('signupPassword').value;
-  const { error } = await supabase.auth.signUp({
+  const { error } = await db.auth.signUp({
     email, password,
     options: { data: { full_name } }
   });
@@ -76,10 +76,10 @@ $('signupForm').addEventListener('submit', async (e) => {
 });
 
 $('logoutBtn').addEventListener('click', async () => {
-  await supabase.auth.signOut();
+  await db.auth.signOut();
 });
 
-supabase.auth.onAuthStateChange((_event, session) => {
+db.auth.onAuthStateChange((_event, session) => {
   if (session && session.user) {
     currentUser = session.user;
     boot();
@@ -113,7 +113,7 @@ async function boot(){
 }
 
 async function loadProfiles(){
-  const { data, error } = await supabase.from('profiles').select('*').order('created_at');
+  const { data, error } = await db.from('profiles').select('*').order('created_at');
   if (error) { console.error(error); return; }
   profiles = data || [];
 }
@@ -146,7 +146,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // TASKS
 // ============================================================
 async function loadTasks(){
-  const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+  const { data, error } = await db.from('tasks').select('*').order('created_at', { ascending: false });
   if (error) { console.error(error); return; }
   tasks = data || [];
 }
@@ -189,14 +189,14 @@ function nextStatus(s){ return s === 'todo' ? 'doing' : 'done'; }
 function prevStatus(s){ return s === 'done' ? 'doing' : 'todo'; }
 
 async function moveTask(id, newStatus){
-  const { error } = await supabase.from('tasks').update({ status: newStatus }).eq('id', id);
+  const { error } = await db.from('tasks').update({ status: newStatus }).eq('id', id);
   if (error) return alert('Lỗi: ' + error.message);
   await loadTasks(); renderTasks();
 }
 
 async function deleteTask(id){
   if (!confirm('Xoá công việc này?')) return;
-  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  const { error } = await db.from('tasks').delete().eq('id', id);
   if (error) return alert('Lỗi: ' + error.message);
   await loadTasks(); renderTasks();
 }
@@ -218,7 +218,7 @@ $('taskForm').addEventListener('submit', async (e) => {
     due_date: $('taskDue').value || null,
     created_by: currentUser.id
   };
-  const { error } = await supabase.from('tasks').insert(payload);
+  const { error } = await db.from('tasks').insert(payload);
   if (error) return alert('Lỗi: ' + error.message);
   closeTaskModal();
   await loadTasks(); renderTasks();
@@ -229,8 +229,8 @@ $('taskForm').addEventListener('submit', async (e) => {
 // ============================================================
 async function loadExpensesAndShares(){
   const [{ data: exp, error: e1 }, { data: shares, error: e2 }] = await Promise.all([
-    supabase.from('expenses').select('*').order('expense_date', { ascending: false }),
-    supabase.from('expense_shares').select('*')
+    db.from('expenses').select('*').order('expense_date', { ascending: false }),
+    db.from('expense_shares').select('*')
   ]);
   if (e1) console.error(e1);
   if (e2) console.error(e2);
@@ -323,7 +323,7 @@ function renderExpenseList(){
 
 async function deleteExpense(id){
   if (!confirm('Xoá khoản chi này? (các phần chia liên quan cũng sẽ bị xoá)')) return;
-  const { error } = await supabase.from('expenses').delete().eq('id', id);
+  const { error } = await db.from('expenses').delete().eq('id', id);
   if (error) return alert('Lỗi: ' + error.message);
   await loadExpensesAndShares(); renderExpensesTab();
 }
@@ -346,14 +346,14 @@ $('expenseForm').addEventListener('submit', async (e) => {
 
   if (checked.length === 0) return alert('Chọn ít nhất 1 người để chia khoản chi.');
 
-  const { data: newExp, error: e1 } = await supabase.from('expenses')
+  const { data: newExp, error: e1 } = await db.from('expenses')
     .insert({ description, amount, paid_by, expense_date, created_by: currentUser.id })
     .select().single();
   if (e1) return alert('Lỗi: ' + e1.message);
 
   const per = Math.round((amount / checked.length) * 100) / 100;
   const shareRows = checked.map(uid => ({ expense_id: newExp.id, user_id: uid, share_amount: per }));
-  const { error: e2 } = await supabase.from('expense_shares').insert(shareRows);
+  const { error: e2 } = await db.from('expense_shares').insert(shareRows);
   if (e2) return alert('Lỗi khi chia tiền: ' + e2.message);
 
   closeExpenseModal();
@@ -364,7 +364,7 @@ $('expenseForm').addEventListener('submit', async (e) => {
 // REALTIME — tự cập nhật khi thành viên khác thêm/sửa/xoá
 // ============================================================
 function subscribeRealtime(){
-  supabase.channel('sotaynhom-changes')
+  db.channel('sotaynhom-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => { await loadTasks(); renderTasks(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, async () => { await loadExpensesAndShares(); renderExpensesTab(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'expense_shares' }, async () => { await loadExpensesAndShares(); renderExpensesTab(); })
