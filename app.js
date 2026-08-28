@@ -3,7 +3,7 @@
 // Toàn bộ logic: đăng nhập, công việc (tasks), chi tiêu (expenses)
 // ============================================================
 
-const db = window.db.createClient(
+const db = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
