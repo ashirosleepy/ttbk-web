@@ -164,6 +164,26 @@
         <div id="members-grid" class="member-grid"><p class="empty-state">Đang tải...</p></div>
       </section>
 
+      <!-- Trong index.html (phần thanh menu/sidebar) -->
+<div class="menu-item nav-notifications" id="notification-btn">
+    <span class="icon">🔔</span>
+    <span class="menu-text">Thông báo</span>
+    <!-- Badge hiển thị số thông báo chưa đọc -->
+    <span class="badge hidden" id="notif-badge">0</span>
+    
+    <!-- Popup Dropdown Thông báo -->
+    <div class="notif-dropdown hidden" id="notif-dropdown">
+        <div class="notif-header">
+            <h4>Thông báo mới</h4>
+            <button id="mark-all-read">Đã đọc tất cả</button>
+        </div>
+        <div class="notif-list" id="notif-list">
+            <!-- Render bằng JavaScript -->
+            <div class="notif-empty">Không có thông báo nào</div>
+        </div>
+    </div>
+</div>
+
       <!-- ---------- CÀI ĐẶT ---------- -->
       <section id="section-settings" class="view">
         <div class="view-head">
@@ -209,5 +229,6 @@
 <script src="js/members.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/app.js"></script>
+<script src="js/notifications.js"></script>
 </body>
 </html>
