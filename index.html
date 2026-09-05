@@ -1,184 +1,212 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sổ Tay Nhóm — Công việc & Chi tiêu</title>
-<link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TTBK — Việc nhà</title>
+<link rel="stylesheet" href="css/style.css" />
 </head>
-
 <body>
 
-<div class="spiral-edge" id="spiralEdge"></div>
+<div class="app">
 
-<!-- ===================== AUTH SCREEN ===================== -->
-<div class="auth-wrap" id="authWrap">
-  <div class="auth-card">
-    <h1 class="brand">📒 Sổ Tay Nhóm
-      <small>Công việc &amp; chi tiêu cho nhóm 4 người</small>
-    </h1>
+  <!-- ================= MENU BÊN TRÁI ================= -->
+  <aside class="sidebar">
+    <div class="sidebar-mark">TT<span>BK</span></div>
 
-    <form id="loginForm">
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="loginEmail" required placeholder="ban@email.com">
-      </div>
-      <div class="field">
-        <label>Mật khẩu</label>
-        <input type="password" id="loginPassword" required placeholder="••••••••" minlength="6">
-      </div>
-      <button type="submit" class="btn btn-block" id="loginBtn">Đăng nhập</button>
-    </form>
+    <button class="nav-item active" data-section="dashboard"><span class="icon">🏠</span> Tổng quan</button>
+    <button class="nav-item" data-section="tasks"><span class="icon">📝</span> Công việc</button>
+    <button class="nav-item" data-section="schedule"><span class="icon">📅</span> Lịch</button>
+    <button class="nav-item" data-section="members"><span class="icon">👥</span> Thành viên</button>
+    <button class="nav-item" data-section="settings"><span class="icon">⚙️</span> Cài đặt</button>
 
-    <form id="signupForm" style="display:none;">
-      <div class="field">
-        <label>Họ tên</label>
-        <input type="text" id="signupName" required placeholder="Nguyễn Văn A">
-      </div>
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="signupEmail" required placeholder="ban@email.com">
-      </div>
-      <div class="field">
-        <label>Mật khẩu (tối thiểu 6 ký tự)</label>
-        <input type="password" id="signupPassword" required minlength="6" placeholder="••••••••">
-      </div>
-      <button type="submit" class="btn btn-block" id="signupBtn">Tạo tài khoản</button>
-    </form>
+    <div class="sidebar-foot" id="household-name">Nhà TTBK</div>
+  </aside>
 
-    <div class="auth-error" id="authError"></div>
+  <!-- ================= NỘI DUNG CHÍNH ================= -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title" id="topbar-title">Việc nhà hôm nay</div>
+      <div class="user-chip">
+        <span id="topbar-user"></span>
+        <button class="btn btn-ghost btn-sm" id="btn-logout">Đăng xuất</button>
+      </div>
+    </header>
 
-    <div class="auth-toggle" id="toggleToSignup">
-      Chưa có tài khoản? <a onclick="showSignup()">Đăng ký ngay</a>
-    </div>
-    <div class="auth-toggle" id="toggleToLogin" style="display:none;">
-      Đã có tài khoản? <a onclick="showLogin()">Đăng nhập</a>
-    </div>
-  </div>
-</div>
+    <main class="content">
 
-<!-- ===================== APP SHELL ===================== -->
-<div class="app-wrap" id="appWrap" style="display:none;">
+      <!-- ---------- TỔNG QUAN ---------- -->
+      <section id="section-dashboard" class="view active">
+        <div class="view-head">
+          <div><h2>Tổng quan</h2><p>Tình hình việc nhà hôm nay</p></div>
+        </div>
+        <div id="dashboard-content"><p class="empty-state">Đang tải...</p></div>
+      </section>
 
-  <div class="topbar">
-    <h1 class="brand">📒 Sổ Tay Nhóm</h1>
-    <div class="me">
-      <div class="me-name" id="meName"></div>
-      <div class="avatar" id="meAvatar">🧑‍🎓</div>
-      <button class="btn btn-ghost btn-sm" id="logoutBtn">Đăng xuất</button>
-    </div>
-  </div>
+      <!-- ---------- CÔNG VIỆC ---------- -->
+      <section id="section-tasks" class="view">
+        <div class="view-head">
+          <div><h2>Công việc</h2><p>Đánh dấu xong, đổi người, gia hạn ngay trên từng phiếu việc</p></div>
+          <button class="btn btn-primary btn-sm" id="btn-new-task">+ Thêm việc</button>
+        </div>
 
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="tasks">📋 Công việc</button>
-    <button class="tab-btn" data-tab="expenses">💰 Chi tiêu</button>
-  </div>
+        <div class="card" id="new-task-form" style="display:none; margin-bottom:22px;">
+          <div class="form-row">
+            <div class="field">
+              <label for="nt-title">Tên việc</label>
+              <input type="text" id="nt-title" placeholder="VD: Rửa bát" />
+            </div>
+            <div class="field">
+              <label for="nt-assigned">Ai làm</label>
+              <select id="nt-assigned"></select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="nt-due">Hạn</label>
+              <input type="date" id="nt-due" />
+            </div>
+            <div class="field">
+              <label for="nt-priority">Độ ưu tiên</label>
+              <select id="nt-priority">
+                <option value="thap">Thấp</option>
+                <option value="binh_thuong" selected>Bình thường</option>
+                <option value="cao">Cao</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="nt-desc">Ghi chú (không bắt buộc)</label>
+            <textarea id="nt-desc" placeholder="Chi tiết thêm nếu cần..."></textarea>
+          </div>
+          <div class="field" style="max-width:140px;">
+            <label for="nt-points">Điểm thưởng</label>
+            <input type="number" id="nt-points" value="10" min="0" />
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary btn-sm" id="save-new-task">Lưu việc</button>
+            <button class="btn btn-ghost btn-sm" id="cancel-new-task">Huỷ</button>
+          </div>
+        </div>
 
-  <!-- ---------- TAB: TASKS ---------- -->
-  <div class="tab-panel active" id="tab-tasks">
-    <div class="panel-head">
-      <h2>Bảng công việc nhóm</h2>
-      <button class="btn btn-yellow btn-sm" id="addTaskBtn">+ Thêm việc</button>
-    </div>
-    <div class="kanban">
-      <div class="kcol">
-        <h3><span class="dot dot-todo"></span>Chưa làm</h3>
-        <div id="col-todo"></div>
-      </div>
-      <div class="kcol">
-        <h3><span class="dot dot-doing"></span>Đang làm</h3>
-        <div id="col-doing"></div>
-      </div>
-      <div class="kcol">
-        <h3><span class="dot dot-done"></span>Đã xong</h3>
-        <div id="col-done"></div>
-      </div>
-    </div>
-  </div>
+        <div id="tasks-container"><p class="empty-state">Đang tải...</p></div>
+      </section>
 
-  <!-- ---------- TAB: EXPENSES ---------- -->
-  <div class="tab-panel" id="tab-expenses">
-    <div class="summary-grid" id="summaryGrid"></div>
+      <!-- ---------- LỊCH ---------- -->
+      <section id="section-schedule" class="view">
+        <div class="view-head">
+          <div><h2>Lịch việc lặp lại</h2><p>Việc lặp lại sẽ tự động tạo mỗi ngày</p></div>
+        </div>
 
-    <div class="panel-head">
-      <h2>Cần thanh toán</h2>
-    </div>
-    <div class="settle-list" id="settleList"></div>
+        <div class="card" style="margin-bottom:22px;">
+          <h3 style="font-size:15px; margin-bottom:14px;">Thêm lịch mới</h3>
+          <div class="form-row">
+            <div class="field">
+              <label for="sc-title">Tên việc</label>
+              <input type="text" id="sc-title" placeholder="VD: Đổ rác" />
+            </div>
+            <div class="field">
+              <label for="sc-assigned">Ai làm</label>
+              <select id="sc-assigned"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="sc-repeat-type">Lặp lại</label>
+            <select id="sc-repeat-type">
+              <option value="daily">Mỗi ngày</option>
+              <option value="weekly" selected>Vào các ngày trong tuần</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Chọn ngày trong tuần</label>
+            <div class="days-picker" id="sc-days-picker">
+              <button type="button" class="day-toggle" data-day="1">T2</button>
+              <button type="button" class="day-toggle" data-day="2">T3</button>
+              <button type="button" class="day-toggle" data-day="3">T4</button>
+              <button type="button" class="day-toggle" data-day="4">T5</button>
+              <button type="button" class="day-toggle" data-day="5">T6</button>
+              <button type="button" class="day-toggle" data-day="6">T7</button>
+              <button type="button" class="day-toggle" data-day="0">CN</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="sc-start">Bắt đầu từ</label>
+              <input type="date" id="sc-start" />
+            </div>
+            <div class="field">
+              <label for="sc-end">Kết thúc (không bắt buộc)</label>
+              <input type="date" id="sc-end" />
+            </div>
+          </div>
+          <div class="field" style="max-width:140px;">
+            <label for="sc-points">Điểm thưởng</label>
+            <input type="number" id="sc-points" value="10" min="0" />
+          </div>
+          <button class="btn btn-primary btn-sm" id="save-schedule">Lưu lịch</button>
+        </div>
 
-    <div class="panel-head">
-      <h2>Lịch sử chi tiêu</h2>
-      <button class="btn btn-yellow btn-sm" id="addExpenseBtn">+ Thêm khoản chi</button>
-    </div>
-    <div class="expense-list" id="expenseList"></div>
-  </div>
+        <div class="card" style="margin-bottom:22px; overflow-x:auto;">
+          <h3 style="font-size:15px; margin-bottom:14px;">Lưới cả tuần</h3>
+          <div id="schedule-grid"></div>
+        </div>
 
-</div>
+        <h3 style="font-size:15px; margin-bottom:12px;">Lịch đang chạy</h3>
+        <div id="schedule-list" class="task-list"><p class="empty-state">Đang tải...</p></div>
+      </section>
 
-<!-- ===================== MODAL: ADD/EDIT TASK ===================== -->
-<div class="modal-bg" id="taskModalBg">
-  <div class="modal">
-    <h3 id="taskModalTitle">Thêm việc mới</h3>
-    <form id="taskForm">
-      <input type="hidden" id="taskId">
-      <div class="field">
-        <label>Tên công việc</label>
-        <input type="text" id="taskTitle" required placeholder="VD: Làm slide thuyết trình">
-      </div>
-      <div class="field">
-        <label>Mô tả (không bắt buộc)</label>
-        <input type="text" id="taskDesc" placeholder="Chi tiết công việc...">
-      </div>
-      <div class="field">
-        <label>Giao cho</label>
-        <select id="taskAssignee"></select>
-      </div>
-      <div class="field">
-        <label>Hạn chót (không bắt buộc)</label>
-        <input type="date" id="taskDue">
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeTaskModal()">Huỷ</button>
-        <button type="submit" class="btn btn-yellow">Lưu</button>
-      </div>
-    </form>
-  </div>
-</div>
+      <!-- ---------- THÀNH VIÊN ---------- -->
+      <section id="section-members" class="view">
+        <div class="view-head">
+          <div><h2>Thành viên</h2><p>Số việc và điểm công bằng của từng người</p></div>
+        </div>
+        <div id="members-grid" class="member-grid"><p class="empty-state">Đang tải...</p></div>
+      </section>
 
-<!-- ===================== MODAL: ADD EXPENSE ===================== -->
-<div class="modal-bg" id="expenseModalBg">
-  <div class="modal">
-    <h3>Thêm khoản chi</h3>
-    <form id="expenseForm">
-      <div class="field">
-        <label>Nội dung</label>
-        <input type="text" id="expDesc" required placeholder="VD: Tiền in tài liệu nhóm">
-      </div>
-      <div class="field">
-        <label>Số tiền (VNĐ)</label>
-        <input type="number" id="expAmount" required min="1" step="1000" placeholder="150000">
-      </div>
-      <div class="field">
-        <label>Người trả tiền</label>
-        <select id="expPaidBy"></select>
-      </div>
-      <div class="field">
-        <label>Ngày chi</label>
-        <input type="date" id="expDate">
-      </div>
-      <div class="field">
-        <label>Chia đều cho những ai?</label>
-        <div class="checks-list" id="expShareChecks"></div>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" onclick="closeExpenseModal()">Huỷ</button>
-        <button type="submit" class="btn btn-yellow">Lưu</button>
-      </div>
-    </form>
+      <!-- ---------- CÀI ĐẶT ---------- -->
+      <section id="section-settings" class="view">
+        <div class="view-head">
+          <div><h2>Cài đặt</h2><p>Thông tin cá nhân của bạn</p></div>
+        </div>
+
+        <div class="card" style="max-width:420px;">
+          <div class="settings-block">
+            <h3>Hồ sơ</h3>
+            <div class="field">
+              <label for="st-name">Tên hiển thị</label>
+              <input type="text" id="st-name" />
+            </div>
+            <div class="field">
+              <label for="st-household">Tên nhà</label>
+              <input type="text" id="st-household" />
+            </div>
+            <div class="field">
+              <label>Màu đại diện</label>
+              <div class="color-picker" id="st-colors"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="save-settings">Lưu thay đổi</button>
+          </div>
+
+          <div class="settings-block" style="margin-bottom:0;">
+            <h3>Tài khoản</h3>
+            <button class="btn btn-danger btn-sm" id="st-logout">Đăng xuất</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
-<script src="app.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/tasks.js"></script>
+<script src="js/schedule.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/members.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

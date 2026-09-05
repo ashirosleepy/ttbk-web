@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Đăng nhập — TTBK</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="auth-page">
+
+  <div class="auth-card">
+    <div class="auth-mark">TT<span>BK</span></div>
+    <p class="auth-sub">Nhà chung — việc chung. Đăng nhập để xem việc hôm nay.</p>
+
+    <div class="auth-error" id="auth-error"></div>
+
+    <form id="login-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="ten@tro.local" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label for="password">Mật khẩu</label>
+        <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn btn-primary" id="login-btn">Đăng nhập</button>
+    </form>
+
+    <p class="auth-hint">
+      Chưa có tài khoản? Nhờ người quản trị tạo tài khoản trong Supabase Dashboard
+      (Authentication → Users → Add user).
+    </p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // Nếu đã đăng nhập rồi thì vào thẳng trang chính, khỏi phải nhập lại
+    (async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) window.location.href = "index.html";
+    })();
+
+    const form = document.getElementById("login-form");
+    const errorBox = document.getElementById("auth-error");
+    const loginBtn = document.getElementById("login-btn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorBox.classList.remove("show");
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Đang đăng nhập...";
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      const { error } = await login(email, password);
+
+      if (error) {
+        errorBox.textContent = "Sai email hoặc mật khẩu. Thử lại nhé.";
+        errorBox.classList.add("show");
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Đăng nhập";
+        return;
+      }
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>

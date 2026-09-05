@@ -1,139 +1,45 @@
-# 📒 Sổ Tay Nhóm — Quản lý công việc & chi tiêu (4 thành viên)
+# TTBK — App việc nhà (Tiến · Tài · Bách · Khoa)
 
-Web app đơn giản, **miễn phí 100%**, không cần server riêng:
-- **Supabase** lo phần đăng nhập (Auth) + cơ sở dữ liệu (Postgres) + realtime.
-- **GitHub Pages** host giao diện web tĩnh (HTML/CSS/JS thuần, không cần build).
+Web app quản lý việc nhà cho 4 người, dùng **GitHub Pages** (host web) + **Supabase**
+(đăng nhập + lưu dữ liệu). Không cần server riêng, không cần build tool.
 
-Có 2 phần chính:
-1. **📋 Công việc** — bảng Kanban (Chưa làm / Đang làm / Đã xong), giao việc cho từng thành viên, hạn chót.
-2. **💰 Chi tiêu** — ghi khoản chi, chia đều cho các thành viên đã chọn, tự tính **ai cần trả cho ai bao nhiêu** (thuật toán rút gọn số giao dịch).
-
----
-
-## 📁 Cấu trúc file
+## Cấu trúc file
 
 ```
-nhom-hssv-app/
-├── index.html          # giao diện (màn đăng nhập + app chính)
-├── style.css           # giao diện "sổ tay học sinh"
-├── app.js              # toàn bộ logic (auth, task, chi tiêu, tính nợ)
-├── config.js           # nơi bạn dán SUPABASE_URL và ANON_KEY
-└── supabase-schema.sql # script tạo bảng + phân quyền trên Supabase
+ttbk-web/
+├── index.html          Khung app chính (Tổng quan / Công việc / Lịch / Thành viên / Cài đặt)
+├── login.html           Trang đăng nhập
+├── css/style.css        Toàn bộ giao diện
+├── js/supabase-client.js  Kết nối Supabase (điền URL + key ở đây)
+├── js/auth.js            Đăng nhập / đăng xuất / lấy hồ sơ
+├── js/utils.js           Hàm dùng chung (avatar, ngày tháng...)
+├── js/tasks.js           Trang Công việc: thêm / xong / đổi người / gia hạn / xoá
+├── js/schedule.js        Trang Lịch: việc lặp lại + tự sinh việc mỗi ngày
+├── js/dashboard.js       Trang Tổng quan
+├── js/members.js         Trang Thành viên
+├── js/settings.js        Trang Cài đặt hồ sơ
+├── js/app.js             Khởi động app + điều hướng menu
+└── sql/schema.sql        Toàn bộ bảng database + bảo mật (RLS), dán vào Supabase SQL Editor
 ```
 
----
+## Cài đặt (làm theo thứ tự)
 
-## BƯỚC 1 — Tạo project Supabase (miễn phí)
+1. **Tạo project Supabase** tại supabase.com/dashboard (miễn phí).
+2. **Tạo database**: vào SQL Editor, dán toàn bộ nội dung `sql/schema.sql`, bấm Run.
+3. **Tạo 4 tài khoản**: vào Authentication → Users → Add user, tạo cho Tiến/Tài/Bách/Khoa
+   (email dạng `ten@tro.local`, hoặc email thật). Hồ sơ (profiles) tự sinh nhờ trigger có sẵn.
+   → Nhớ tắt "Confirm email" trong Authentication → Settings nếu dùng email giả, để đăng nhập được ngay.
+4. **Lấy API key**: Project Settings → API, copy "Project URL" và "anon public key",
+   dán vào `js/supabase-client.js`.
+5. **Đẩy code lên GitHub**: tạo repo (vd `ttbk-web`), push toàn bộ thư mục này lên.
+6. **Bật GitHub Pages**: Settings → Pages → chọn branch `main`, thư mục `/ (root)`.
+7. **Mở trang login.html** (đường link GitHub Pages trả về) và đăng nhập thử.
+8. Vào **Lịch**, thêm vài việc lặp lại (đổ rác, rửa bát...) để hệ thống tự tạo việc mỗi ngày.
+9. Vào **Cài đặt** để mỗi người đổi tên hiển thị và chọn màu riêng của mình.
+10. Xong — mọi người dùng chung 1 link, dữ liệu lưu trên Supabase nên đổi máy vẫn còn.
 
-1. Vào **https://supabase.com** → **Sign up** (dùng GitHub cho nhanh).
-2. Bấm **New project**:
-   - Đặt tên: `so-tay-nhom` (tuỳ ý).
-   - Đặt mật khẩu database (lưu lại, ít dùng tới nhưng nên nhớ).
-   - Chọn region gần Việt Nam nhất (Singapore).
-3. Đợi ~2 phút để Supabase khởi tạo project.
-
-### 1.1. Tạo bảng dữ liệu
-1. Trong project, vào menu bên trái → **SQL Editor** → **New query**.
-2. Mở file `supabase-schema.sql` (trong bộ file này), copy **toàn bộ nội dung**, dán vào SQL Editor.
-3. Bấm **Run**. Nếu thấy "Success. No rows returned" là đã tạo xong 4 bảng: `profiles`, `tasks`, `expenses`, `expense_shares`.
-
-### 1.2. Cấu hình Auth (đăng nhập bằng email + mật khẩu)
-1. Vào **Authentication → Providers** → đảm bảo **Email** đang bật (mặc định đã bật sẵn).
-2. Vào **Authentication → Settings**:
-   - Nếu muốn 4 thành viên đăng ký xong dùng được **ngay lập tức** (không cần xác nhận email) — vì là nhóm nhỏ tự quản — tắt **"Confirm email"**. Nếu để bật, mỗi người phải bấm link xác nhận trong email trước khi đăng nhập được.
-3. (Tuỳ chọn) Vào **Authentication → URL Configuration**, thêm địa chỉ GitHub Pages của bạn (ở Bước 3) vào **Site URL** / **Redirect URLs** để tránh lỗi khi deploy.
-
-### 1.3. Bật Realtime (để cả nhóm thấy cập nhật ngay, không cần F5)
-1. Vào **Database → Replication**.
-2. Bật (toggle ON) cho 3 bảng: `tasks`, `expenses`, `expense_shares`.
-
-### 1.4. Lấy API key
-1. Vào **Project Settings (biểu tượng bánh răng) → API**.
-2. Copy 2 giá trị:
-   - **Project URL** (dạng `https://xxxxxxxx.supabase.co`)
-   - **anon public** key (chuỗi dài, dùng key `anon`, **không dùng** `service_role`)
-
----
-
-## BƯỚC 2 — Điền thông tin vào `config.js`
-
-Mở file `config.js`, thay 2 dòng:
-
-```js
-const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
-```
-
-bằng giá trị bạn vừa copy ở Bước 1.4. Lưu file lại.
-
-> ⚠️ Key `anon` là key **công khai theo thiết kế của Supabase** (an toàn khi đưa lên GitHub công khai), vì mọi quyền truy cập dữ liệu thật sự được kiểm soát bằng **Row Level Security (RLS)** — đã được thiết lập sẵn trong `supabase-schema.sql` (chỉ người **đã đăng nhập** mới đọc/ghi được dữ liệu).
-
----
-
-## BƯỚC 3 — Đưa lên GitHub và bật GitHub Pages
-
-1. Vào **https://github.com** → **New repository** (đặt tên ví dụ `so-tay-nhom`, để **Public**).
-2. Trên máy, vào thư mục chứa các file này rồi chạy:
-   ```bash
-   git init
-   git add .
-   git commit -m "Khởi tạo Sổ Tay Nhóm"
-   git branch -M main
-   git remote add origin https://github.com/<ten-github-cua-ban>/so-tay-nhom.git
-   git push -u origin main
-   ```
-   (Hoặc dùng nút **"Add file → Upload files"** trên giao diện web GitHub nếu không quen dòng lệnh — kéo thả 5 file vào là xong.)
-3. Vào repo trên GitHub → **Settings → Pages**.
-4. Ở mục **Build and deployment → Source**, chọn **Deploy from a branch**.
-5. Chọn **Branch: main**, thư mục **/ (root)** → **Save**.
-6. Đợi 1–2 phút, GitHub sẽ cho địa chỉ dạng:
-   `https://<ten-github-cua-ban>.github.io/so-tay-nhom/`
-7. Gửi link này cho 3 bạn còn lại trong nhóm.
-
----
-
-## BƯỚC 4 — Cả 4 thành viên đăng ký tài khoản
-
-1. Mỗi người mở link GitHub Pages ở trên.
-2. Bấm **"Đăng ký ngay"**, nhập họ tên + email + mật khẩu → **Tạo tài khoản**.
-3. Đăng nhập lại (nếu bạn đã tắt "Confirm email" ở Bước 1.2 thì vào được ngay).
-4. Vậy là xong — cả 4 người dùng chung 1 app, dữ liệu (công việc, chi tiêu) đồng bộ realtime cho nhau.
-
----
-
-## Cách hoạt động (tóm tắt kỹ thuật)
-
-| Bảng | Mục đích |
-|---|---|
-| `profiles` | Hồ sơ 4 thành viên, tự tạo khi đăng ký (trigger `handle_new_user`) |
-| `tasks` | Công việc: tiêu đề, mô tả, người được giao, trạng thái (`todo/doing/done`), hạn chót |
-| `expenses` | Khoản chi: nội dung, số tiền, người trả, ngày |
-| `expense_shares` | Với mỗi khoản chi, mỗi người tham gia chia tiền có 1 dòng ghi phần phải trả |
-
-**Cách tính "ai nợ ai":**
-- Số dư mỗi người = (tổng tiền đã trả hộ) − (tổng phần mình phải chịu trong các khoản chi).
-- Dương → được nhận lại tiền; Âm → còn phải trả.
-- App dùng thuật toán ghép nợ-có greedy để **gợi ý số giao dịch chuyển khoản ít nhất** giữa các thành viên (mục "Cần thanh toán").
-
-**Bảo mật (RLS):** vì đây là app nội bộ cho 4 người tin tưởng nhau, chính sách hiện tại là "ai đã đăng nhập thì được xem/sửa/xoá mọi dữ liệu trong nhóm" — đơn giản, dễ dùng. Nếu sau này muốn chặt hơn (ví dụ: chỉ người tạo mới được xoá task/expense của mình), có thể sửa lại các policy trong Supabase → **Authentication → Policies**.
-
----
-
-## Có thể mở rộng thêm (tuỳ, không bắt buộc)
-
-- **Bình luận / nhắc nhở** cho từng task (thêm bảng `task_comments`).
-- **Upload hoá đơn** cho khoản chi bằng **Supabase Storage** (bucket ảnh).
-- **Thông báo qua email** khi có việc mới bằng **Supabase Edge Functions**.
-- **PWA** (thêm `manifest.json` + service worker) để "cài" app lên màn hình điện thoại như app thật.
-- Đổi từ 4 người cố định sang nhiều nhóm (`groups` + `group_members`) nếu muốn dùng cho nhiều nhóm khác nhau.
-
----
-
-## Xử lý lỗi thường gặp
-
-| Lỗi | Nguyên nhân / cách sửa |
-|---|---|
-| Đăng nhập báo "Invalid login credentials" | Sai email/mật khẩu, hoặc email chưa xác nhận (xem lại Bước 1.2) |
-| Trang trắng, console báo lỗi `supabase is not defined` | Kiểm tra file `config.js` đã điền đúng URL/key, và đường dẫn script trong `index.html` |
-| Thêm task/chi tiêu không lưu được, báo lỗi quyền (RLS) | Kiểm tra đã chạy đúng `supabase-schema.sql`, đặc biệt phần `enable row level security` và các `create policy` |
-| Không thấy 4 thành viên trong danh sách "Giao cho" | Người đó chưa từng đăng nhập lần nào (trigger tạo `profiles` chạy lúc đăng ký) |
+## Ghi chú
+- App dùng vanilla JavaScript (không React, không bước build) — mở thẳng file `.html` là chạy.
+- Bảo mật dữ liệu dùng Row Level Security (RLS) của Supabase: chỉ ai đăng nhập mới đọc/ghi được.
+- Muốn thêm thông báo đẩy thực sự (browser push) cần thêm dịch vụ ngoài (vd OneSignal) — bảng
+  `notifications` hiện tại mới chỉ lưu thông báo trong database, chưa gửi push.
