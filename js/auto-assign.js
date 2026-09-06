@@ -21,17 +21,10 @@
 
 const PRESET_CHORES = [
   { title: "Quét nhà", points: 10 },
-  { title: "Lau nhà", points: 15 },
-  { title: "Rửa bát", points: 10 },
-  { title: "Đổ rác", points: 5 },
-  { title: "Giặt đồ", points: 15 },
-  { title: "Phơi / gấp quần áo", points: 10 },
-  { title: "Dọn nhà vệ sinh", points: 20 },
-  { title: "Đi chợ / mua đồ", points: 10 },
-  { title: "Nấu cơm", points: 20 },
-  { title: "Dọn bếp", points: 10 },
-  { title: "Tưới cây", points: 5 },
-  { title: "Rửa xe", points: 15 },
+  { title: "Lau nhà", points: 10 },
+  { title: "Nấu ăn trưa", points: 30 },
+  { title: "Nấu ăn tối", points: 30 },
+  { title: "Lấy quần áo", points: 10 },
 ];
 
 // Kết quả chia việc đang xem trước (chưa lưu vào Supabase)
@@ -43,7 +36,7 @@ function renderPresetChips() {
   const wrap = document.getElementById("aa-presets");
   wrap.innerHTML = PRESET_CHORES.map(
     (c, i) =>
-      `<button type="button" class="chore-chip" data-idx="${i}">${escapeHTML(c.title)}</button>`
+      `<button type="button" class="chore-chip on" data-idx="${i}">${escapeHTML(c.title)}</button>`
   ).join("");
 }
 
