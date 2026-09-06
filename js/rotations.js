@@ -90,7 +90,9 @@ async function reportAdhocTask(queueId) {
 function renderOrderPicker() {
   const wrap = document.getElementById("rq-order-picker");
   if (!wrap) return;
-  wrap.innerHTML = STATE.profiles
+
+  const profiles = Array.isArray(STATE.profiles) ? STATE.profiles : [];
+  wrap.innerHTML = profiles
     .map((p) => {
       const idx = rqOrder.indexOf(p.id);
       const label = idx === -1 ? escapeHTML(p.name) : `${idx + 1}. ${escapeHTML(p.name)}`;
@@ -103,17 +105,20 @@ async function renderRotationAdmin() {
   const queues = await fetchRotationQueues();
   const listEl = document.getElementById("rotation-list");
 
-  if (queues.length === 0) {
+  if (!listEl) return;
+
+  const safeQueues = Array.isArray(queues) ? queues : [];
+  if (safeQueues.length === 0) {
     listEl.innerHTML = `<p class="empty-state">Chưa có hàng đợi nào. Thử tạo cho "Đổ rác" hoặc "Thay bình nước".</p>`;
     return;
   }
 
-  listEl.innerHTML = queues
+  listEl.innerHTML = safeQueues
     .map((q) => {
       const holder = currentHolder(q);
       const orderNames = (q.member_order || [])
         .map((id) => {
-          const p = findProfile(STATE.profiles, id);
+          const p = findProfile(Array.isArray(STATE.profiles) ? STATE.profiles : [], id);
           return p ? p.name : "?";
         })
         .join(" → ");
@@ -139,7 +144,7 @@ async function renderRotationAdmin() {
 
 function bindRotationEvents() {
   const wrap = document.getElementById("rq-order-picker");
-  if (!wrap.dataset.bound) {
+  if (wrap && !wrap.dataset.bound) {
     wrap.dataset.bound = "1";
     wrap.addEventListener("click", (e) => {
       const btn = e.target.closest("button[data-member]");
@@ -153,7 +158,7 @@ function bindRotationEvents() {
   }
 
   const listEl = document.getElementById("rotation-list");
-  if (!listEl.dataset.bound) {
+  if (listEl && !listEl.dataset.bound) {
     listEl.dataset.bound = "1";
     listEl.addEventListener("click", async (e) => {
       const ticket = e.target.closest(".task-ticket");
@@ -186,7 +191,7 @@ function bindRotationEvents() {
   }
 
   const saveBtn = document.getElementById("rq-save");
-  if (!saveBtn.dataset.bound) {
+  if (saveBtn && !saveBtn.dataset.bound) {
     saveBtn.dataset.bound = "1";
     saveBtn.addEventListener("click", async () => {
       const label = document.getElementById("rq-label").value.trim();
