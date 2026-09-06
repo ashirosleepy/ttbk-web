@@ -4,6 +4,19 @@
 // ============================================================
 
 let rqOrder = []; // thứ tự đang chọn khi tạo hàng đợi mới (mảng id thành viên)
+let editingRotationId = null;
+
+function resetRotationForm() {
+  editingRotationId = null;
+  document.getElementById("rq-label").value = "";
+  document.getElementById("rq-icon").value = "🔁";
+  document.getElementById("rq-points").value = 10;
+  rqOrder = [];
+  renderOrderPicker();
+
+  const saveBtn = document.getElementById("rq-save");
+  if (saveBtn) saveBtn.textContent = "Tạo hàng đợi";
+}
 
 async function fetchRotationQueues() {
   const { data, error } = await supabaseClient.from("rotation_queues").select("*").order("created_at");
@@ -116,6 +129,7 @@ async function renderRotationAdmin() {
         </div>
         <div class="task-actions">
           <button class="btn btn-primary btn-sm" data-action="report-adhoc">Báo có việc</button>
+          <button class="icon-btn" data-action="edit-rotation" title="Sửa hàng đợi">✏️</button>
           <button class="icon-btn" data-action="del-rotation" title="Xoá hàng đợi">🗑</button>
         </div>
       </div>`;
@@ -146,10 +160,26 @@ function bindRotationEvents() {
       if (!ticket) return;
       const id = ticket.dataset.id;
       if (e.target.dataset.action === "report-adhoc") await reportAdhocTask(id);
+      if (e.target.dataset.action === "edit-rotation") {
+        const { data: queue, error } = await supabaseClient.from("rotation_queues").select("*").eq("id", id).single();
+        if (error || !queue) return alert("Không tìm thấy hàng đợi để sửa.");
+
+        editingRotationId = queue.id;
+        document.getElementById("rq-label").value = queue.label || "";
+        document.getElementById("rq-icon").value = queue.icon || "🔁";
+        document.getElementById("rq-points").value = queue.points ?? 10;
+        rqOrder = Array.isArray(queue.member_order) ? [...queue.member_order] : [];
+        renderOrderPicker();
+
+        const saveBtn = document.getElementById("rq-save");
+        if (saveBtn) saveBtn.textContent = "Lưu thay đổi";
+        document.getElementById("rq-label").focus();
+      }
       if (e.target.dataset.action === "del-rotation") {
         if (!confirm("Xoá hàng đợi luân phiên này? Các lịch đang dùng hàng đợi này sẽ không còn tự gán được nữa.")) return;
         const { error } = await supabaseClient.from("rotation_queues").delete().eq("id", id);
         if (error) return alert("Lỗi: " + error.message);
+        if (editingRotationId === id) resetRotationForm();
         renderRotationAdmin();
       }
     });
@@ -169,12 +199,16 @@ function bindRotationEvents() {
         member_order: rqOrder,
         points: Number(document.getElementById("rq-points").value) || 10,
       };
-      const { error } = await supabaseClient.from("rotation_queues").insert(payload);
-      if (error) return alert("Lỗi: " + error.message);
 
-      document.getElementById("rq-label").value = "";
-      rqOrder = [];
-      renderOrderPicker();
+      if (editingRotationId) {
+        const { error } = await supabaseClient.from("rotation_queues").update(payload).eq("id", editingRotationId);
+        if (error) return alert("Lỗi: " + error.message);
+      } else {
+        const { error } = await supabaseClient.from("rotation_queues").insert(payload);
+        if (error) return alert("Lỗi: " + error.message);
+      }
+
+      resetRotationForm();
       renderRotationAdmin();
       if (typeof refreshScheduleRotationOptions === "function") refreshScheduleRotationOptions();
     });
