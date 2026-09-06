@@ -342,31 +342,6 @@ async function handoffTask(id) {
   const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
   if (error || !task) return alert("Không tìm thấy việc.");
 
-  if (task.rotation_queue_id) {
-    const { data: queue, error: qErr } = await supabaseClient
-      .from("rotation_queues")
-      .select("*")
-      .eq("id", task.rotation_queue_id)
-      .single();
-    if (qErr || !queue) return alert("Không tìm thấy hàng đợi luân phiên.");
-
-    // Note: Assuming nextAfterUser is defined globally in utils.js
-    const next = nextAfterUser(queue, task.assigned_to);
-    if (!next) return alert("Không tìm được người kế tiếp trong hàng đợi.");
-
-    const { error: updErr } = await supabaseClient.from("tasks").update({ assigned_to: next.id }).eq("id", id);
-    if (updErr) return alert("Lỗi: " + updErr.message);
-
-    await logHistory(id, STATE.me.id, "bao_ban_chuyen", `${STATE.me.name} báo bận, chuyển "${task.title}" cho ${next.name}`);
-    await createNotification(next.id, `😅 ${STATE.me.name} báo bận, đến lượt bạn: "${task.title}".`, {
-      type: "den_luot",
-      taskId: id,
-    });
-    alert(`Đã chuyển việc cho ${next.name}.`);
-    refreshActiveView();
-    return;
-  }
-
   const reason = prompt("Lý do (không bắt buộc):", "Bận việc khác") || "";
   const { data: exch, error: exErr } = await supabaseClient
     .from("task_exchanges")
@@ -377,15 +352,45 @@ async function handoffTask(id) {
 
   await logHistory(id, STATE.me.id, "xin_doi", `${STATE.me.name} xin đổi việc "${task.title}"${reason ? " — " + reason : ""}`);
 
-  const others = STATE.profiles.filter((p) => p.id !== STATE.me.id);
-  for (const p of others) {
-    await createNotification(p.id, `🔄 ${STATE.me.name} muốn đổi việc "${task.title}". Ai nhận giúp?`, {
+  const others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to);
+  const othersIds = others.map((p) => p.id);
+
+  let frequencyMap = {};
+  if (othersIds.length) {
+    const { data: doneTasks, error: countErr } = await supabaseClient
+      .from("tasks")
+      .select("assigned_to, title, rotation_queue_id")
+      .eq("status", "hoan_thanh")
+      .in("assigned_to", othersIds);
+
+    if (!countErr && Array.isArray(doneTasks)) {
+      for (const row of doneTasks) {
+        const matches =
+          task.rotation_queue_id && row.rotation_queue_id
+            ? row.rotation_queue_id === task.rotation_queue_id
+            : row.title === task.title;
+
+        if (matches) {
+          frequencyMap[row.assigned_to] = (frequencyMap[row.assigned_to] || 0) + 1;
+        }
+      }
+    }
+  }
+
+  const orderedOthers = [...others].sort((a, b) => {
+    const diff = (frequencyMap[a.id] || 0) - (frequencyMap[b.id] || 0);
+    return diff !== 0 ? diff : a.name.localeCompare(b.name);
+  });
+
+  for (const p of orderedOthers) {
+    await createNotification(p.id, `🔄 ${STATE.me.name} muốn đổi việc "${task.title}". Tần suất làm việc tương tự của bạn thấp hơn nên bạn là người phù hợp nhận việc này.`, {
       type: "xin_doi",
       taskId: id,
       exchangeId: exch.id,
     });
   }
-  alert("Đã gửi yêu cầu đổi việc tới mọi người.");
+
+  alert("Đã gửi thông báo đổi việc tới các thành viên còn lại theo tần suất làm việc.");
 }
 
 async function deleteTask(id) {
