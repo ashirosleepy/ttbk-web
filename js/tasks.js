@@ -40,6 +40,40 @@ function groupTasksByDate(tasks) {
   return groups;
 }
 
+async function buildTaskFrequencyMap({ title, rotation_queue_id, excludeUserIds = [] }) {
+  const eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id));
+  if (eligible.length === 0) return {};
+
+  const { data, error } = await supabaseClient
+    .from("tasks")
+    .select("assigned_to, title, rotation_queue_id")
+    .eq("status", "hoan_thanh")
+    .in("assigned_to", eligible.map((p) => p.id));
+
+  if (error || !Array.isArray(data)) return {};
+
+  const map = {};
+  for (const row of data) {
+    const matches = rotation_queue_id
+      ? row.rotation_queue_id === rotation_queue_id
+      : row.title === title;
+    if (!matches) continue;
+    map[row.assigned_to] = (map[row.assigned_to] || 0) + 1;
+  }
+  return map;
+}
+
+async function pickLeastFrequentAssignee({ title, rotation_queue_id, excludeUserIds = [] }) {
+  const eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id));
+  if (eligible.length === 0) return null;
+
+  const frequencyMap = await buildTaskFrequencyMap({ title, rotation_queue_id, excludeUserIds });
+  return [...eligible].sort((a, b) => {
+    const diff = (frequencyMap[a.id] || 0) - (frequencyMap[b.id] || 0);
+    return diff !== 0 ? diff : a.name.localeCompare(b.name);
+  })[0] || null;
+}
+
 // ================= GIAO DIỆN PHIẾU VIỆC =================
 
 function taskTicketHTML(task) {
@@ -252,10 +286,27 @@ async function toggleTaskDone(id) {
     newStatus === "hoan_thanh" ? `${STATE.me.name} đánh dấu hoàn thành` : `${STATE.me.name} mở lại việc`
   );
 
-  if (newStatus === "hoan_thanh" && data.rotation_queue_id) {
-    // Lưu ý: Nếu bạn có hàm advanceQueueByCompleter ở file khác, nó sẽ chạy ở đây
-    if(typeof advanceQueueByCompleter === 'function') {
+  if (newStatus === "hoan_thanh") {
+    if (data.rotation_queue_id) {
+      if (typeof advanceQueueByCompleter === "function") {
         await advanceQueueByCompleter(data.rotation_queue_id, data.assigned_to);
+      }
+    } else {
+      const nextAssignee = await pickLeastFrequentAssignee({
+        title: data.title,
+        rotation_queue_id: data.rotation_queue_id,
+        excludeUserIds: [data.assigned_to],
+      });
+      if (nextAssignee) {
+        const { error: assignErr } = await supabaseClient
+          .from("tasks")
+          .update({ assigned_to: nextAssignee.id })
+          .eq("id", id);
+        if (!assignErr) {
+          await logHistory(id, STATE.me.id, "giao_tiep", `${STATE.me.name} ưu tiên giao việc "${data.title}" cho ${nextAssignee.name} do tần suất làm ít hơn.`);
+          await createNotification(nextAssignee.id, `📌 ${STATE.me.name} đã hoàn thành việc "${data.title}". Hệ thống ưu tiên giao tiếp cho bạn vì bạn làm ít hơn.` , { type: "thong_bao", taskId: id });
+        }
+      }
     }
   }
 
@@ -383,14 +434,14 @@ async function handoffTask(id) {
   });
 
   for (const p of orderedOthers) {
-    await createNotification(p.id, `🔄 ${STATE.me.name} muốn đổi việc "${task.title}". Tần suất làm việc tương tự của bạn thấp hơn nên bạn là người phù hợp nhận việc này.`, {
+    await createNotification(p.id, `🔄 ${STATE.me.name} muốn đổi việc "${task.title}". Ai nhận giúp?`, {
       type: "xin_doi",
       taskId: id,
       exchangeId: exch.id,
     });
   }
 
-  alert("Đã gửi thông báo đổi việc tới các thành viên còn lại theo tần suất làm việc.");
+  alert("Đã gửi thông báo đổi việc tới 3 người còn lại để ai nhận thì nhận.");
 }
 
 async function deleteTask(id) {
