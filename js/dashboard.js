@@ -2,9 +2,47 @@
 // DASHBOARD.JS — trang "Tổng quan"
 // ============================================================
 
+async function fetchRecentActivity(limit = 12) {
+  const { data, error } = await supabaseClient
+    .from("task_history")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("Không lấy được nhật ký hoạt động:", error.message);
+    return [];
+  }
+
+  const taskIds = [...new Set((data || []).filter((row) => row.task_id).map((row) => row.task_id))];
+  let taskMap = {};
+
+  if (taskIds.length > 0) {
+    const { data: tasksData, error: taskErr } = await supabaseClient
+      .from("tasks")
+      .select("id, title")
+      .in("id", taskIds);
+
+    if (!taskErr && Array.isArray(tasksData)) {
+      taskMap = Object.fromEntries((tasksData || []).map((task) => [task.id, task]));
+    }
+  }
+
+  return (data || []).map((row) => {
+    const actor = findProfile(STATE.profiles, row.user_id);
+    const task = taskMap[row.task_id];
+    return {
+      ...row,
+      actor,
+      taskTitle: task?.title || "công việc",
+    };
+  });
+}
+
 async function renderDashboard() {
   const container = document.getElementById("dashboard-content");
   const tasks = await fetchTasks();
+  const recentActivity = await fetchRecentActivity();
   const today = todayStr();
   const todayTasks = tasks.filter((t) => t.due_date === today);
   const doneToday = todayTasks.filter((t) => t.status === "hoan_thanh").length;
@@ -76,7 +114,34 @@ async function renderDashboard() {
       }
     </div>`;
 
-  container.innerHTML = statsHTML + fairnessHTML + progressHTML + pendingHTML;
+  const activityHTML = `
+    <div class="card" style="margin-top:22px;">
+      <h3 style="margin-bottom:14px;font-size:15px;">📝 Nhật ký hoạt động</h3>
+      ${
+        recentActivity.length === 0
+          ? `<p class="empty-state" style="padding:10px 0;">Chưa có hoạt động nào.</p>`
+          : `<div class="task-list">${recentActivity
+              .map((row) => {
+                const actorName = row.actor ? escapeHTML(row.actor.name) : "Ai đó";
+                const detail = escapeHTML(row.detail || row.action || "Hoạt động");
+                const taskName = escapeHTML(row.taskTitle || "công việc");
+                return `
+                  <div class="task-ticket" style="border-left-color:${row.actor?.avatar_color || "#ccc"}">
+                    <div class="task-check" style="border:none; font-size:16px;">🕘</div>
+                    <div class="task-body">
+                      <div class="task-title">${actorName}: ${detail}</div>
+                      <div class="task-meta">
+                        <span>${taskName}</span>
+                        <span>${timeAgo(row.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>`;
+              })
+              .join("")}</div>`
+      }
+    </div>`;
+
+  container.innerHTML = statsHTML + fairnessHTML + progressHTML + pendingHTML + activityHTML;
   bindTaskEvents("dashboard-content"); // để nút "Nhận việc" trong khối trên hoạt động luôn
 }
 
