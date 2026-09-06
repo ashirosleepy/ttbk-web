@@ -95,7 +95,8 @@
   <div id="main-app">
     <div class="top-controls no-print">
       <div>
-        <button class="btn-secondary" onclick="exportJSON()">💾 Tải File Backup</button>
+        <button class="btn-secondary" onclick="window.location.href='index.html'" style="background-color: #343a40;">⬅️ Trang chủ</button>
+        <button class="btn-secondary" onclick="exportJSON()">💾 Backup</button>
         <input type="file" id="importFile" style="display:none" onchange="importJSON(event)" accept=".json">
         <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 Phục Hồi Dữ Liệu</button>
       </div>
