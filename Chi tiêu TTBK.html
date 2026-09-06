@@ -992,21 +992,53 @@
       });
     }
 
-async function saveData() {
+async function loadData() {
+      try {
+        // Dùng maybeSingle() để tránh sập web nếu database lỡ bị trống
+        const { data, error } = await supabaseClient
+          .from('finances')
+          .select('data')
+          .eq('id', 1)
+          .maybeSingle(); 
+
+        if (error) {
+          console.error("Lỗi Supabase khi tải:", error);
+        }
+
+        // Nếu lấy được dữ liệu thành công
+        if (data && data.data && Object.keys(data.data).length > 0) {
+          const parsed = data.data;
+          yearsData = parsed.yearsData || {};
+          currentYear = parsed.currentYear || 2026;
+          currentMonth = parsed.currentMonth || 1;
+          ensureLegacyDataFormat();
+        } else {
+          // Nếu bảng rỗng, tạo dữ liệu trống mặc định
+          yearsData[2026] = createEmptyYearData();
+        }
+      } catch (err) {
+        console.error("Lỗi không xác định khi tải:", err);
+        yearsData[2026] = createEmptyYearData();
+      }
+      
+      // Gọi cập nhật giao diện
+      updateUI();
+    }
+
+    async function saveData() {
       const statusEl = document.getElementById('save-status');
       statusEl.textContent = 'Đang đồng bộ lên máy chủ... ⏳';
       
       const payload = { currentYear, currentMonth, yearsData };
       
-      // Dùng hàm update() thay cho upsert() để đảm bảo tính an toàn
+      // Dùng upsert: nếu mất dòng id=1 thì nó tự tạo lại
       const { error } = await supabaseClient
         .from('finances')
-        .update({ data: payload, updated_at: new Date() })
-        .eq('id', 1);
+        .upsert({ id: 1, data: payload, updated_at: new Date() });
 
       if (error) {
-        console.error("Lỗi khi lưu DB:", error);
-        statusEl.textContent = '❌ Không thể lưu! (Lỗi mạng hoặc bạn không có quyền sửa)';
+        console.error("Lỗi Supabase khi lưu:", error);
+        statusEl.textContent = '❌ Không thể lưu! (Xem Console F12 để biết chi tiết)';
         statusEl.style.color = '#dc3545';
       } else {
         statusEl.textContent = '✓ Đã đồng bộ lên máy chủ chung lúc ' + new Date().toLocaleTimeString();
