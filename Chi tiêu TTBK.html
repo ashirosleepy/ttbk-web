@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+  <link rel="icon" type="image/png" href="./css/ttbk.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản Lý Chi Tiêu Nhóm Nâng Cao - Tiến Tài Bách Khoa</title>
@@ -377,7 +378,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/auth.js"></script>
-  
+
   <script>
     // --- LOGIC APP CHI TIÊU ---
     const members = ["Tiến", "Tài", "Bách", "Khoa"];
@@ -991,21 +992,25 @@
       });
     }
 
-    function saveData() {
-      localStorage.setItem('chiatien_adv_data', JSON.stringify({currentYear, currentMonth, yearsData}));
-      document.getElementById('save-status').textContent = '✓ Đã lưu lúc ' + new Date().toLocaleTimeString();
-    }
-    
-    function loadData() {
-      const saved = localStorage.getItem('chiatien_adv_data');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        yearsData = parsed.yearsData;
-        currentYear = parsed.currentYear || 2026;
-        currentMonth = parsed.currentMonth || 1;
-        ensureLegacyDataFormat();
+async function saveData() {
+      const statusEl = document.getElementById('save-status');
+      statusEl.textContent = 'Đang đồng bộ lên máy chủ... ⏳';
+      
+      const payload = { currentYear, currentMonth, yearsData };
+      
+      // Dùng hàm update() thay cho upsert() để đảm bảo tính an toàn
+      const { error } = await supabaseClient
+        .from('finances')
+        .update({ data: payload, updated_at: new Date() })
+        .eq('id', 1);
+
+      if (error) {
+        console.error("Lỗi khi lưu DB:", error);
+        statusEl.textContent = '❌ Không thể lưu! (Lỗi mạng hoặc bạn không có quyền sửa)';
+        statusEl.style.color = '#dc3545';
       } else {
-        yearsData[2026] = createEmptyYearData();
+        statusEl.textContent = '✓ Đã đồng bộ lên máy chủ chung lúc ' + new Date().toLocaleTimeString();
+        statusEl.style.color = '#28a745';
       }
     }
     
@@ -1043,10 +1048,54 @@
       html2pdf().set({ margin: 0.5, filename: `Bao-Cao-Chi-Tieu-${currentYear}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(element).save();
     }
 
-    window.onload = function() {
-      loadData();
-      updateUI();
+    // 1. Khai báo email của người được quyền chỉnh sửa (khớp với SQL ở trên)
+    const ADMIN_EMAIL = "abeshiroanime@gmail.com"; 
+
+    window.onload = async function() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) {
+        window.location.href = "login.html";
+        return;
+      }
+      
+      await loadData(); // Tải dữ liệu chung từ Supabase
+      
+      // Nếu email người đang đăng nhập KHÔNG PHẢI là Admin -> Khóa giao diện
+      if (session.user.email !== ADMIN_EMAIL) {
+        disableEditingUI();
+      }
     };
+
+    function disableEditingUI() {
+      // 1. Ẩn nút Backup / Phục hồi
+      const topControls = document.querySelector('.top-controls div:first-child');
+      if (topControls) topControls.style.display = 'none';
+
+      // 2. Khóa ô nhập quỹ ban đầu và ẩn nút lưu quỹ
+      members.forEach(m => {
+        const input = document.getElementById(`init-${m}`);
+        if (input) input.disabled = true;
+      });
+      document.getElementById('btn-save-fund').style.display = 'none';
+      
+      // 3. Ẩn toàn bộ thẻ "2. Thêm Khoản Chi Phát Sinh" (Là thẻ card thứ 3 trong HTML)
+      const cards = document.querySelectorAll('.card');
+      if (cards.length > 2) cards[2].style.display = 'none';
+      
+      // 4. Ẩn form chuyển tiền (phần chọn người gửi/nhận)
+      const transferForm = document.querySelector('#transfer-amount');
+      if (transferForm) transferForm.closest('.grid').style.display = 'none';
+
+      // 5. Ẩn cột Thao tác (chứa nút Sửa/Xóa) bằng CSS
+      const style = document.createElement('style');
+      style.innerHTML = `th.no-print, td.no-print { display: none !important; }`;
+      document.head.appendChild(style);
+
+      // Đổi câu thông báo trạng thái
+      const statusEl = document.getElementById('save-status');
+      statusEl.textContent = '👀 Chế độ Chỉ xem (Chỉ thủ quỹ mới có quyền chỉnh sửa)';
+      statusEl.style.color = '#6c757d';
+    }
 
   </script>
 </body>
