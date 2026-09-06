@@ -10,10 +10,11 @@ let STATE = {
 
 const SECTION_LOADERS = {
   dashboard: loadDashboardSection,
+  notifications: loadNotificationsSection,
+  activity: loadActivitySection,
   tasks: loadTasksSection,
   schedule: loadScheduleSection,
   members: loadMembersSection,
-  notifications: loadNotificationsSection,
   settings: loadSettingsSection,
 };
 
