@@ -48,6 +48,15 @@ function notifIconForType(type) {
   return map[type] || "🔔";
 }
 
+function isExchangeNotification(n) {
+  if (!n) return false;
+  if (n.type === "xin_doi") return true;
+  if (n.exchange_id) return true;
+  if (!n.task_id || !n.message) return false;
+  const msg = String(n.message).toLowerCase();
+  return msg.includes("muốn đổi việc") || msg.includes("ai nhận giúp") || msg.includes("nhận đổi việc");
+}
+
 async function findOpenExchangeForTask(taskId, userId) {
   if (!taskId || !userId) return null;
   const { data, error } = await supabaseClient
@@ -81,7 +90,7 @@ async function renderNotifSection() {
       let actionBtn = "";
       if (n.type === "den_luot" && n.task_id) {
         actionBtn = `<button class="btn btn-primary btn-sm" data-action="accept-task" data-task="${n.task_id}">Nhận việc</button>`;
-      } else if (n.type === "xin_doi") {
+      } else if (isExchangeNotification(n)) {
         actionBtn = `
           <button class="btn btn-primary btn-sm" data-action="accept-exchange" data-exchange="${n.exchange_id || ""}" data-task="${n.task_id || ""}">Nhận đổi việc</button>
           <button class="btn btn-ghost btn-sm" data-action="reject-exchange" data-exchange="${n.exchange_id || ""}" data-task="${n.task_id || ""}">Từ chối</button>
