@@ -15,6 +15,7 @@ const AVATAR_COLORS = ["#3B6E8F", "#C77B2E", "#2F8F6B", "#A24E6B", "#6B5B95", "#
 
 // Nhãn tiếng Việt cho trạng thái việc
 const STATUS_LABEL = {
+  cho_nhan: "Chờ nhận",
   chua_lam: "Chưa làm",
   dang_cho: "Đang chờ",
   hoan_thanh: "Hoàn thành",

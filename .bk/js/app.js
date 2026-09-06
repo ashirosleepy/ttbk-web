@@ -13,6 +13,7 @@ const SECTION_LOADERS = {
   tasks: loadTasksSection,
   schedule: loadScheduleSection,
   members: loadMembersSection,
+  notifications: loadNotificationsSection,
   settings: loadSettingsSection,
 };
 
@@ -50,6 +51,8 @@ async function init() {
   setupNav();
   await generateTodayTasks(); // tự tạo việc của hôm nay từ các lịch lặp lại đang bật
   await loadSection("dashboard");
+  refreshNotifBadge(); // hiện số thông báo chưa đọc ngay trên thanh menu
+  subscribeRealtime(); // tự cập nhật khi có ai đó thay đổi việc/thông báo
 }
 
 init();

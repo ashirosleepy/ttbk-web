@@ -30,7 +30,7 @@
   <!-- ================= NỘI DUNG CHÍNH ================= -->
   <div class="main">
     <header class="topbar">
-      <div class="topbar-title" id="topbar-title">Việc nhà hôm nay</div>
+      <div class="topbar-title" id="topbar-title">Nhiệm vụ hệ thống</div>
       <div class="user-chip">
         <span id="topbar-user"></span>
         <button class="btn btn-ghost btn-sm" id="btn-logout">Đăng xuất</button>
@@ -62,6 +62,16 @@
           <div><h2>Công việc</h2><p>Đánh dấu xong, đổi người, gia hạn ngay trên từng phiếu việc</p></div>
           <button class="btn btn-primary btn-sm" id="btn-new-task">+ Thêm việc</button>
         </div>
+
+        <!-- THÊM BỘ LỌC TẠI ĐÂY -->
+        <div class="task-filters" style="display: flex; gap: 8px; margin-bottom: 22px;">
+          <button class="btn btn-primary btn-sm" id="filter-my-tasks">Việc của tôi</button>
+          <button class="btn btn-ghost btn-sm" id="filter-all-tasks">Tất cả công việc</button>
+        </div>
+        <!-- KẾT THÚC THÊM BỘ LỌC -->
+
+        <div class="card" id="new-task-form" style="display:none; margin-bottom:22px;">
+          <!-- ... (giữ nguyên phần form bên trong) ... -->
 
         <div class="card" id="new-task-form" style="display:none; margin-bottom:22px;">
           <div class="form-row">
