@@ -175,7 +175,6 @@
             Dùng cho việc không có giờ cố định như đổ rác, thay bình nước, đi chợ — thay vì chia cứng theo thứ,
             hệ thống nhớ ai đang tới lượt và tự chuyển cho người kế tiếp mỗi khi xong việc.
           </p>
-          <input type="hidden" id="rq-edit-id" value="" />
           <div class="form-row">
             <div class="field">
               <label for="rq-label">Tên việc</label>
@@ -194,10 +193,7 @@
             <label for="rq-points">Điểm thưởng</label>
             <input type="number" id="rq-points" value="10" min="0" />
           </div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <button class="btn btn-primary btn-sm" id="rq-save">Tạo hàng đợi</button>
-            <button class="btn btn-ghost btn-sm" id="rq-cancel" style="display:none;">Huỷ</button>
-          </div>
+          <button class="btn btn-primary btn-sm" id="rq-save">Tạo hàng đợi</button>
 
           <div id="rotation-list" class="task-list" style="margin-top:18px;"><p class="empty-state">Đang tải...</p></div>
         </div>
