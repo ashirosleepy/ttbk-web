@@ -394,17 +394,15 @@ async function handoffTask(id) {
   if (error || !task) return alert("Không tìm thấy việc.");
 
   const reason = prompt("Lý do (không bắt buộc):", "Bận việc khác") || "";
-  const { data: exch, error: exErr } = await supabaseClient
-    .from("task_exchanges")
-    .insert({ task_id: id, from_user: STATE.me.id, reason, status: "open" })
-    .select()
-    .single();
-  if (exErr) return alert("Lỗi: " + exErr.message);
-
-  await logHistory(id, STATE.me.id, "xin_doi", `${STATE.me.name} xin đổi việc "${task.title}"${reason ? " — " + reason : ""}`);
-
   const others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to);
   const othersIds = others.map((p) => p.id);
+
+  if (othersIds.length === 0) {
+    alert("Không còn ai khác để gửi yêu cầu đổi việc. Bạn phải làm việc này.");
+    return;
+  }
+
+  await logHistory(id, STATE.me.id, "xin_doi", `${STATE.me.name} xin đổi việc "${task.title}"${reason ? " — " + reason : ""}`);
 
   let frequencyMap = {};
   if (othersIds.length) {
@@ -433,15 +431,25 @@ async function handoffTask(id) {
     return diff !== 0 ? diff : a.name.localeCompare(b.name);
   });
 
+  const createdExchangeIds = [];
   for (const p of orderedOthers) {
-    await createNotification(p.id, `🔄 ${STATE.me.name} muốn đổi việc "${task.title}". Ai nhận giúp?`, {
-      type: "xin_doi",
-      taskId: id,
-      exchangeId: exch.id,
-    });
+    const { data: exch, error: exErr } = await supabaseClient
+      .from("task_exchanges")
+      .insert({ task_id: id, from_user: STATE.me.id, to_user: p.id, reason, status: "open" })
+      .select()
+      .single();
+
+    if (!exErr && exch) {
+      createdExchangeIds.push(exch.id);
+      await createNotification(p.id, `🔄 ${STATE.me.name} muốn đổi việc "${task.title}". Ai nhận giúp?`, {
+        type: "xin_doi",
+        taskId: id,
+        exchangeId: exch.id,
+      });
+    }
   }
 
-  alert("Đã gửi thông báo đổi việc tới 3 người còn lại để ai nhận thì nhận.");
+  alert(`Đã gửi yêu cầu đổi việc cho ${createdExchangeIds.length} người còn lại. Nếu cả ba từ chối thì bạn phải làm việc này.`);
 }
 
 async function deleteTask(id) {

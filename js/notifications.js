@@ -63,7 +63,10 @@ async function renderNotifSection() {
       if (n.type === "den_luot" && n.task_id) {
         actionBtn = `<button class="btn btn-primary btn-sm" data-action="accept-task" data-task="${n.task_id}">Nhận việc</button>`;
       } else if (n.type === "xin_doi" && n.exchange_id) {
-        actionBtn = `<button class="btn btn-primary btn-sm" data-action="accept-exchange" data-exchange="${n.exchange_id}" data-task="${n.task_id || ""}">Nhận đổi việc</button>`;
+        actionBtn = `
+          <button class="btn btn-primary btn-sm" data-action="accept-exchange" data-exchange="${n.exchange_id}" data-task="${n.task_id || ""}">Nhận đổi việc</button>
+          <button class="btn btn-ghost btn-sm" data-action="reject-exchange" data-exchange="${n.exchange_id}" data-task="${n.task_id || ""}">Từ chối</button>
+        `;
       }
       return `
       <div class="task-ticket ${n.is_read ? "done" : ""}" style="border-left-color:${n.is_read ? "#ccc" : "var(--accent)"}" data-id="${n.id}">
@@ -109,6 +112,7 @@ async function acceptExchangeFromNotif(exchangeId, taskId, notifId) {
     return;
   }
 
+  await supabaseClient.from("task_exchanges").update({ status: "cancelled" }).eq("task_id", taskId).eq("from_user", data.from_user).neq("id", exchangeId).eq("status", "open");
   await supabaseClient.from("tasks").update({ assigned_to: STATE.me.id }).eq("id", taskId);
   await logHistory(taskId, STATE.me.id, "doi_viec", `${STATE.me.name} nhận đổi việc`);
   await createNotification(data.from_user, `✅ ${STATE.me.name} đã nhận đổi việc giúp bạn.`, { type: "thong_bao", taskId });
@@ -117,6 +121,46 @@ async function acceptExchangeFromNotif(exchangeId, taskId, notifId) {
   renderNotifSection();
   refreshNotifBadge();
   alert("Bạn đã nhận việc này.");
+}
+
+async function rejectExchangeFromNotif(exchangeId, taskId, notifId) {
+  const { data, error } = await supabaseClient
+    .from("task_exchanges")
+    .update({ status: "cancelled", resolved_at: new Date().toISOString() })
+    .eq("id", exchangeId)
+    .eq("status", "open")
+    .select()
+    .single();
+
+  if (error || !data) {
+    await markNotificationRead(notifId);
+    renderNotifSection();
+    refreshNotifBadge();
+    return;
+  }
+
+  const { data: allRows, error: rowsErr } = await supabaseClient
+    .from("task_exchanges")
+    .select("status")
+    .eq("task_id", taskId)
+    .eq("from_user", data.from_user);
+
+  if (!rowsErr && Array.isArray(allRows)) {
+    const hasOpen = allRows.some((row) => row.status === "open");
+    const hasAccepted = allRows.some((row) => row.status === "accepted");
+
+    if (!hasOpen && !hasAccepted) {
+      const profile = findProfile(STATE.profiles, data.from_user);
+      await supabaseClient.from("tasks").update({ assigned_to: data.from_user }).eq("id", taskId);
+      await logHistory(taskId, data.from_user, "bat_buoc_lam", `${profile ? profile.name : "Người yêu cầu"} phải làm việc vì cả 3 người còn lại đều từ chối.`);
+      await createNotification(data.from_user, `⚠️ Cả 3 người còn lại đều từ chối, nên bạn phải làm việc "${taskId ? "việc này" : "này"}".`, { type: "thong_bao", taskId });
+    }
+  }
+
+  await markNotificationRead(notifId);
+  renderNotifSection();
+  refreshNotifBadge();
+  alert("Bạn đã từ chối nhận việc này.");
 }
 
 function bindNotifEvents() {
@@ -137,6 +181,9 @@ function bindNotifEvents() {
       }
       if (action === "accept-exchange") {
         await acceptExchangeFromNotif(e.target.dataset.exchange, e.target.dataset.task, notifId);
+      }
+      if (action === "reject-exchange") {
+        await rejectExchangeFromNotif(e.target.dataset.exchange, e.target.dataset.task, notifId);
       }
       if (action === "mark-read") {
         await markNotificationRead(notifId);
