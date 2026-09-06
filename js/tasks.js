@@ -337,35 +337,3 @@ async function loadTasksSection() {
   bindTaskEvents();
   await renderTasksView();
 }
-
-// Khai báo biến toàn cục hoặc trong scope của tasks.js
-let currentTaskFilter = 'mine'; // 'mine' hoặc 'all'
-
-// Lắng nghe sự kiện click bộ lọc
-document.getElementById('filter-my-tasks').addEventListener('click', function() {
-    currentTaskFilter = 'mine';
-    this.className = 'btn btn-primary btn-sm';
-    document.getElementById('filter-all-tasks').className = 'btn btn-ghost btn-sm';
-    renderTasks(); // Gọi lại hàm vẽ danh sách công việc
-});
-
-document.getElementById('filter-all-tasks').addEventListener('click', function() {
-    currentTaskFilter = 'all';
-    this.className = 'btn btn-primary btn-sm';
-    document.getElementById('filter-my-tasks').className = 'btn btn-ghost btn-sm';
-    renderTasks();
-});
-
-// Trong hàm renderTasks() hiện tại của bạn, thêm logic lọc:
-function renderTasks() {
-    const currentUser = auth.currentUser; // Lấy user đang đăng nhập
-    let tasksToRender = allTasksList; // allTasksList là danh sách lấy từ database
-
-    if (currentTaskFilter === 'mine') {
-        // Chỉ lấy những việc được giao cho user hiện tại
-        tasksToRender = allTasksList.filter(task => task.assigned_to === currentUser.id);
-    }
-
-    // Tiếp tục logic render tasksToRender ra #tasks-container
-    // ...
-}
