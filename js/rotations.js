@@ -62,28 +62,19 @@ async function reportAdhocTask(queueId) {
   const holder = currentHolder(queue);
   if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
 
-  const { data: task, error: taskErr } = await supabaseClient
-    .from("tasks")
-    .insert({
-      title: queue.label,
-      assigned_to: holder.id,
-      created_by: STATE.me.id,
-      rotation_queue_id: queue.id,
-      due_date: todayStr(),
-      status: "cho_nhan",
-      points: queue.points,
-    })
-    .select()
-    .single();
-  if (taskErr) return alert("Lỗi: " + taskErr.message);
-
-  await logHistory(task.id, STATE.me.id, "bao_phat_sinh", `${STATE.me.name} báo có việc "${queue.label}", đến lượt ${holder.name}`);
-  await createNotification(holder.id, `${queue.icon} ${queue.label} — đến lượt bạn. Bấm "Nhận việc" để xác nhận.`, {
+  // Chỉ gửi thông báo nhắc người tới lượt, không tạo thêm task mới.
+  await createNotification(holder.id, `${queue.icon} ${queue.label} — đến lượt bạn.`, {
     type: "den_luot",
-    taskId: task.id,
   });
 
-  alert(`Đã báo cho ${holder.name}.`);
+  await logHistory(
+    null,
+    STATE.me.id,
+    "bao_phat_sinh",
+    `${STATE.me.name} báo có việc "${queue.label}", đến lượt ${holder.name}`
+  );
+
+  alert(`Đã thông báo cho ${holder.name}.`);
   renderRotationAdmin();
 }
 
