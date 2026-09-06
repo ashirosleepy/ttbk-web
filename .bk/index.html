@@ -16,6 +16,7 @@
 
     <button class="nav-item active" data-section="dashboard"><span class="icon">🏠</span> Tổng quan</button>
     <button class="nav-item" data-section="notifications"><span class="icon">🔔</span> Thông báo <span class="nav-badge" id="notif-badge" style="display:none">0</span></button>
+    <button class="nav-item" data-section="activity"><span class="icon">📜</span> Nhật ký</button>
     <button class="nav-item" data-section="tasks"><span class="icon">📝</span> Công việc</button>
     <button class="nav-item" data-section="schedule"><span class="icon">📅</span> Lịch</button>
     <button class="nav-item" data-section="members"><span class="icon">👥</span> Thành viên</button>
@@ -54,6 +55,14 @@
           <button class="btn btn-ghost btn-sm" id="notif-mark-all">Đánh dấu đã đọc hết</button>
         </div>
         <div id="notif-list" class="task-list"><p class="empty-state">Đang tải...</p></div>
+      </section>
+
+      <!-- ---------- NHẬT KÝ HOẠT ĐỘNG ---------- -->
+      <section id="section-activity" class="view">
+        <div class="view-head">
+          <div><h2>Nhật ký hoạt động</h2><p>Toàn bộ thay đổi và sự kiện gần đây trong nhà</p></div>
+        </div>
+        <div id="activity-log"><p class="empty-state">Đang tải...</p></div>
       </section>
 
       <!-- ---------- CÔNG VIỆC ---------- -->

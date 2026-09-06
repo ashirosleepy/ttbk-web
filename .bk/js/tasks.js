@@ -1,6 +1,9 @@
 // ============================================================
-// TASKS.JS — trang "Công việc"
+// TASKS.JS — trang "Công việc" (Đã tích hợp Tab & Tự động luân phiên)
 // ============================================================
+
+// Biến lưu trữ ID người dùng đang được chọn xem (Mặc định sẽ gán là người đang đăng nhập)
+let selectedUserId = null;
 
 async function fetchTasks() {
   const { data, error } = await supabaseClient
@@ -15,6 +18,19 @@ async function fetchTasks() {
   return data;
 }
 
+// Lấy danh sách các việc luân phiên đang active
+async function fetchRotations() {
+  const { data, error } = await supabaseClient
+    .from("rotation_queues")
+    .select("*")
+    .eq("active", true);
+  if (error) {
+    console.error("Không lấy được hàng đợi luân phiên:", error.message);
+    return [];
+  }
+  return data;
+}
+
 function groupTasksByDate(tasks) {
   const groups = {};
   tasks.forEach((t) => {
@@ -23,6 +39,42 @@ function groupTasksByDate(tasks) {
   });
   return groups;
 }
+
+async function buildTaskFrequencyMap({ title, rotation_queue_id, excludeUserIds = [] }) {
+  const eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id));
+  if (eligible.length === 0) return {};
+
+  const { data, error } = await supabaseClient
+    .from("tasks")
+    .select("assigned_to, title, rotation_queue_id")
+    .eq("status", "hoan_thanh")
+    .in("assigned_to", eligible.map((p) => p.id));
+
+  if (error || !Array.isArray(data)) return {};
+
+  const map = {};
+  for (const row of data) {
+    const matches = rotation_queue_id
+      ? row.rotation_queue_id === rotation_queue_id
+      : row.title === title;
+    if (!matches) continue;
+    map[row.assigned_to] = (map[row.assigned_to] || 0) + 1;
+  }
+  return map;
+}
+
+async function pickLeastFrequentAssignee({ title, rotation_queue_id, excludeUserIds = [] }) {
+  const eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id));
+  if (eligible.length === 0) return null;
+
+  const frequencyMap = await buildTaskFrequencyMap({ title, rotation_queue_id, excludeUserIds });
+  return [...eligible].sort((a, b) => {
+    const diff = (frequencyMap[a.id] || 0) - (frequencyMap[b.id] || 0);
+    return diff !== 0 ? diff : a.name.localeCompare(b.name);
+  })[0] || null;
+}
+
+// ================= GIAO DIỆN PHIẾU VIỆC =================
 
 function taskTicketHTML(task) {
   const isPending = task.status === "cho_nhan";
@@ -47,7 +99,7 @@ function taskTicketHTML(task) {
           ${
             isMine
               ? `<button class="btn btn-primary btn-sm" data-action="accept">Nhận việc</button>
-                 <button class="icon-btn" data-action="handoff" title="Không làm được — chuyển cho người kế tiếp">😅</button>`
+                 <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>`
               : ""
           }
           <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
@@ -72,14 +124,136 @@ function taskTicketHTML(task) {
         </div>
       </div>
       <div class="task-actions">
-        <button class="icon-btn" data-action="handoff" title="Không làm được — chuyển việc">😅</button>
+        <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
         <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
         <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
       </div>
     </div>`;
 }
 
-// Hiện/ẩn lịch sử thay đổi của 1 việc ngay bên dưới phiếu việc đó
+// ================= XỬ LÝ GIAO DIỆN LỚN (TABS & LIST) =================
+
+// Tạo HTML cho thanh Tabs 4 người
+function renderTabsHTML() {
+  let html = '<div class="tabs-container" style="display:flex; gap:10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px;">';
+  STATE.profiles.forEach(p => {
+      const isActive = p.id === selectedUserId;
+      // Dùng màu của từng người để làm nổi bật tab
+      const style = isActive 
+        ? `background: ${p.avatar_color}; color: white; border: 1px solid ${p.avatar_color};` 
+        : `background: transparent; color: ${p.avatar_color}; border: 1px solid ${p.avatar_color};`;
+        
+      html += `<button class="btn-tab" style="padding: 6px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; white-space: nowrap; ${style}" data-user="${p.id}">${escapeHTML(p.name)}</button>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+// Render "Phiếu việc ảo" cho việc luân phiên TỰ ĐỘNG ĐẾN LƯỢT
+// queueHasTaskToday: các queue đã có 1 việc thật (đang chờ xử lý/xin chuyển) cho hôm nay rồi,
+// thì ẩn thẻ ảo đi vì việc đó đã hiện dưới dạng phiếu việc thật trong danh sách bên dưới.
+function renderAutoRotationsHTML(rotations, queueHasTaskToday = new Set()) {
+  let html = '<div class="rotations-section" style="margin-bottom: 20px;">';
+  html += '<h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--ink-faint);">Tới lượt luân phiên (Chưa làm)</h3>';
+  
+  // Lọc ra các queue mà current_index trỏ đúng vào người đang được chọn ở Tab
+  // và chưa có việc thật nào được tạo cho hôm nay (vd đã bấm "xin chuyển việc" rồi)
+  const myRotations = rotations.filter(r => {
+      if (!r.member_order || r.member_order.length === 0) return false;
+      const currentTurnUserId = r.member_order[r.current_index];
+      if (currentTurnUserId !== selectedUserId) return false;
+      return !queueHasTaskToday.has(r.id);
+  });
+
+  if (myRotations.length === 0) {
+      html += '<p class="empty-state" style="padding: 10px; background: var(--bg-faint); border-radius: 8px;">Không có việc luân phiên nào đang chờ.</p>';
+  } else {
+      const assignee = findProfile(STATE.profiles, selectedUserId);
+      const borderColor = assignee ? assignee.avatar_color : "#ccc";
+
+      myRotations.forEach(r => {
+          html += `
+          <div class="task-ticket" style="border-left-color: ${borderColor}" data-queue-id="${r.id}">
+              <button class="task-check" data-action="complete-rotation" title="Đánh dấu đã làm xong"></button>
+              <div class="task-body">
+                  <div class="task-title">${r.icon} ${escapeHTML(r.label)}</div>
+                  <div class="task-meta">
+                      <span style="background: #ff9800; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">Đến lượt</span>
+                      <span>+${r.points} điểm</span>
+                  </div>
+              </div>
+              <div class="task-actions">
+                  <button class="icon-btn" data-action="request-handoff" data-queue="${r.id}" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
+              </div>
+          </div>`;
+      });
+  }
+  html += '</div>';
+  return html;
+}
+
+async function renderTasksView() {
+  const container = document.getElementById("tasks-container");
+  
+  // Mặc định chọn người đang đăng nhập nếu chưa chọn ai
+  if (!selectedUserId) {
+    selectedUserId = STATE.me.id;
+  }
+
+  // Tải song song cả danh sách task truyền thống và danh sách luân phiên
+  const [tasks, rotations] = await Promise.all([fetchTasks(), fetchRotations()]);
+
+  // Lọc task theo người đang được chọn ở Tab
+  const filteredTasks = tasks.filter(t => t.assigned_to === selectedUserId);
+
+  // Những hàng đợi đã có 1 việc thật cho hôm nay (vd vừa "xin chuyển việc")
+  // thì không hiện thẻ ảo "Tới lượt luân phiên" nữa, tránh hiện trùng.
+  const today0 = todayStr();
+  const queueHasTaskToday = new Set(
+    tasks
+      .filter((t) => t.rotation_queue_id && t.due_date === today0 && t.status !== "hoan_thanh")
+      .map((t) => t.rotation_queue_id)
+  );
+
+  // Dựng giao diện: Tabs -> Việc Luân Phiên (Auto) -> Các việc cụ thể
+  let html = renderTabsHTML();
+  html += renderAutoRotationsHTML(rotations, queueHasTaskToday);
+
+  html += '<h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--ink-faint); margin-top: 20px;">Công việc được gán</h3>';
+  
+  if (filteredTasks.length === 0) {
+    html += `<p class="empty-state">Chưa có việc nào. Bấm "+ Thêm việc" để tạo việc.</p>`;
+  } else {
+    const today = todayStr();
+    const groups = groupTasksByDate(filteredTasks);
+    const dates = Object.keys(groups).sort();
+
+    dates.forEach((date) => {
+      let label;
+      if (date === today) label = "Hôm nay";
+      else if (date < today) label = `Trễ hạn — ${formatDateShort(date)}`;
+      else label = formatDateShort(date);
+
+      html += `<div class="day-label">${label}</div><div class="task-list">`;
+      groups[date].forEach((t) => (html += taskTicketHTML(t)));
+      html += `</div>`;
+    });
+  }
+
+  container.innerHTML = html;
+}
+
+// Sau khi thao tác xong 1 việc, làm mới đúng màn hình đang mở
+function refreshActiveView() {
+  const activeSection = document.querySelector(".nav-item.active")?.dataset.section;
+  if (activeSection === "dashboard" && typeof renderDashboard === "function") return renderDashboard();
+  renderTasksView();
+}
+
+
+// ================= XỬ LÝ HÀNH ĐỘNG =================
+
+// Hiện/ẩn lịch sử thay đổi của 1 việc
 async function toggleTaskHistory(id, ticketEl) {
   const existing = ticketEl.nextElementSibling;
   if (existing && existing.classList.contains("task-history-panel")) {
@@ -104,44 +278,7 @@ async function toggleTaskHistory(id, ticketEl) {
   ticketEl.insertAdjacentElement("afterend", panel);
 }
 
-async function renderTasksView() {
-  const container = document.getElementById("tasks-container");
-  const tasks = await fetchTasks();
-
-  if (tasks.length === 0) {
-    container.innerHTML = `<p class="empty-state">Chưa có việc nào. Bấm "+ Thêm việc" để tạo việc đầu tiên.</p>`;
-    return;
-  }
-
-  const today = todayStr();
-  const groups = groupTasksByDate(tasks);
-  const dates = Object.keys(groups).sort();
-
-  let html = "";
-  dates.forEach((date) => {
-    let label;
-    if (date === today) label = "Hôm nay";
-    else if (date < today) label = `Trễ hạn — ${formatDateShort(date)}`;
-    else label = formatDateShort(date);
-
-    html += `<div class="day-label">${label}</div><div class="task-list">`;
-    groups[date].forEach((t) => (html += taskTicketHTML(t)));
-    html += `</div>`;
-  });
-
-  container.innerHTML = html;
-}
-
-// Sau khi thao tác xong 1 việc, làm mới đúng màn hình đang mở
-// (vì cùng 1 phiếu việc có thể xuất hiện ở cả Tổng quan lẫn Công việc)
-function refreshActiveView() {
-  const activeSection = document.querySelector(".nav-item.active")?.dataset.section;
-  if (activeSection === "dashboard" && typeof renderDashboard === "function") return renderDashboard();
-  renderTasksView();
-}
-
-// ---------------- Hành động trên 1 việc ----------------
-
+// Hoàn thành task truyền thống
 async function toggleTaskDone(id) {
   const ticket = document.querySelector(`.task-ticket[data-id="${id}"]`);
   const isDone = ticket.classList.contains("done");
@@ -162,15 +299,109 @@ async function toggleTaskDone(id) {
     newStatus === "hoan_thanh" ? `${STATE.me.name} đánh dấu hoàn thành` : `${STATE.me.name} mở lại việc`
   );
 
-  // Việc này thuộc 1 hàng đợi luân phiên -> xong thì chuyển lượt cho người kế tiếp
-  if (newStatus === "hoan_thanh" && data.rotation_queue_id) {
-    await advanceQueueByCompleter(data.rotation_queue_id, data.assigned_to);
+  if (newStatus === "hoan_thanh") {
+    if (data.rotation_queue_id) {
+      if (typeof advanceQueueByCompleter === "function") {
+        await advanceQueueByCompleter(data.rotation_queue_id, data.assigned_to);
+      }
+    } else {
+      const nextAssignee = await pickLeastFrequentAssignee({
+        title: data.title,
+        rotation_queue_id: data.rotation_queue_id,
+        excludeUserIds: [data.assigned_to],
+      });
+      if (nextAssignee) {
+        const { error: assignErr } = await supabaseClient
+          .from("tasks")
+          .update({ assigned_to: nextAssignee.id })
+          .eq("id", id);
+        if (!assignErr) {
+          await logHistory(id, STATE.me.id, "giao_tiep", `${STATE.me.name} ưu tiên giao việc "${data.title}" cho ${nextAssignee.name} do tần suất làm ít hơn.`);
+          await createNotification(nextAssignee.id, `📌 ${STATE.me.name} đã hoàn thành việc "${data.title}". Hệ thống ưu tiên giao tiếp cho bạn vì bạn làm ít hơn.` , { type: "thong_bao", taskId: id });
+        }
+      }
+    }
   }
 
   refreshActiveView();
 }
 
-// Người được gán bấm "Nhận việc" cho việc đang ở trạng thái chờ nhận
+// NHÂN TÍNH NĂNG MỚI: Xử lý khi bấm hoàn thành việc Tự Động Luân Phiên
+async function handleCompleteAutoRotation(queueId) {
+    // Lấy thông tin queue
+    const { data: queue, error: qErr } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
+    if (qErr || !queue) return alert("Lỗi lấy thông tin luân phiên.");
+
+    // Tự động tạo 1 task trạng thái "hoan_thanh" để ghi nhận điểm và lịch sử
+    const payload = {
+        title: queue.label,
+        assigned_to: selectedUserId, // người đang làm
+        created_by: STATE.me.id,
+        rotation_queue_id: queue.id,
+        status: 'hoan_thanh',
+        points: queue.points,
+        due_date: todayStr(),
+        completed_at: new Date().toISOString()
+    };
+
+    const { data: task, error: tErr } = await supabaseClient.from('tasks').insert(payload).select().single();
+    if (tErr) return alert("Lỗi ghi nhận công việc: " + tErr.message);
+
+    // Ghi lịch sử
+    await logHistory(task.id, STATE.me.id, "hoan_thanh", `${STATE.me.name} đã làm xong việc luân phiên: ${queue.label}`);
+
+    // Tự động tăng current_index lên người tiếp theo
+    const nextIndex = (queue.current_index + 1) % queue.member_order.length;
+    await supabaseClient.from('rotation_queues').update({ current_index: nextIndex }).eq('id', queueId);
+
+    refreshActiveView();
+}
+
+// XIN CHUYỂN VIỆC cho việc luân phiên phát sinh (chưa có phiếu việc thật):
+// tạo 1 phiếu việc thật gán cho người đang tới lượt, rồi gửi yêu cầu chuyển việc
+// cho 3 người còn lại — giống hệt việc thường (ai nhận trước thì được).
+// Nếu cả 3 từ chối, người đang tới lượt buộc phải tự làm (xử lý sẵn trong
+// rejectExchangeFromNotif ở notifications.js).
+async function requestRotationHandoff(queueId) {
+  const { data: queue, error } = await supabaseClient.from("rotation_queues").select("*").eq("id", queueId).single();
+  if (error || !queue) return alert("Không tìm thấy hàng đợi.");
+
+  const holder = currentHolder(queue);
+  if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
+
+  const today = todayStr();
+
+  // Nếu đã có sẵn 1 phiếu việc thật cho lượt này hôm nay thì dùng lại, tránh tạo trùng
+  const { data: existing, error: findErr } = await supabaseClient
+    .from("tasks")
+    .select("*")
+    .eq("rotation_queue_id", queueId)
+    .eq("due_date", today)
+    .neq("status", "hoan_thanh")
+    .maybeSingle();
+
+  let taskId = !findErr && existing ? existing.id : null;
+
+  if (!taskId) {
+    const payload = {
+      title: queue.label,
+      assigned_to: holder.id,
+      created_by: holder.id,
+      rotation_queue_id: queue.id,
+      due_date: today,
+      status: "chua_lam",
+      priority: "binh_thuong",
+      points: queue.points,
+    };
+    const { data: task, error: insertErr } = await supabaseClient.from("tasks").insert(payload).select().single();
+    if (insertErr) return alert("Lỗi tạo việc: " + insertErr.message);
+    taskId = task.id;
+  }
+
+  await handoffTask(taskId);
+  refreshActiveView();
+}
+
 async function acceptTask(id) {
   const { error } = await supabaseClient
     .from("tasks")
@@ -201,56 +432,67 @@ async function changeDueDate(id, newDate) {
   refreshActiveView();
 }
 
-// "Không làm được, chuyển việc" — hợp nhất báo bận + xin đổi việc:
-// - Nếu việc thuộc 1 hàng đợi luân phiên: chuyển thẳng cho người kế tiếp trong hàng đợi.
-// - Nếu là việc thường: tạo yêu cầu đổi việc, gửi thông báo cho mọi người, ai nhận trước thì được.
 async function handoffTask(id) {
   const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
   if (error || !task) return alert("Không tìm thấy việc.");
 
-  if (task.rotation_queue_id) {
-    const { data: queue, error: qErr } = await supabaseClient
-      .from("rotation_queues")
-      .select("*")
-      .eq("id", task.rotation_queue_id)
-      .single();
-    if (qErr || !queue) return alert("Không tìm thấy hàng đợi luân phiên.");
+  const reason = prompt("Lý do (không bắt buộc):", "Bận việc khác") || "";
+  const others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to);
+  const othersIds = others.map((p) => p.id);
 
-    const next = nextAfterUser(queue, task.assigned_to);
-    if (!next) return alert("Không tìm được người kế tiếp trong hàng đợi.");
-
-    const { error: updErr } = await supabaseClient.from("tasks").update({ assigned_to: next.id }).eq("id", id);
-    if (updErr) return alert("Lỗi: " + updErr.message);
-
-    await logHistory(id, STATE.me.id, "bao_ban_chuyen", `${STATE.me.name} báo bận, chuyển "${task.title}" cho ${next.name}`);
-    await createNotification(next.id, `😅 ${STATE.me.name} báo bận, đến lượt bạn: "${task.title}".`, {
-      type: "den_luot",
-      taskId: id,
-    });
-    alert(`Đã chuyển việc cho ${next.name}.`);
-    refreshActiveView();
+  if (othersIds.length === 0) {
+    alert("Không còn ai khác để gửi yêu cầu đổi việc. Bạn phải làm việc này.");
     return;
   }
 
-  const reason = prompt("Lý do (không bắt buộc):", "Bận việc khác") || "";
-  const { data: exch, error: exErr } = await supabaseClient
-    .from("task_exchanges")
-    .insert({ task_id: id, from_user: STATE.me.id, reason, status: "open" })
-    .select()
-    .single();
-  if (exErr) return alert("Lỗi: " + exErr.message);
-
   await logHistory(id, STATE.me.id, "xin_doi", `${STATE.me.name} xin đổi việc "${task.title}"${reason ? " — " + reason : ""}`);
 
-  const others = STATE.profiles.filter((p) => p.id !== STATE.me.id);
-  for (const p of others) {
-    await createNotification(p.id, `🔄 ${STATE.me.name} muốn đổi việc "${task.title}". Ai nhận giúp?`, {
-      type: "xin_doi",
-      taskId: id,
-      exchangeId: exch.id,
-    });
+  let frequencyMap = {};
+  if (othersIds.length) {
+    const { data: doneTasks, error: countErr } = await supabaseClient
+      .from("tasks")
+      .select("assigned_to, title, rotation_queue_id")
+      .eq("status", "hoan_thanh")
+      .in("assigned_to", othersIds);
+
+    if (!countErr && Array.isArray(doneTasks)) {
+      for (const row of doneTasks) {
+        const matches =
+          task.rotation_queue_id && row.rotation_queue_id
+            ? row.rotation_queue_id === task.rotation_queue_id
+            : row.title === task.title;
+
+        if (matches) {
+          frequencyMap[row.assigned_to] = (frequencyMap[row.assigned_to] || 0) + 1;
+        }
+      }
+    }
   }
-  alert("Đã gửi yêu cầu đổi việc tới mọi người.");
+
+  const orderedOthers = [...others].sort((a, b) => {
+    const diff = (frequencyMap[a.id] || 0) - (frequencyMap[b.id] || 0);
+    return diff !== 0 ? diff : a.name.localeCompare(b.name);
+  });
+
+  const createdExchangeIds = [];
+  for (const p of orderedOthers) {
+    const { data: exch, error: exErr } = await supabaseClient
+      .from("task_exchanges")
+      .insert({ task_id: id, from_user: STATE.me.id, to_user: p.id, reason, status: "open" })
+      .select()
+      .single();
+
+    if (!exErr && exch) {
+      createdExchangeIds.push(exch.id);
+      await createNotification(p.id, `🔄 ${STATE.me.name} muốn đổi việc "${task.title}". Ai nhận giúp?`, {
+        type: "xin_doi",
+        taskId: id,
+        exchangeId: exch.id,
+      });
+    }
+  }
+
+  alert(`Đã gửi yêu cầu đổi việc cho ${createdExchangeIds.length} người còn lại. Nếu cả 3 từ chối thì bạn phải làm việc này.`);
 }
 
 async function deleteTask(id) {
@@ -260,23 +502,40 @@ async function deleteTask(id) {
   refreshActiveView();
 }
 
-// ---------------- Gắn sự kiện (chỉ gắn 1 lần) ----------------
+
+// ================= GẮN SỰ KIỆN (CHỈ CHẠY 1 LẦN) =================
 
 function bindTaskEvents(containerId = "tasks-container") {
   const container = document.getElementById(containerId);
   if (!container || container.dataset.bound) return;
   container.dataset.bound = "1";
 
-  container.addEventListener("click", (e) => {
+  container.addEventListener("click", async (e) => {
+    // 1. Xử lý click chuyển Tab User
+    const tab = e.target.closest(".btn-tab");
+    if (tab) {
+        selectedUserId = tab.dataset.user;
+        renderTasksView(); // Render lại danh sách
+        return;
+    }
+
+    // 2. Xử lý click phiếu việc
     const ticket = e.target.closest(".task-ticket");
     if (!ticket) return;
     const id = ticket.dataset.id;
+    const queueId = ticket.dataset.queueId; // Chứa ID của việc luân phiên tự động
     const action = e.target.dataset.action;
+
+    // Phân luồng hành động:
     if (action === "toggle") toggleTaskDone(id);
     if (action === "accept") acceptTask(id);
     if (action === "handoff") handoffTask(id);
     if (action === "history") toggleTaskHistory(id, ticket);
     if (action === "delete") deleteTask(id);
+
+    // Xử lý các nút của Phiếu việc luân phiên tự động
+    if (action === "complete-rotation") await handleCompleteAutoRotation(queueId);
+    if (action === "request-handoff") await requestRotationHandoff(queueId);
   });
 
   container.addEventListener("change", (e) => {
@@ -297,7 +556,7 @@ function bindNewTaskForm() {
 
   btnNew.addEventListener("click", () => {
     document.getElementById("nt-assigned").innerHTML = STATE.profiles
-      .map((p) => `<option value="${p.id}">${escapeHTML(p.name)}</option>`)
+      .map((p) => `<option value="${p.id}" ${p.id === selectedUserId ? 'selected' : ''}>${escapeHTML(p.name)}</option>`)
       .join("");
     document.getElementById("nt-due").value = todayStr();
     formCard.style.display = formCard.style.display === "block" ? "none" : "block";
@@ -333,6 +592,10 @@ function bindNewTaskForm() {
 }
 
 async function loadTasksSection() {
+  // Gán tab mặc định là người dùng đang đăng nhập lúc load trang lần đầu
+  if(!selectedUserId && STATE.me) {
+      selectedUserId = STATE.me.id;
+  }
   bindNewTaskForm();
   bindTaskEvents();
   await renderTasksView();

@@ -598,5 +598,6 @@ async function loadTasksSection() {
   }
   bindNewTaskForm();
   bindTaskEvents();
+  if (typeof bindAutoAssignEvents === "function") bindAutoAssignEvents();
   await renderTasksView();
 }

@@ -69,7 +69,10 @@
       <section id="section-tasks" class="view">
         <div class="view-head">
           <div><h2>Công việc</h2><p>Đánh dấu xong, đổi người, gia hạn ngay trên từng phiếu việc</p></div>
-          <button class="btn btn-primary btn-sm" id="btn-new-task">+ Thêm việc</button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-ghost btn-sm" id="btn-auto-assign">🤖 Chia việc tự động</button>
+            <button class="btn btn-primary btn-sm" id="btn-new-task">+ Thêm việc</button>
+          </div>
         </div>
 
         <div class="card" id="new-task-form" style="display:none; margin-bottom:22px;">
@@ -108,6 +111,50 @@
           <div style="display:flex; gap:8px;">
             <button class="btn btn-primary btn-sm" id="save-new-task">Lưu việc</button>
             <button class="btn btn-ghost btn-sm" id="cancel-new-task">Huỷ</button>
+          </div>
+        </div>
+
+        <div class="card" id="auto-assign-form" style="display:none; margin-bottom:22px;">
+          <h3 style="font-size:15px; margin-bottom:4px;">🤖 Chia việc tự động</h3>
+          <p style="font-size:13px;color:var(--ink-soft);margin:0 0 14px;">
+            Chọn việc có sẵn hoặc gõ thêm việc mới, hệ thống sẽ tự chia cho ai đang rảnh hơn.
+            Bạn có thể sửa lại người làm trước khi tạo.
+          </p>
+
+          <div class="field">
+            <label>Chọn nhanh việc có sẵn</label>
+            <div class="days-picker" id="aa-presets"></div>
+          </div>
+
+          <div class="field">
+            <label for="aa-custom">Thêm việc khác (mỗi dòng 1 việc)</label>
+            <textarea id="aa-custom" placeholder="VD:&#10;Lau cửa sổ&#10;Dọn ban công"></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="aa-due">Hạn cho tất cả</label>
+              <input type="date" id="aa-due" />
+            </div>
+            <div class="field">
+              <label for="aa-points">Điểm mặc định cho việc tự gõ</label>
+              <input type="number" id="aa-points" value="10" min="0" />
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="aa-fair-btn">⚖️ Chia công bằng ngay</button>
+            <button class="btn btn-ghost btn-sm" id="aa-ai-btn">🤖 Hỏi AI gợi ý cách chia</button>
+            <button class="btn btn-ghost btn-sm" id="aa-cancel-btn">Huỷ</button>
+          </div>
+
+          <div id="aa-preview" style="display:none; margin-top:18px;">
+            <h3 style="font-size:14px; margin-bottom:10px;">Xem trước — sửa người làm nếu cần</h3>
+            <div id="aa-preview-list" class="task-list"></div>
+            <div style="display:flex; gap:8px; margin-top:14px;">
+              <button class="btn btn-primary btn-sm" id="aa-confirm-btn">✅ Tạo tất cả việc</button>
+              <button class="btn btn-ghost btn-sm" id="aa-redo-btn">↺ Chia lại</button>
+            </div>
           </div>
         </div>
 
@@ -266,6 +313,7 @@
 <script src="js/rotations.js"></script>
 <script src="js/notifications.js"></script>
 <script src="js/tasks.js"></script>
+<script src="js/auto-assign.js"></script>
 <script src="js/schedule.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/members.js"></script>
