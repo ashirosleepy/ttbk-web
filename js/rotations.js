@@ -116,6 +116,7 @@ async function renderRotationAdmin() {
         </div>
         <div class="task-actions">
           <button class="btn btn-primary btn-sm" data-action="report-adhoc">Báo có việc</button>
+          <button class="btn btn-ghost btn-sm btn-edit-rotation" data-id="${item.id}">Sửa</button>
           <button class="icon-btn" data-action="del-rotation" title="Xoá hàng đợi">🗑</button>
         </div>
       </div>`;
@@ -186,3 +187,99 @@ async function loadRotationAdmin() {
   bindRotationEvents();
   await renderRotationAdmin();
 }
+// Khi bấm nút Sửa trên item luân phiên
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('btn-edit-rotation')) {
+    const id = e.target.getAttribute('data-id');
+    const rot = rotationList.find(r => r.id == id); // Hoặc cách lấy dữ liệu rotation tương ứng của bạn
+    if (!rot) return;
+
+    // Điền dữ liệu lên form
+    document.getElementById('rq-edit-id').value = rot.id;
+    document.getElementById('rq-label').value = rot.title || rot.label || '';
+    document.getElementById('rq-icon').value = rot.icon || '🔁';
+    document.getElementById('rq-points').value = rot.points || 10;
+
+    // Đổi trạng thái nút bấm
+    document.getElementById('rq-save').textContent = 'Cập nhật hàng đợi';
+    document.getElementById('rq-cancel').style.display = 'inline-block';
+
+    // Chọn lại thứ tự thành viên trong picker (tuỳ thuộc cách bạn implement days-picker / member picker)
+    // Ví dụ: active các nút thành viên tương ứng với rot.member_ids hoặc rot.queue
+    if (rot.members || rot.queue) {
+      const queueIds = rot.members || rot.queue;
+      document.querySelectorAll('#rq-order-picker .day-toggle').forEach(btn => {
+        const memberId = btn.getAttribute('data-member-id'); // tuỳ cấu trúc picker của bạn
+        if (queueIds.includes(memberId)) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    // Cuộn lên form nếu cần
+    document.getElementById('rq-label').focus();
+  }
+});
+
+// Nút Huỷ sửa
+document.getElementById('rq-cancel').addEventListener('click', function() {
+  resetRotationForm();
+});
+
+function resetRotationForm() {
+  document.getElementById('rq-edit-id').value = '';
+  document.getElementById('rq-label').value = '';
+  document.getElementById('rq-icon').value = '🔁';
+  document.getElementById('rq-points').value = 10;
+  document.getElementById('rq-save').textContent = 'Tạo hàng đợi';
+  document.getElementById('rq-cancel').style.display = 'none';
+  
+  // Reset order picker nếu cần
+  document.querySelectorAll('#rq-order-picker .day-toggle').forEach(btn => btn.classList.remove('active'));
+}
+
+document.getElementById('rq-save').addEventListener('click', async function() {
+  const editId = document.getElementById('rq-edit-id').value;
+  const title = document.getElementById('rq-label').value.trim();
+  const icon = document.getElementById('rq-icon').value.trim() || '🔁';
+  const points = parseInt(document.getElementById('rq-points').value) || 10;
+  
+  // Lấy danh sách thứ tự thành viên đang chọn trong #rq-order-picker
+  // ... (logic lấy danh sách thành viên từ order picker hiện tại của bạn) ...
+
+  if (!title) {
+    alert('Vui lòng nhập tên việc luân phiên!');
+    return;
+  }
+
+  if (editId) {
+    // --- CẬP NHẬT (UPDATE) ---
+    const { error } = await supabaseClient
+      .from('rotations') // hoặc tên bảng của bạn
+      .update({ title, icon, points, /* queue/members */ })
+      .eq('id', editId);
+
+    if (error) {
+      alert('Lỗi cập nhật: ' + error.message);
+    } else {
+      alert('Đã cập nhật hàng đợi thành công!');
+      resetRotationForm();
+      loadRotations(); // hàm tải lại danh sách
+    }
+  } else {
+    // --- TẠO MỚI (INSERT) ---
+    const { error } = await supabaseClient
+      .from('rotations')
+      .insert([{ title, icon, points, /* queue/members, household_id... */ }]);
+
+    if (error) {
+      alert('Lỗi tạo hàng đợi: ' + error.message);
+    } else {
+      alert('Đã tạo hàng đợi thành công!');
+      resetRotationForm();
+      loadRotations();
+    }
+  }
+});
