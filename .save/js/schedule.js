@@ -1,6 +1,5 @@
 // ============================================================
 // SCHEDULE.JS — trang "Lịch" (việc lặp lại) + tự sinh việc mỗi ngày
-// Mỗi lịch có thể gán CỐ ĐỊNH (1 người) hoặc LUÂN PHIÊN (1 hàng đợi)
 // ============================================================
 
 async function fetchSchedules() {
@@ -21,28 +20,14 @@ function scheduleMatchesDate(schedule, dateObj, dateStr) {
   return false;
 }
 
-// Ai sẽ là người thực hiện lịch này hôm nay: cố định thì lấy assigned_to,
-// luân phiên thì lấy người đang đứng đầu hàng đợi liên kết
-function effectiveAssigneeId(schedule, queueMap) {
-  if (schedule.rotation_queue_id) {
-    const queue = queueMap[schedule.rotation_queue_id];
-    const holder = currentHolder(queue);
-    return holder ? holder.id : null;
-  }
-  return schedule.assigned_to;
-}
-
 // Gọi hàm này 1 lần mỗi khi mở app: tự tạo việc của "hôm nay" từ các lịch đang chạy,
-// không tạo trùng nếu việc của lịch đó, ngày đó đã có rồi.
+// và không tạo trùng nếu việc của lịch đó, ngày đó đã có rồi.
 async function generateTodayTasks() {
   const today = todayStr();
   const todayObj = new Date(today + "T00:00:00");
   const schedules = await fetchSchedules();
   const matching = schedules.filter((s) => scheduleMatchesDate(s, todayObj, today));
   if (matching.length === 0) return;
-
-  const queues = await fetchRotationQueues();
-  const queueMap = Object.fromEntries(queues.map((q) => [q.id, q]));
 
   const scheduleIds = matching.map((s) => s.id);
   const { data: existing, error } = await supabaseClient
@@ -58,23 +43,17 @@ async function generateTodayTasks() {
   const already = new Set((existing || []).map((t) => t.schedule_id));
   const toInsert = matching
     .filter((s) => !already.has(s.id))
-    .map((s) => {
-      const assignee = effectiveAssigneeId(s, queueMap);
-      if (!assignee) return null; // lịch luân phiên nhưng hàng đợi rỗng -> bỏ qua
-      return {
-        title: s.title,
-        description: s.description || null,
-        assigned_to: assignee,
-        created_by: assignee,
-        schedule_id: s.id,
-        rotation_queue_id: s.rotation_queue_id || null,
-        due_date: today,
-        status: "chua_lam",
-        priority: "binh_thuong",
-        points: s.points,
-      };
-    })
-    .filter(Boolean);
+    .map((s) => ({
+      title: s.title,
+      description: s.description || null,
+      assigned_to: s.assigned_to,
+      created_by: s.assigned_to,
+      schedule_id: s.id,
+      due_date: today,
+      status: "chua_lam",
+      priority: "binh_thuong",
+      points: s.points,
+    }));
 
   if (toInsert.length > 0) {
     const { error: insertErr } = await supabaseClient.from("tasks").insert(toInsert);
@@ -83,18 +62,15 @@ async function generateTodayTasks() {
 }
 
 function scheduleChipHTML(schedule) {
-  const rotating = !!schedule.rotation_queue_id;
-  const color = rotating ? "#6B5B95" : findProfile(STATE.profiles, schedule.assigned_to)?.avatar_color || "#999";
-  const label = rotating ? `🔁 ${escapeHTML(schedule.title)}` : escapeHTML(schedule.title);
-  return `<span class="week-chip" style="background:${color}">${label}</span>`;
+  const p = findProfile(STATE.profiles, schedule.assigned_to);
+  const color = p ? p.avatar_color : "#999";
+  return `<span class="week-chip" style="background:${color}">${escapeHTML(schedule.title)}</span>`;
 }
 
 async function renderScheduleView() {
   const schedules = await fetchSchedules();
-  const queues = await fetchRotationQueues();
-  const queueMap = Object.fromEntries(queues.map((q) => [q.id, q]));
 
-  // Lưới cả tuần: cột Thứ 2 -> Chủ Nhật, hàng theo từng thành viên hiện đang phụ trách
+  // Lưới cả tuần: cột Thứ 2 -> Chủ Nhật, hàng theo từng thành viên
   const order = [1, 2, 3, 4, 5, 6, 0];
   const thead = `<tr><th>Thành viên</th>${order.map((d) => `<th>${WEEKDAY_LABEL[d]}</th>`).join("")}</tr>`;
   const rows = STATE.profiles
@@ -102,11 +78,12 @@ async function renderScheduleView() {
       const cells = order
         .map((d) => {
           const chips = schedules
-            .filter((s) => {
-              if (!s.active) return false;
-              if (effectiveAssigneeId(s, queueMap) !== p.id) return false;
-              return s.repeat_type === "daily" || (s.repeat_type === "weekly" && (s.repeat_days || []).includes(d));
-            })
+            .filter(
+              (s) =>
+                s.active &&
+                s.assigned_to === p.id &&
+                (s.repeat_type === "daily" || (s.repeat_type === "weekly" && (s.repeat_days || []).includes(d)))
+            )
             .map(scheduleChipHTML)
             .join("");
           return `<td>${chips || "—"}</td>`;
@@ -125,22 +102,13 @@ async function renderScheduleView() {
   }
   listEl.innerHTML = schedules
     .map((s) => {
-      const rotating = !!s.rotation_queue_id;
-      const who = rotating
-        ? `🔁 luân phiên — hôm nay: ${(() => {
-            const holder = currentHolder(queueMap[s.rotation_queue_id]);
-            return holder ? escapeHTML(holder.name) : "?";
-          })()}`
-        : escapeHTML(findProfile(STATE.profiles, s.assigned_to)?.name || "?");
+      const p = findProfile(STATE.profiles, s.assigned_to);
       const when = s.repeat_type === "daily" ? "Mỗi ngày" : "Mỗi " + (s.repeat_days || []).map((d) => WEEKDAY_LABEL[d]).join(", ");
-      const holderColor = rotating
-        ? currentHolder(queueMap[s.rotation_queue_id])?.avatar_color || "#ccc"
-        : findProfile(STATE.profiles, s.assigned_to)?.avatar_color || "#ccc";
       return `
-      <div class="task-ticket" style="border-left-color:${holderColor}" data-id="${s.id}">
+      <div class="task-ticket" style="border-left-color:${p ? p.avatar_color : "#ccc"}" data-id="${s.id}">
         <div class="task-body">
           <div class="task-title">${escapeHTML(s.title)}</div>
-          <div class="task-meta"><span>${when}</span><span>${who}</span><span>${s.points} điểm</span></div>
+          <div class="task-meta"><span>${when}</span><span>${p ? escapeHTML(p.name) : "?"}</span><span>${s.points} điểm</span></div>
         </div>
         <div class="task-actions">
           <button class="icon-btn" data-action="del-schedule" title="Xoá lịch">🗑</button>
@@ -148,19 +116,6 @@ async function renderScheduleView() {
       </div>`;
     })
     .join("");
-}
-
-function toggleAssignModeUI() {
-  const mode = document.getElementById("sc-assign-mode").value;
-  document.getElementById("sc-fixed-wrap").style.display = mode === "fixed" ? "block" : "none";
-  document.getElementById("sc-rotation-wrap").style.display = mode === "rotation" ? "block" : "none";
-}
-
-async function refreshScheduleRotationOptions() {
-  const sel = document.getElementById("sc-rotation-queue");
-  if (!sel) return;
-  const queues = await fetchRotationQueues();
-  sel.innerHTML = queues.map((q) => `<option value="${q.id}">${q.icon} ${escapeHTML(q.label)}</option>`).join("");
 }
 
 function bindScheduleEvents() {
@@ -193,12 +148,6 @@ function bindScheduleEvents() {
     });
   }
 
-  const assignModeSel = document.getElementById("sc-assign-mode");
-  if (!assignModeSel.dataset.bound) {
-    assignModeSel.dataset.bound = "1";
-    assignModeSel.addEventListener("change", toggleAssignModeUI);
-  }
-
   const saveBtn = document.getElementById("save-schedule");
   if (!saveBtn.dataset.bound) {
     saveBtn.dataset.bound = "1";
@@ -210,15 +159,9 @@ function bindScheduleEvents() {
       const days = Array.from(daysPicker.querySelectorAll(".day-toggle.on")).map((b) => Number(b.dataset.day));
       if (repeatType === "weekly" && days.length === 0) return alert("Chọn ít nhất 1 ngày trong tuần.");
 
-      const assignMode = assignModeSel.value;
-      if (assignMode === "rotation" && !document.getElementById("sc-rotation-queue").value) {
-        return alert("Chưa có hàng đợi luân phiên nào. Tạo 1 hàng đợi ở mục bên dưới trước đã.");
-      }
-
       const payload = {
         title,
-        assigned_to: assignMode === "fixed" ? document.getElementById("sc-assigned").value : null,
-        rotation_queue_id: assignMode === "rotation" ? document.getElementById("sc-rotation-queue").value : null,
+        assigned_to: document.getElementById("sc-assigned").value,
         repeat_type: repeatType,
         repeat_days: repeatType === "weekly" ? days : [],
         start_date: document.getElementById("sc-start").value || todayStr(),
@@ -240,9 +183,6 @@ async function loadScheduleSection() {
   document.getElementById("sc-assigned").innerHTML = STATE.profiles
     .map((p) => `<option value="${p.id}">${escapeHTML(p.name)}</option>`)
     .join("");
-  await refreshScheduleRotationOptions();
-  toggleAssignModeUI();
   bindScheduleEvents();
   await renderScheduleView();
-  await loadRotationAdmin();
 }

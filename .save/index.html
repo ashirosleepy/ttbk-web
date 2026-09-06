@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<link rel="icon" type="image/png" href="./css/ttbk.png">
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TTBK — Việc nhà</title>
@@ -15,10 +16,15 @@
     <div class="sidebar-mark">TT<span>BK</span></div>
 
     <button class="nav-item active" data-section="dashboard"><span class="icon">🏠</span> Tổng quan</button>
-    <button class="nav-item" data-section="notifications"><span class="icon">🔔</span> Thông báo <span class="nav-badge" id="notif-badge" style="display:none">0</span></button>
     <button class="nav-item" data-section="tasks"><span class="icon">📝</span> Công việc</button>
     <button class="nav-item" data-section="schedule"><span class="icon">📅</span> Lịch</button>
     <button class="nav-item" data-section="members"><span class="icon">👥</span> Thành viên</button>
+    
+    <!-- Nút chuyển sang trang Chi tiêu -->
+    <button class="nav-item" onclick="window.location.href='Chi tiêu TTBK.html'">
+      <span class="icon">💰</span> Chi tiêu
+    </button>
+    
     <button class="nav-item" data-section="settings"><span class="icon">⚙️</span> Cài đặt</button>
 
     <div class="sidebar-foot" id="household-name">Nhà TTBK</div>
@@ -42,15 +48,6 @@
           <div><h2>Tổng quan</h2><p>Tình hình việc nhà hôm nay</p></div>
         </div>
         <div id="dashboard-content"><p class="empty-state">Đang tải...</p></div>
-      </section>
-
-      <!-- ---------- THÔNG BÁO ---------- -->
-      <section id="section-notifications" class="view">
-        <div class="view-head">
-          <div><h2>Thông báo</h2><p>Việc đến lượt bạn và yêu cầu đổi việc từ mọi người</p></div>
-          <button class="btn btn-ghost btn-sm" id="notif-mark-all">Đánh dấu đã đọc hết</button>
-        </div>
-        <div id="notif-list" class="task-list"><p class="empty-state">Đang tải...</p></div>
       </section>
 
       <!-- ---------- CÔNG VIỆC ---------- -->
@@ -110,25 +107,15 @@
 
         <div class="card" style="margin-bottom:22px;">
           <h3 style="font-size:15px; margin-bottom:14px;">Thêm lịch mới</h3>
-          <div class="field">
-            <label for="sc-title">Tên việc</label>
-            <input type="text" id="sc-title" placeholder="VD: Đổ rác, Trực đun nước, Tổng vệ sinh WC" />
-          </div>
-          <div class="field">
-            <label for="sc-assign-mode">Cách gán người làm</label>
-            <select id="sc-assign-mode">
-              <option value="fixed">Cố định 1 người</option>
-              <option value="rotation">Luân phiên theo hàng đợi</option>
-            </select>
-          </div>
-          <div class="field" id="sc-fixed-wrap">
-            <label for="sc-assigned">Ai làm</label>
-            <select id="sc-assigned"></select>
-          </div>
-          <div class="field" id="sc-rotation-wrap" style="display:none;">
-            <label for="sc-rotation-queue">Hàng đợi luân phiên</label>
-            <select id="sc-rotation-queue"></select>
-            <p style="font-size:12px;color:var(--ink-faint);margin:6px 0 0;">Chưa có hàng đợi? Tạo ở khối "Việc luân phiên" bên dưới trước.</p>
+          <div class="form-row">
+            <div class="field">
+              <label for="sc-title">Tên việc</label>
+              <input type="text" id="sc-title" placeholder="VD: Đổ rác" />
+            </div>
+            <div class="field">
+              <label for="sc-assigned">Ai làm</label>
+              <select id="sc-assigned"></select>
+            </div>
           </div>
           <div class="field">
             <label for="sc-repeat-type">Lặp lại</label>
@@ -164,35 +151,6 @@
             <input type="number" id="sc-points" value="10" min="0" />
           </div>
           <button class="btn btn-primary btn-sm" id="save-schedule">Lưu lịch</button>
-        </div>
-
-        <div class="card" style="margin-bottom:22px;">
-          <h3 style="font-size:15px; margin-bottom:4px;">⚡ Việc luân phiên (phát sinh)</h3>
-          <p style="font-size:13px;color:var(--ink-soft);margin:0 0 14px;">
-            Dùng cho việc không có giờ cố định như đổ rác, thay bình nước, đi chợ — thay vì chia cứng theo thứ,
-            hệ thống nhớ ai đang tới lượt và tự chuyển cho người kế tiếp mỗi khi xong việc.
-          </p>
-          <div class="form-row">
-            <div class="field">
-              <label for="rq-label">Tên việc</label>
-              <input type="text" id="rq-label" placeholder="VD: Thay bình nước" />
-            </div>
-            <div class="field">
-              <label for="rq-icon">Biểu tượng</label>
-              <input type="text" id="rq-icon" placeholder="🚰" value="🔁" />
-            </div>
-          </div>
-          <div class="field">
-            <label>Thứ tự luân phiên (bấm theo đúng thứ tự)</label>
-            <div class="days-picker" id="rq-order-picker"></div>
-          </div>
-          <div class="field" style="max-width:140px;">
-            <label for="rq-points">Điểm thưởng</label>
-            <input type="number" id="rq-points" value="10" min="0" />
-          </div>
-          <button class="btn btn-primary btn-sm" id="rq-save">Tạo hàng đợi</button>
-
-          <div id="rotation-list" class="task-list" style="margin-top:18px;"><p class="empty-state">Đang tải...</p></div>
         </div>
 
         <div class="card" style="margin-bottom:22px; overflow-x:auto;">
@@ -251,8 +209,6 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/rotations.js"></script>
-<script src="js/notifications.js"></script>
 <script src="js/tasks.js"></script>
 <script src="js/schedule.js"></script>
 <script src="js/dashboard.js"></script>
