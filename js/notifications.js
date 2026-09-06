@@ -54,7 +54,25 @@ function isExchangeNotification(n) {
   if (n.exchange_id) return true;
   if (!n.task_id || !n.message) return false;
   const msg = String(n.message).toLowerCase();
-  return msg.includes("muốn đổi việc") || msg.includes("ai nhận giúp") || msg.includes("nhận đổi việc");
+  if (msg.includes("đã nhận đổi việc") || msg.includes("cả 3 người còn lại")) return false;
+  return msg.includes("muốn đổi việc") || msg.includes("ai nhận giúp") || msg.includes("xin đổi việc");
+}
+
+async function fetchExchangeStatuses(notifications) {
+  const taskIds = [...new Set(notifications.filter((n) => isExchangeNotification(n) && n.task_id).map((n) => n.task_id))];
+  if (taskIds.length === 0) return [];
+
+  const { data, error } = await supabaseClient
+    .from("task_exchanges")
+    .select("id, task_id, to_user, status")
+    .in("task_id", taskIds)
+    .eq("to_user", STATE.me.id);
+
+  if (error) {
+    console.error("Không lấy được trạng thái yêu cầu đổi việc:", error.message);
+    return [];
+  }
+  return data || [];
 }
 
 async function findOpenExchangeForTask(taskId, userId) {
@@ -85,16 +103,25 @@ async function renderNotifSection() {
     return;
   }
 
+  const exchangeStatuses = await fetchExchangeStatuses(list);
+
   container.innerHTML = list
     .map((n) => {
       let actionBtn = "";
       if (n.type === "den_luot" && n.task_id) {
         actionBtn = `<button class="btn btn-primary btn-sm" data-action="accept-task" data-task="${n.task_id}">Nhận việc</button>`;
       } else if (isExchangeNotification(n)) {
-        actionBtn = `
-          <button class="btn btn-primary btn-sm" data-action="accept-exchange" data-exchange="${n.exchange_id || ""}" data-task="${n.task_id || ""}">Nhận đổi việc</button>
-          <button class="btn btn-ghost btn-sm" data-action="reject-exchange" data-exchange="${n.exchange_id || ""}" data-task="${n.task_id || ""}">Từ chối</button>
-        `;
+        const exchange = exchangeStatuses.find((row) =>
+          (n.exchange_id && row.id === n.exchange_id) || (!n.exchange_id && row.task_id === n.task_id)
+        );
+        if (exchange && exchange.status !== "open") {
+          actionBtn = `<button class="btn btn-ghost btn-sm" data-action="mark-read">Đã đọc</button>`;
+        } else {
+          actionBtn = `
+            <button class="btn btn-primary btn-sm" data-action="accept-exchange" data-exchange="${n.exchange_id || ""}" data-task="${n.task_id || ""}">Nhận đổi việc</button>
+            <button class="btn btn-ghost btn-sm" data-action="reject-exchange" data-exchange="${n.exchange_id || ""}" data-task="${n.task_id || ""}">Từ chối</button>
+          `;
+        }
       }
       return `
       <div class="task-ticket ${n.is_read ? "done" : ""}" style="border-left-color:${n.is_read ? "#ccc" : "var(--accent)"}" data-id="${n.id}">
