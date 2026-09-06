@@ -99,7 +99,7 @@ function taskTicketHTML(task) {
           ${
             isMine
               ? `<button class="btn btn-primary btn-sm" data-action="accept">Nhận việc</button>
-                 <button class="icon-btn" data-action="handoff" title="Không làm được — chuyển cho người kế tiếp">😅</button>`
+                 <button class="icon-btn" data-action="handoff" title="Bận — gửi yêu cầu cho 3 người còn lại">😅</button>`
               : ""
           }
           <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
@@ -124,7 +124,7 @@ function taskTicketHTML(task) {
         </div>
       </div>
       <div class="task-actions">
-        <button class="icon-btn" data-action="handoff" title="Không làm được — chuyển việc">😅</button>
+        <button class="icon-btn" data-action="handoff" title="Bận — gửi yêu cầu cho 3 người còn lại">😅</button>
         <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
         <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
       </div>
@@ -449,7 +449,7 @@ async function handoffTask(id) {
     }
   }
 
-  alert(`Đã gửi yêu cầu đổi việc cho ${createdExchangeIds.length} người còn lại. Nếu cả ba từ chối thì bạn phải làm việc này.`);
+  alert(`Đã gửi yêu cầu đổi việc cho ${createdExchangeIds.length} người còn lại. Nếu cả 3 từ chối thì bạn phải làm việc này.`);
 }
 
 async function deleteTask(id) {
