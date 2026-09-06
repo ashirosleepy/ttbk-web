@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản Lý Chi Tiêu Nhóm Nâng Cao - Tiến Tài Bách Khoa</title>
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- html2pdf.js for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background: #f4f6f8; color: #333; }
+    h1, h2, h3 { text-align: center; color: #1a252f; margin-bottom: 10px; }
+    
+    #main-app { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+
+    .status-bar { text-align: center; font-size: 0.85em; color: #28a745; margin-bottom: 15px; font-weight: 600; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    
+    /* Header Controls */
+    .top-controls { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+    
+    /* Year & Month Selection */
+    .year-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef; }
+    .year-controls { display: flex; gap: 10px; align-items: center; }
+    .month-tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 10px; }
+    @media (max-width: 600px) { .month-tabs { grid-template-columns: repeat(3, 1fr); } }
+    .month-btn { padding: 10px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: center; color: #495057; transition: all 0.2s; }
+    .month-btn:hover { background: #dee2e6; }
+    .month-btn.active { background: #007bff; color: white; border-color: #007bff; box-shadow: 0 2px 4px rgba(0,123,255,0.3); }
+
+    /* Form Inputs */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+    .input-group { display: flex; flex-direction: column; margin-bottom: 10px; }
+    label { font-weight: 600; margin-bottom: 5px; font-size: 0.9em; }
+    input[type="text"], input[type="number"], select, button { padding: 9px 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+    
+    /* Buttons */
+    button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: 600; border-radius: 5px; transition: background 0.2s;}
+    button:hover { background-color: #0056b3; }
+    .btn-success { background-color: #28a745; }
+    .btn-success:hover { background-color: #218838; }
+    .btn-danger { background-color: #dc3545; }
+    .btn-danger:hover { background-color: #bd2130; }
+    .btn-warning { background-color: #ffc107; color: #212529; }
+    .btn-warning:hover { background-color: #e0a800; }
+    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary:hover { background-color: #5a6268; }
+    .btn-info { background-color: #17a2b8; color: white; }
+    .btn-info:hover { background-color: #138496; }
+    
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #e0e0e0; padding: 10px; text-align: center; font-size: 0.9em; }
+    th { background-color: #f1f3f5; }
+    .positive { color: #28a745; font-weight: bold; }
+    .negative { color: #dc3545; font-weight: bold; }
+    
+    /* Lists & Badges */
+    .settlement-list { list-style: none; padding: 0; margin-top: 10px; }
+    .settlement-list li { background: #e7f5ff; border-left: 4px solid #1c7ed6; padding: 10px 15px; margin-bottom: 8px; border-radius: 4px; font-size: 1.05em;}
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin: 2px; display: inline-block; color: white; }
+    
+    /* Category Colors */
+    .cat-food { background-color: #ff9f43; }
+    .cat-rent { background-color: #54a0ff; }
+    .cat-entertainment { background-color: #ff6b6b; }
+    .cat-shopping { background-color: #1dd1a1; }
+    .cat-other { background-color: #8395a7; }
+    
+    .member-badge { background: #e9ecef; color: #333; }
+
+    /* Modal for Editing */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 600px; border-radius: 8px; }
+    .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close:hover { color: black; }
+
+    /* Chart Container */
+    .chart-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 20px; }
+    .chart-box { width: 100%; max-width: 450px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; }
+
+    /* Hide on print/pdf */
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white; }
+      .card { box-shadow: none; border: 1px solid #ddd; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PHẦN ỨNG DỤNG CHÍNH -->
+  <div id="main-app">
+    <div class="top-controls no-print">
+      <div>
+        <button class="btn-secondary" onclick="exportJSON()">💾 Tải File Backup</button>
+        <input type="file" id="importFile" style="display:none" onchange="importJSON(event)" accept=".json">
+        <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 Phục Hồi Dữ Liệu</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button class="btn-warning" onclick="exportPDF()">📄 Xuất Báo Cáo PDF</button>
+        <button class="btn-success" onclick="exportCSV()">📊 Xuất File Excel</button>
+      </div>
+    </div>
+
+    <div id="pdf-content">
+      <h1>Sổ Chi Tiêu Nhóm 4 Người - Tiến Tài Bách Khoa</h1>
+      <div class="status-bar no-print" id="save-status">✓ Dữ liệu được tự động lưu trên trình duyệt của bạn</div>
+
+      <!-- Thanh chọn Năm & Tháng -->
+      <div class="card no-print" style="padding: 15px;">
+        <div class="year-header">
+          <h3 style="margin: 0;">Quản Lý Chi Tiêu Theo Năm:</h3>
+          <div class="year-controls">
+            <select id="year-select" onchange="switchYear(parseInt(this.value))" style="font-weight: bold; font-size: 1rem;"></select>
+            <button class="btn-success" onclick="addNewYear()">+ Thêm Năm Mới</button>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 10px; margin-bottom: 12px; text-align: left;">Chọn Tháng Xem & Nhập Chi Tiêu:</h3>
+        <div class="month-tabs" id="month-tabs-container"></div>
+      </div>
+
+      <h2 id="current-month-title" style="color: #007bff; margin-bottom: 15px;">Chi Tiêu Tháng 1 / 2026</h2>
+
+      <!-- 1. Tiền Quỹ / Ứng Ban Đầu -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0;">1. Tiền Ứng / Quỹ Ban Đầu</h2>
+        </div>
+        <div class="grid" style="margin-top: 15px;">
+          <div class="input-group"><label>Tiến (VNĐ):</label><input type="number" id="init-Tiến" value="0" oninput="updateInitValue('Tiến', this.value)"></div>
+          <div class="input-group"><label>Tài (VNĐ):</label><input type="number" id="init-Tài" value="0" oninput="updateInitValue('Tài', this.value)"></div>
+          <div class="input-group"><label>Bách (VNĐ):</label><input type="number" id="init-Bách" value="0" oninput="updateInitValue('Bách', this.value)"></div>
+          <div class="input-group"><label>Khoa (VNĐ):</label><input type="number" id="init-Khoa" value="0" oninput="updateInitValue('Khoa', this.value)"></div>
+        </div>
+        <button id="btn-save-fund" class="no-print" onclick="saveInitFund()" style="width: 100%; margin-top: 15px; padding: 12px; font-size: 1.1em; background-color: #17a2b8;">💾 Lưu Tiền Quỹ / Ứng Tháng Này</button>
+      </div>
+
+      <!-- 2. Chi Phí Phát Sinh -->
+      <div class="card no-print">
+        <h2>2. Thêm Khoản Chi Phát Sinh Trong Tháng</h2>
+        <div class="grid" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+          <div class="input-group"><label>Nội dung khoản chi:</label><input type="text" id="exp-desc" placeholder="VD: Mua rau, Đi siêu thị..."></div>
+          <div class="input-group">
+            <label>Danh mục:</label>
+            <select id="exp-category">
+              <option value="food">Ăn uống</option>
+              <option value="rent">Tiền nhà / Điện nước</option>
+              <option value="entertainment">Giải trí / Đi chơi</option>
+              <option value="shopping">Mua sắm chung</option>
+              <option value="other">Khác</option>
+            </select>
+          </div>
+          <div class="input-group"><label>Số tiền (VNĐ):</label><input type="number" id="exp-amount" placeholder="0"></div>
+          <div class="input-group">
+            <label>Người trả:</label>
+            <select id="exp-payer">
+              <option value="Tiến">Tiến</option>
+              <option value="Tài">Tài</option>
+              <option value="Bách">Bách</option>
+              <option value="Khoa">Khoa</option>
+              <option value="Quỹ ban đầu">Quỹ ban đầu</option>
+            </select>
+          </div>
+        </div>
+        <div class="input-group" style="margin-top: 10px;">
+          <label>Số phần chịu của từng người (Nhập 0 nếu không tham gia, mặc định mỗi người 1 phần):</label>
+          <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+            <div class="input-group"><label>Tiến:</label><input type="number" id="share-Tiến" value="1" min="0" step="1"></div>
+            <div class="input-group"><label>Tài:</label><input type="number" id="share-Tài" value="1" min="0" step="1"></div>
+            <div class="input-group"><label>Bách:</label><input type="number" id="share-Bách" value="1" min="0" step="1"></div>
+            <div class="input-group"><label>Khoa:</label><input type="number" id="share-Khoa" value="1" min="0" step="1"></div>
+          </div>
+        </div>
+        <button onclick="addExpense()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 1.1em;">+ Ghi Nhận Khoản Chi</button>
+      </div>
+
+      <!-- Bảng danh sách khoản chi -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0;">Danh Sách Khoản Chi</h2>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Nội dung</th>
+              <th>Danh mục</th>
+              <th>Người trả</th>
+              <th>Số tiền</th>
+              <th>Số phần chia</th>
+              <th class="no-print">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="expense-list"></tbody>
+        </table>
+      </div>
+      
+      <!-- 3. Thanh toán nợ trong tháng -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0;">3. Ghi Nhận Đã Chuyển Tiền / Trả Nợ Trong Tháng</h2>
+        </div>
+        <p style="text-align: center; font-size: 0.9em; color: #666; margin-top: 5px;">Dùng khi có người chuyển khoản thanh toán nợ cho nhau hoặc rút/nộp tiền từ quỹ chung.</p>
+        <div class="grid no-print">
+          <div class="input-group">
+            <label>Người chuyển (Hoặc từ Quỹ):</label>
+            <select id="transfer-from">
+              <option value="Tiến">Tiến</option><option value="Tài">Tài</option>
+              <option value="Bách">Bách</option><option value="Khoa">Khoa</option>
+              <option value="Quỹ ban đầu">Quỹ chung (Rút ra)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Người nhận (Hoặc nộp Quỹ):</label>
+            <select id="transfer-to">
+              <option value="Tài">Tài</option><option value="Tiến">Tiến</option>
+              <option value="Bách">Bách</option><option value="Khoa">Khoa</option>
+              <option value="Quỹ ban đầu">Quỹ chung (Nộp vào)</option>
+            </select>
+          </div>
+          <div class="input-group"><label>Số tiền (VNĐ):</label><input type="number" id="transfer-amount" placeholder="0"></div>
+          <div class="input-group" style="justify-content: flex-end;">
+            <button onclick="addTransfer()" style="padding: 10px; background-color: #6f42c1;">+ Xác Nhận Chuyển</button>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>Người chuyển</th><th>Người nhận</th><th>Số tiền</th><th class="no-print">Thao tác</th></tr>
+          </thead>
+          <tbody id="transfer-list"></tbody>
+        </table>
+      </div>
+
+      <!-- 4. Kết Quả Tháng Hiện Tại -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0;">4. Tổng Kết Tháng <span id="summary-month-label"></span></h2>
+        </div>
+
+        <div class="fund-summary" style="background: #e7f5ff; border: 1px solid #b8daff; border-radius: 8px; padding: 15px; margin-top: 15px; margin-bottom: 20px;">
+          <h3 style="margin-top: 0; color: #0056b3;">💼 Tổng Kết Quỹ Chung (Tháng <span id="fund-month-label"></span>)</h3>
+          <div class="grid" style="grid-template-columns: repeat(4, 1fr); text-align: center;">
+            <div><div style="font-size: 0.9em; color: #666;">Dư từ kỳ trước</div><strong id="fund-prev" style="font-size: 1.1em;">0 VNĐ</strong></div>
+            <div><div style="font-size: 0.9em; color: #666;">Thu vào tháng này</div><strong id="fund-in" style="font-size: 1.1em; color: #28a745;">0 VNĐ</strong></div>
+            <div><div style="font-size: 0.9em; color: #666;">Chi ra tháng này</div><strong id="fund-out" style="font-size: 1.1em; color: #dc3545;">0 VNĐ</strong></div>
+            <div><div style="font-size: 0.9em; color: #666;">Tồn quỹ hiện tại</div><strong id="fund-balance" style="font-size: 1.3em; color: #0056b3;">0 VNĐ</strong></div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>Thành viên</th><th>Bỏ ra (Quỹ+Chi)</th><th>Thực tế chịu</th><th>Đã trả nợ</th><th>Đã nhận nợ</th><th>Dư nợ cuối tháng</th></tr>
+          </thead>
+          <tbody id="result-body"></tbody>
+        </table>
+
+        <h3 style="margin-top: 20px; color: #d35400;">Phương Án Trả Nợ (Tháng Này):</h3>
+        <ul class="settlement-list" id="settlement-plan"></ul>
+      </div>
+      
+      <!-- Biểu đồ -->
+      <div class="card no-print">
+        <h2>Biểu Đồ Thống Kê</h2>
+        <div class="chart-container">
+          <div class="chart-box"><h4 style="text-align: center; margin-top:0;">Phân bổ theo danh mục</h4><canvas id="categoryChart"></canvas></div>
+          <div class="chart-box"><h4 style="text-align: center; margin-top:0;">Tổng chi tiêu các tháng</h4><canvas id="trendChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- 5. Bảng Tổng Quan Chi Tiêu Cả Năm -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 id="yearly-summary-title" style="margin: 0;">5. Tổng Quan Chi Tiêu & Chốt Sổ Năm 2026</h2>
+        </div>
+        <p style="text-align: center; font-size: 0.9em; color: #666; margin-top: 5px; margin-bottom: 20px;">Bảng tính tổng cộng tất cả các khoản chi tiêu và tiền đã chuyển trả trong cả 12 tháng.</p>
+        
+        <div class="fund-summary" style="background: #fff8e1; border: 1px solid #ffe082; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+          <h3 style="margin-top: 0; color: #f39c12;">💰 Chốt Sổ Quỹ Chung Năm <span id="yearly-fund-label"></span></h3>
+          <div class="grid" style="grid-template-columns: repeat(4, 1fr); text-align: center;">
+            <div><div style="font-size: 0.9em; color: #666;">Dư từ năm trước</div><strong id="y-fund-prev" style="font-size: 1.1em;">0 VNĐ</strong></div>
+            <div><div style="font-size: 0.9em; color: #666;">Tổng thu quỹ cả năm</div><strong id="y-fund-in" style="font-size: 1.1em; color: #28a745;">0 VNĐ</strong></div>
+            <div><div style="font-size: 0.9em; color: #666;">Tổng chi quỹ cả năm</div><strong id="y-fund-out" style="font-size: 1.1em; color: #dc3545;">0 VNĐ</strong></div>
+            <div><div style="font-size: 0.9em; color: #666;">Tồn quỹ cuối năm</div><strong id="y-fund-balance" style="font-size: 1.3em; color: #d35400;">0 VNĐ</strong></div>
+          </div>
+        </div>
+
+        <table style="margin-bottom: 20px;">
+          <thead>
+            <tr style="background-color: #343a40; color: white;">
+              <th>Thành viên</th><th>Tổng tiền đã bỏ ra (Năm)</th><th>Tổng thực tế chịu (Năm)</th><th>Lịch sử chuyển/nhận (Năm)</th><th>DƯ NỢ CẢ NĂM</th>
+            </tr>
+          </thead>
+          <tbody id="yearly-balance-body"></tbody>
+        </table>
+
+        <h3 style="margin-top: 20px; color: #c0392b;">🔥 PHƯƠNG ÁN CHUYỂN TIỀN CHỐT SỔ CẢ NĂM:</h3>
+        <ul class="settlement-list" id="yearly-settlement-plan" style="border: 2px dashed #c0392b; padding: 15px; border-radius: 5px; background: #fffaf9;"></ul>
+
+        <h3 style="margin-top: 30px;">Lịch sử tổng chi tiêu các tháng</h3>
+        <table>
+          <thead>
+            <tr><th>Tháng</th><th>Tổng chi tiêu phát sinh</th></tr>
+          </thead>
+          <tbody id="yearly-summary-body"></tbody>
+          <tfoot>
+            <tr style="background-color: #e9ecef; font-weight: bold;"><td id="yearly-grand-label">TỔNG CHI TIÊU NĂM</td><td id="yearly-grand-total" style="color: #007bff;">0 VNĐ</td></tr>
+          </tfoot>
+        </table>
+      </div>
+    </div> <!-- End pdf-content -->
+  </div> <!-- End #main-app -->
+
+  <!-- Modal Edit Expense -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeEditModal()">&times;</span>
+      <h2>Sửa Khoản Chi</h2>
+      <input type="hidden" id="edit-index">
+      <div class="input-group"><label>Nội dung:</label><input type="text" id="edit-desc"></div>
+      <div class="input-group">
+        <label>Danh mục:</label>
+        <select id="edit-category">
+          <option value="food">Ăn uống</option><option value="rent">Tiền nhà / Điện nước</option>
+          <option value="entertainment">Giải trí / Đi chơi</option><option value="shopping">Mua sắm chung</option><option value="other">Khác</option>
+        </select>
+      </div>
+      <div class="input-group"><label>Số tiền (VNĐ):</label><input type="number" id="edit-amount"></div>
+      <div class="input-group">
+        <label>Người trả:</label>
+        <select id="edit-payer">
+          <option value="Tiến">Tiến</option><option value="Tài">Tài</option><option value="Bách">Bách</option><option value="Khoa">Khoa</option><option value="Quỹ ban đầu">Quỹ ban đầu</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Số phần chịu của từng người:</label>
+        <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+          <div class="input-group"><label>Tiến:</label><input type="number" id="edit-share-Tiến" value="1" min="0" step="1"></div>
+          <div class="input-group"><label>Tài:</label><input type="number" id="edit-share-Tài" value="1" min="0" step="1"></div>
+          <div class="input-group"><label>Bách:</label><input type="number" id="edit-share-Bách" value="1" min="0" step="1"></div>
+          <div class="input-group"><label>Khoa:</label><input type="number" id="edit-share-Khoa" value="1" min="0" step="1"></div>
+        </div>
+      </div>
+      <button onclick="saveEditExpense()" style="width: 100%; margin-top: 15px; padding: 10px;">Lưu Thay Đổi</button>
+    </div>
+  </div>
+
+  <!-- Modal Edit Transfer -->
+  <div id="editTransferModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <span class="close" onclick="closeEditTransferModal()">&times;</span>
+      <h2>Sửa Chuyển Tiền / Trả Nợ</h2>
+      <input type="hidden" id="edit-transfer-index">
+      <div class="input-group">
+        <label>Người chuyển (Hoặc từ Quỹ):</label>
+        <select id="edit-transfer-from">
+          <option value="Tiến">Tiến</option><option value="Tài">Tài</option>
+          <option value="Bách">Bách</option><option value="Khoa">Khoa</option>
+          <option value="Quỹ ban đầu">Quỹ chung (Rút ra)</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Người nhận (Hoặc nộp Quỹ):</label>
+        <select id="edit-transfer-to">
+          <option value="Tiến">Tiến</option><option value="Tài">Tài</option>
+          <option value="Bách">Bách</option><option value="Khoa">Khoa</option>
+          <option value="Quỹ ban đầu">Quỹ chung (Nộp vào)</option>
+        </select>
+      </div>
+      <div class="input-group"><label>Số tiền (VNĐ):</label><input type="number" id="edit-transfer-amount"></div>
+      <button onclick="saveEditTransfer()" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #6f42c1;">Lưu Thay Đổi</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/auth.js"></script>
+  
+  <script>
+    // --- LOGIC APP CHI TIÊU ---
+    const members = ["Tiến", "Tài", "Bách", "Khoa"];
+    const categoryLabels = { 'food': 'Ăn uống', 'rent': 'Tiền nhà/Điện nước', 'entertainment': 'Giải trí', 'shopping': 'Mua sắm', 'other': 'Khác' };
+    
+    let currentYear = 2026;
+    let currentMonth = 1;
+    let yearsData = {};
+    let categoryChartInstance = null;
+    let trendChartInstance = null;
+
+    function createEmptyYearData() {
+      let data = {};
+      for (let m = 1; m <= 12; m++) {
+        data[m] = { initValues: { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 }, expenses: [], transfers: [] };
+      }
+      return data;
+    }
+
+    function ensureLegacyDataFormat() {
+      for (let y in yearsData) {
+        for (let m = 1; m <= 12; m++) {
+          if (!yearsData[y][m].transfers) yearsData[y][m].transfers = [];
+          yearsData[y][m].expenses.forEach(e => {
+            if (!e.shares) {
+              e.shares = {};
+              members.forEach(mbr => e.shares[mbr] = 1);
+            }
+          });
+        }
+      }
+    }
+
+    function formatVND(val) {
+      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+    }
+
+    function renderYearSelect() {
+      const select = document.getElementById('year-select');
+      select.innerHTML = '';
+      const sortedYears = Object.keys(yearsData).map(Number).sort((a, b) => a - b);
+      sortedYears.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = `Năm ${y}`;
+        if (y === currentYear) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function switchYear(year) {
+      currentYear = year;
+      if (!yearsData[currentYear]) yearsData[currentYear] = createEmptyYearData();
+      updateUI();
+    }
+
+    function addNewYear() {
+      const years = Object.keys(yearsData).map(Number);
+      const nextSuggestedYear = years.length > 0 ? Math.max(...years) + 1 : 2026;
+      const userInput = prompt("Nhập năm bạn muốn thêm mới:", nextSuggestedYear);
+      if (userInput === null) return;
+      const newYear = parseInt(userInput.trim(), 10);
+      if (isNaN(newYear) || newYear < 2000 || newYear > 2100) return alert("Vui lòng nhập năm hợp lệ!");
+      
+      if (yearsData[newYear]) {
+        currentYear = newYear; updateUI(); return;
+      }
+      yearsData[newYear] = createEmptyYearData();
+      currentYear = newYear; currentMonth = 1;
+      updateUI(); saveData();
+    }
+
+    function initMonthTabs() {
+      const container = document.getElementById('month-tabs-container');
+      container.innerHTML = '';
+      for (let m = 1; m <= 12; m++) {
+        const btn = document.createElement('div');
+        btn.className = `month-btn ${m === currentMonth ? 'active' : ''}`;
+        btn.textContent = `Tháng ${m}`;
+        btn.onclick = () => { currentMonth = m; updateUI(); };
+        container.appendChild(btn);
+      }
+    }
+
+    function updateUI() {
+      ensureLegacyDataFormat();
+      renderYearSelect();
+      document.getElementById('current-month-title').textContent = `Chi Tiêu Tháng ${currentMonth} / ${currentYear}`;
+      document.getElementById('summary-month-label').textContent = `${currentMonth}/${currentYear}`;
+      document.getElementById('yearly-summary-title').textContent = `5. Tổng Quan Chi Tiêu & Chốt Sổ Năm ${currentYear}`;
+      document.getElementById('yearly-grand-label').textContent = `TỔNG CHI TIÊU NĂM ${currentYear}`;
+      initMonthTabs();
+      
+      const initVals = yearsData[currentYear][currentMonth].initValues;
+      members.forEach(m => document.getElementById(`init-${m}`).value = initVals[m] || 0);
+      
+      renderExpenses();
+      renderTransfers();
+      calculate();
+      updateCharts();
+    }
+
+    function updateInitValue(member, val) {
+      yearsData[currentYear][currentMonth].initValues[member] = parseFloat(val) || 0;
+      calculate();
+    }
+    
+    function saveInitFund() {
+      saveData();
+      const btn = document.getElementById('btn-save-fund');
+      const originalText = btn.innerHTML;
+      const originalColor = btn.style.backgroundColor;
+      btn.innerHTML = "✔️ Đã Lưu Thành Công!";
+      btn.style.backgroundColor = "#28a745";
+      setTimeout(() => { btn.innerHTML = originalText; btn.style.backgroundColor = originalColor; }, 2000);
+    }
+
+    function getPreviousFundBalance(targetYear, targetMonth) {
+      let balance = 0;
+      const sortedYears = Object.keys(yearsData).map(Number).sort((a, b) => a - b);
+      for (let y of sortedYears) {
+        for (let m = 1; m <= 12; m++) {
+          if (y > targetYear || (y === targetYear && m >= targetMonth)) return balance;
+          const md = yearsData[y][m];
+          members.forEach(mbr => balance += (md.initValues[mbr] || 0));
+          md.expenses.forEach(e => { if (e.payer === "Quỹ ban đầu") balance -= e.amount; });
+          md.transfers.forEach(t => {
+            if (t.from === "Quỹ ban đầu") balance -= t.amount;
+            if (t.to === "Quỹ ban đầu") balance += t.amount;
+          });
+        }
+      }
+      return balance;
+    }
+
+    function addExpense() {
+      const desc = document.getElementById('exp-desc').value.trim();
+      const cat = document.getElementById('exp-category').value;
+      const amount = parseFloat(document.getElementById('exp-amount').value);
+      const payer = document.getElementById('exp-payer').value;
+      
+      let shares = {};
+      let totalShares = 0;
+      members.forEach(m => {
+        const val = parseFloat(document.getElementById(`share-${m}`).value) || 0;
+        shares[m] = val;
+        totalShares += val;
+      });
+
+      if (!desc || isNaN(amount) || amount <= 0) return alert("Vui lòng nhập tên khoản chi và số tiền hợp lệ!");
+      if (totalShares <= 0) return alert("Tổng số phần chia phải lớn hơn 0!");
+
+      yearsData[currentYear][currentMonth].expenses.push({ desc, category: cat, amount, payer, shares });
+      
+      document.getElementById('exp-desc').value = ''; 
+      document.getElementById('exp-amount').value = '';
+      members.forEach(m => document.getElementById(`share-${m}`).value = 1);
+      updateUI(); saveData();
+    }
+
+    function deleteExpense(index) {
+      if(confirm("Bạn có chắc muốn xóa khoản chi này?")) {
+        yearsData[currentYear][currentMonth].expenses.splice(index, 1);
+        updateUI(); saveData();
+      }
+    }
+
+    function renderExpenses() {
+      const tbody = document.getElementById('expense-list');
+      tbody.innerHTML = '';
+
+      yearsData[currentYear][currentMonth].expenses.forEach((item, index) => {
+        const catLabel = categoryLabels[item.category || 'other'];
+        let partsBadge = "";
+        members.forEach(m => {
+          const s = item.shares && item.shares[m] !== undefined ? item.shares[m] : 1;
+          if (s > 0) partsBadge += `<span class="badge member-badge">${m}: ${s}p</span> `;
+        });
+        const payerDisplay = item.payer === "Quỹ ban đầu" ? `<span class="badge" style="background-color: #6f42c1;">Quỹ chung</span>` : `<strong>${item.payer}</strong>`;
+        
+        let actionTd = `
+          <td class="no-print">
+            <button class="btn-warning" style="padding: 5px; font-size: 0.8em;" onclick="openEditModal(${index})">Sửa</button>
+            <button class="btn-danger" style="padding: 5px; font-size: 0.8em;" onclick="deleteExpense(${index})">Xóa</button>
+          </td>
+        `;
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${item.desc}</td>
+            <td><span class="badge cat-${item.category || 'other'}">${catLabel}</span></td>
+            <td>${payerDisplay}</td>
+            <td>${formatVND(item.amount)}</td>
+            <td>${partsBadge}</td>
+            ${actionTd}
+          </tr>
+        `;
+      });
+    }
+
+    function addTransfer() {
+      const from = document.getElementById('transfer-from').value;
+      const to = document.getElementById('transfer-to').value;
+      const amount = parseFloat(document.getElementById('transfer-amount').value);
+
+      if (from === to) return alert("Người chuyển và người nhận không được trùng nhau!");
+      if (isNaN(amount) || amount <= 0) return alert("Vui lòng nhập số tiền hợp lệ!");
+
+      yearsData[currentYear][currentMonth].transfers.push({ from, to, amount });
+      document.getElementById('transfer-amount').value = '';
+      updateUI(); saveData();
+    }
+
+    function deleteTransfer(index) {
+      if(confirm("Xóa khoản chuyển tiền này?")) {
+        yearsData[currentYear][currentMonth].transfers.splice(index, 1);
+        updateUI(); saveData();
+      }
+    }
+
+    function renderTransfers() {
+      const tbody = document.getElementById('transfer-list');
+      tbody.innerHTML = '';
+
+      if(yearsData[currentYear][currentMonth].transfers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color: #666;">Chưa có lịch sử chuyển tiền trong tháng này</td></tr>`;
+        return;
+      }
+      yearsData[currentYear][currentMonth].transfers.forEach((item, index) => {
+        const fromDisplay = item.from === "Quỹ ban đầu" ? `<span class="badge" style="background-color: #6f42c1;">Quỹ chung</span>` : `<strong>${item.from}</strong>`;
+        const toDisplay = item.to === "Quỹ ban đầu" ? `<span class="badge" style="background-color: #6f42c1;">Quỹ chung</span>` : `<strong>${item.to}</strong>`;
+        
+        let actionTd = `
+          <td class="no-print">
+            <button class="btn-warning" style="padding: 5px; font-size: 0.8em;" onclick="openEditTransferModal(${index})">Sửa</button>
+            <button class="btn-danger" style="padding: 5px; font-size: 0.8em;" onclick="deleteTransfer(${index})">Xóa</button>
+          </td>
+        `;
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${fromDisplay}</td><td>${toDisplay}</td>
+            <td style="color: #28a745; font-weight: bold;">${formatVND(item.amount)}</td>
+            ${actionTd}
+          </tr>
+        `;
+      });
+    }
+
+    function openEditModal(index) {
+      const exp = yearsData[currentYear][currentMonth].expenses[index];
+      document.getElementById('edit-index').value = index;
+      document.getElementById('edit-desc').value = exp.desc;
+      document.getElementById('edit-category').value = exp.category || 'other';
+      document.getElementById('edit-amount').value = exp.amount;
+      document.getElementById('edit-payer').value = exp.payer;
+      members.forEach(m => {
+        const s = exp.shares && exp.shares[m] !== undefined ? exp.shares[m] : 1;
+        document.getElementById(`edit-share-${m}`).value = s;
+      });
+      document.getElementById('editModal').style.display = 'block';
+    }
+    
+    function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+    
+    function saveEditExpense() {
+      const index = document.getElementById('edit-index').value;
+      const desc = document.getElementById('edit-desc').value.trim();
+      const cat = document.getElementById('edit-category').value;
+      const amount = parseFloat(document.getElementById('edit-amount').value);
+      const payer = document.getElementById('edit-payer').value;
+      let shares = {}, totalShares = 0;
+      members.forEach(m => {
+        const val = parseFloat(document.getElementById(`edit-share-${m}`).value) || 0;
+        shares[m] = val; totalShares += val;
+      });
+      if (!desc || isNaN(amount) || amount <= 0 || totalShares <= 0) return alert("Thông tin không hợp lệ!");
+      yearsData[currentYear][currentMonth].expenses[index] = { desc, category: cat, amount, payer, shares };
+      closeEditModal(); updateUI(); saveData();
+    }
+
+    function openEditTransferModal(index) {
+      const t = yearsData[currentYear][currentMonth].transfers[index];
+      document.getElementById('edit-transfer-index').value = index;
+      document.getElementById('edit-transfer-from').value = t.from;
+      document.getElementById('edit-transfer-to').value = t.to;
+      document.getElementById('edit-transfer-amount').value = t.amount;
+      document.getElementById('editTransferModal').style.display = 'block';
+    }
+    
+    function closeEditTransferModal() { document.getElementById('editTransferModal').style.display = 'none'; }
+    
+    function saveEditTransfer() {
+      const index = document.getElementById('edit-transfer-index').value;
+      const from = document.getElementById('edit-transfer-from').value;
+      const to = document.getElementById('edit-transfer-to').value;
+      const amount = parseFloat(document.getElementById('edit-transfer-amount').value);
+      if (from === to) return alert("Người chuyển và nhận không được trùng nhau!");
+      if (isNaN(amount) || amount <= 0) return alert("Vui lòng nhập số tiền hợp lệ!");
+      yearsData[currentYear][currentMonth].transfers[index] = { from, to, amount };
+      closeEditTransferModal(); updateUI(); saveData();
+    }
+
+    function getPreviousDebtBalance(targetYear, targetMonth) {
+      let previousBalances = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+      
+      // Tính cộng dồn các tháng trước trong cùng năm
+      for (let m = 1; m < targetMonth; m++) {
+        const monthData = yearsData[targetYear][m];
+        
+        let mPaid = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+        let mOwed = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+        let mTransferPaid = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+        let mTransferReceived = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+
+        // 1. Tiền ứng/quỹ ban đầu
+        members.forEach(mbr => mPaid[mbr] += (monthData.initValues[mbr] || 0));
+
+        // 2. Chi phí
+        monthData.expenses.forEach(item => {
+          if (members.includes(item.payer)) mPaid[item.payer] += item.amount;
+          
+          let totalShares = 0;
+          members.forEach(mbr => totalShares += (item.shares && item.shares[mbr] !== undefined ? item.shares[mbr] : 1));
+          
+          if (totalShares > 0) {
+            members.forEach(p => {
+              const pShares = item.shares && item.shares[p] !== undefined ? item.shares[p] : 1;
+              mOwed[p] += (item.amount * pShares) / totalShares;
+            });
+          }
+        });
+
+        // 3. Chuyển tiền/Thanh toán nợ
+        monthData.transfers.forEach(t => {
+          if (members.includes(t.from)) mTransferPaid[t.from] += t.amount;
+          if (members.includes(t.to)) mTransferReceived[t.to] += t.amount;
+        });
+
+        // Tổng hợp số dư của tháng đó
+        members.forEach(mbr => {
+           previousBalances[mbr] += (mPaid[mbr] - mOwed[mbr] + mTransferPaid[mbr] - mTransferReceived[mbr]);
+        });
+      }
+      return previousBalances;
+    }
+
+    function calculate() {
+      let paid = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+      let owed = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+      let transferPaid = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+      let transferReceived = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+      let fundIn = 0, fundOut = 0;
+
+      // --- LẤY SỐ DƯ NỢ TỪ CÁC THÁNG TRƯỚC (CÙNG NĂM) ---
+      let previousDebt = getPreviousDebtBalance(currentYear, currentMonth);
+
+      const currentInit = yearsData[currentYear][currentMonth].initValues;
+      members.forEach(m => { paid[m] += (currentInit[m] || 0); fundIn += (currentInit[m] || 0); });
+
+      yearsData[currentYear][currentMonth].expenses.forEach(item => {
+        if (members.includes(item.payer)) paid[item.payer] += item.amount;
+        if (item.payer === "Quỹ ban đầu") fundOut += item.amount;
+        let totalShares = 0;
+        members.forEach(m => totalShares += (item.shares && item.shares[m] !== undefined ? item.shares[m] : 1));
+        if (totalShares > 0) {
+          members.forEach(p => {
+            const pShares = item.shares && item.shares[p] !== undefined ? item.shares[p] : 1;
+            owed[p] += (item.amount * pShares) / totalShares;
+          });
+        }
+      });
+
+      yearsData[currentYear][currentMonth].transfers.forEach(t => {
+        if (members.includes(t.from)) transferPaid[t.from] += t.amount;
+        if (members.includes(t.to)) transferReceived[t.to] += t.amount;
+        if (t.from === "Quỹ ban đầu") fundOut += t.amount;
+        if (t.to === "Quỹ ban đầu") fundIn += t.amount;
+      });
+
+      let prevFund = getPreviousFundBalance(currentYear, currentMonth);
+      let currentFundBalance = prevFund + fundIn - fundOut;
+
+      document.getElementById('fund-month-label').textContent = `${currentMonth}/${currentYear}`;
+      document.getElementById('fund-prev').textContent = formatVND(prevFund);
+      document.getElementById('fund-in').textContent = formatVND(fundIn);
+      document.getElementById('fund-out').textContent = formatVND(fundOut);
+      document.getElementById('fund-balance').textContent = formatVND(currentFundBalance);
+
+      const resultBody = document.getElementById('result-body');
+      resultBody.innerHTML = '';
+      let balances = {};
+
+      members.forEach(m => {
+        const diff = previousDebt[m] + paid[m] - owed[m] + transferPaid[m] - transferReceived[m];
+        balances[m] = diff;
+        
+        let isExactZero = Math.abs(diff) < 0.01; // Số không tuyệt đối (khử nhiễu số thập phân của JS)
+        let diffClass = '';
+        let diffText = '';
+
+        if (isExactZero) {
+            diffText = `<span style="color: #28a745; font-weight: bold;">0 ₫</span> <br><span class="badge" style="background-color: #28a745; font-size: 0.75em;">Hòa tiền 🎉</span>`;
+        } else {
+            diffClass = diff > 0 ? 'positive' : 'negative';
+            diffText = diff > 0 ? `+${formatVND(diff)}` : `${formatVND(diff)}`;
+        }
+        
+        const prevText = previousDebt[m] !== 0 ? `<br><span style="font-size: 0.8em; color: #666;">(Kỳ trước: ${formatVND(previousDebt[m])})</span>` : '';
+        
+        resultBody.innerHTML += `
+          <tr>
+            <td><strong>${m}</strong></td>
+            <td>${formatVND(paid[m])}</td>
+            <td>${formatVND(owed[m])}</td>
+            <td style="color: #28a745;">${formatVND(transferPaid[m])}</td>
+            <td style="color: #6f42c1;">${formatVND(transferReceived[m])}</td>
+            <td class="${diffClass}">${diffText}${prevText}</td>
+          </tr>
+        `;
+      });
+      
+      document.getElementById('settlement-plan').innerHTML = generateSettlementHTML(balances, currentFundBalance);
+      renderYearlySummary();
+    }
+
+    function generateSettlementHTML(balances, fundBalance = 0) {
+      let debtors = [], creditors = [], settled = [];
+      let cloneBal = { ...balances };
+      
+      for (let m in cloneBal) {
+        let exactBalance = cloneBal[m];
+        
+        if (Math.abs(exactBalance) < 0.01) {
+            settled.push(m); // Bằng đúng 0 tròn trĩnh
+        } else if (exactBalance < -1) {
+            debtors.push({ name: m, amount: -exactBalance }); // Dư nợ âm (>1đ lệch)
+        } else if (exactBalance > 1) {
+            creditors.push({ name: m, amount: exactBalance }); // Dư nợ dương (>1đ lệch)
+        }
+      }
+
+      let planHtml = '';
+      if (debtors.length === 0 && creditors.length === 0) {
+        planHtml = '<li>Mọi người đều đã hòa tiền (Không ai nợ ai cá nhân)! 🎉</li>';
+      } else {
+        let i = 0, j = 0;
+        while (i < debtors.length && j < creditors.length) {
+          let payment = Math.min(debtors[i].amount, creditors[j].amount);
+          
+          if (Math.round(payment) > 0) {
+              planHtml += `<li>Người nộp: <strong>${debtors[i].name}</strong> ➔ Chuyển cho: <strong>${creditors[j].name}</strong> số tiền: <strong style="color:#d35400">${formatVND(payment)}</strong></li>`;
+          }
+          
+          debtors[i].amount -= payment; creditors[j].amount -= payment;
+          if (debtors[i].amount < 1) i++;
+          if (creditors[j].amount < 1) j++;
+        }
+        
+        // HIỂN THỊ DANH SÁCH NHỮNG NGƯỜI ĐÃ HÒA TIỀN TRÒN TRĨNH
+        if (settled.length > 0) {
+          planHtml += `<li style="background: #d4edda; border-left-color: #28a745; margin-top: 15px;">🎉 <strong>Thành viên đã hòa tiền (0 ₫):</strong> ${settled.join(', ')} <span style="font-size: 0.9em; color: #555;">(Không cần chuyển/nhận thêm)</span></li>`;
+        }
+      }
+
+      if (fundBalance > 0.01) {
+        planHtml += `<li style="background: #fff3cd; border-left-color: #ffc107; margin-top: 15px;">💼 <strong>Quỹ chung đang dư: <span style="color: #d35400;">${formatVND(fundBalance)}</span></strong><br><span style="font-size: 0.9em; color: #555;">(Số tiền quỹ dư này sẽ tự động mang sang làm tiền quỹ cho tháng tiếp theo).</span></li>`;
+      } else if (fundBalance < -0.01) {
+        planHtml += `<li style="background: #f8d7da; border-left-color: #dc3545; margin-top: 15px;">⚠️ <strong>Quỹ chung đang âm: <span style="color: #dc3545;">${formatVND(-fundBalance)}</span></strong><br><span style="font-size: 0.9em; color: #555;">(Quỹ đã chi lố, cần nộp thêm tiền vào quỹ để cân bằng).</span></li>`;
+      }
+      return planHtml;
+    }
+
+    function renderYearlySummary() {
+      let grandTotal = 0;
+      let yPaid = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+      let yOwed = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+      let yTransferPaid = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+      let yTransferReceived = { "Tiến": 0, "Tài": 0, "Bách": 0, "Khoa": 0 };
+      let yFundIn = 0, yFundOut = 0, yPrevFund = getPreviousFundBalance(currentYear, 1);
+      const monthlyBody = document.getElementById('yearly-summary-body');
+      monthlyBody.innerHTML = '';
+
+      for (let m = 1; m <= 12; m++) {
+        const monthData = yearsData[currentYear][m];
+        members.forEach(mbr => { yPaid[mbr] += (monthData.initValues[mbr] || 0); yFundIn += (monthData.initValues[mbr] || 0); });
+
+        let totalExpMonth = 0;
+        let monthCatTotals = { 'food':0, 'rent':0, 'entertainment':0, 'shopping':0, 'other':0 };
+
+        monthData.expenses.forEach(item => {
+          totalExpMonth += item.amount;
+          monthCatTotals[item.category || 'other'] += item.amount;
+          if (members.includes(item.payer)) yPaid[item.payer] += item.amount;
+          if (item.payer === "Quỹ ban đầu") yFundOut += item.amount;
+          
+          let totalShares = 0;
+          members.forEach(mbr => totalShares += (item.shares && item.shares[mbr] !== undefined ? item.shares[mbr] : 1));
+          if (totalShares > 0) {
+            members.forEach(p => {
+              const pShares = item.shares && item.shares[p] !== undefined ? item.shares[p] : 1;
+              yOwed[p] += (item.amount * pShares) / totalShares;
+            });
+          }
+        });
+        grandTotal += totalExpMonth;
+
+        monthData.transfers.forEach(t => {
+          if (members.includes(t.from)) yTransferPaid[t.from] += t.amount;
+          if (members.includes(t.to)) yTransferReceived[t.to] += t.amount;
+          if (t.from === "Quỹ ban đầu") yFundOut += t.amount;
+          if (t.to === "Quỹ ban đầu") yFundIn += t.amount;
+        });
+
+        let breakdownHTML = '';
+        if (totalExpMonth > 0) {
+          ['food', 'rent', 'entertainment', 'shopping', 'other'].forEach(cat => {
+            if(monthCatTotals[cat] > 0) {
+              const percent = Math.round((monthCatTotals[cat] / totalExpMonth) * 100);
+              breakdownHTML += `<span class="badge cat-${cat}" style="font-size: 0.75em; margin-right: 4px;" title="${formatVND(monthCatTotals[cat])}">${categoryLabels[cat]}: ${percent}%</span>`;
+            }
+          });
+        }
+
+        const isCurrent = (m === currentMonth);
+        monthlyBody.innerHTML += `
+          <tr style="${isCurrent ? 'background-color: #e7f5ff; font-weight: bold;' : ''}">
+            <td>Tháng ${m} ${isCurrent ? '(Đang xem)' : ''}</td>
+            <td><div>${formatVND(totalExpMonth)}</div><div style="margin-top: 5px;">${breakdownHTML}</div></td>
+          </tr>
+        `;
+      }
+      
+      document.getElementById('yearly-grand-total').textContent = formatVND(grandTotal);
+
+      let yEndFundBalance = yPrevFund + yFundIn - yFundOut;
+      document.getElementById('yearly-fund-label').textContent = currentYear;
+      document.getElementById('y-fund-prev').textContent = formatVND(yPrevFund);
+      document.getElementById('y-fund-in').textContent = formatVND(yFundIn);
+      document.getElementById('y-fund-out').textContent = formatVND(yFundOut);
+      document.getElementById('y-fund-balance').textContent = formatVND(yEndFundBalance);
+
+      const yBody = document.getElementById('yearly-balance-body');
+      yBody.innerHTML = '';
+      let yearlyBalances = {};
+
+      members.forEach(m => {
+        const diff = yPaid[m] - yOwed[m] + yTransferPaid[m] - yTransferReceived[m];
+        yearlyBalances[m] = diff;
+        
+        let isExactZero = Math.abs(diff) < 0.01;
+        let diffClass = '';
+        let diffText = '';
+
+        if (isExactZero) {
+            diffText = `<span style="color: #28a745; font-weight: bold;">0 ₫</span> <br><span class="badge" style="background-color: #28a745; font-size: 0.75em;">Hòa tiền 🎉</span>`;
+        } else {
+            diffClass = diff > 0 ? 'positive' : 'negative';
+            diffText = diff > 0 ? `+${formatVND(diff)} (Thu về)` : `${formatVND(diff)} (Cần nộp)`;
+        }
+
+        const transferText = `Trả: ${formatVND(yTransferPaid[m])}<br>Nhận: ${formatVND(yTransferReceived[m])}`;
+        
+        yBody.innerHTML += `
+          <tr>
+            <td><strong>${m}</strong></td>
+            <td>${formatVND(yPaid[m])}</td><td>${formatVND(yOwed[m])}</td>
+            <td style="font-size: 0.85em; color: #555;">${transferText}</td>
+            <td class="${diffClass}">${diffText}</td>
+          </tr>
+        `;
+      });
+      
+      document.getElementById('yearly-settlement-plan').innerHTML = generateSettlementHTML(yearlyBalances, yEndFundBalance);
+    }
+
+    function updateCharts() {
+      const catTotals = { 'food':0, 'rent':0, 'entertainment':0, 'shopping':0, 'other':0 };
+      yearsData[currentYear][currentMonth].expenses.forEach(e => catTotals[e.category || 'other'] += e.amount);
+      const catCtx = document.getElementById('categoryChart').getContext('2d');
+      if(categoryChartInstance) categoryChartInstance.destroy();
+      categoryChartInstance = new Chart(catCtx, {
+        type: 'doughnut',
+        data: { labels: Object.values(categoryLabels), datasets: [{ data: Object.values(catTotals), backgroundColor: ['#ff9f43', '#54a0ff', '#ff6b6b', '#1dd1a1', '#8395a7'] }] }
+      });
+
+      const categories = ['food', 'rent', 'entertainment', 'shopping', 'other'];
+      const categoryColors = { 'food': '#ff9f43', 'rent': '#54a0ff', 'entertainment': '#ff6b6b', 'shopping': '#1dd1a1', 'other': '#8395a7' };
+      const monthlyDataByCategory = { 'food': Array(12).fill(0), 'rent': Array(12).fill(0), 'entertainment': Array(12).fill(0), 'shopping': Array(12).fill(0), 'other': Array(12).fill(0) };
+
+      for(let m = 1; m <= 12; m++) {
+        yearsData[currentYear][m].expenses.forEach(e => {
+          monthlyDataByCategory[e.category || 'other'][m-1] += e.amount;
+        });
+      }
+
+      const datasets = categories.map(cat => ({
+        label: categoryLabels[cat], backgroundColor: categoryColors[cat], data: monthlyDataByCategory[cat]
+      }));
+      
+      const trendCtx = document.getElementById('trendChart').getContext('2d');
+      if(trendChartInstance) trendChartInstance.destroy();
+      trendChartInstance = new Chart(trendCtx, {
+        type: 'bar',
+        data: { labels: ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'], datasets: datasets },
+        options: {
+          responsive: true,
+          scales: { x: { stacked: true }, y: { stacked: true } },
+          plugins: { tooltip: { callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) { label += ': '; } if (context.parsed.y !== null) { label += new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(context.parsed.y); } return label; } } } }
+        }
+      });
+    }
+
+    function saveData() {
+      localStorage.setItem('chiatien_adv_data', JSON.stringify({currentYear, currentMonth, yearsData}));
+      document.getElementById('save-status').textContent = '✓ Đã lưu lúc ' + new Date().toLocaleTimeString();
+    }
+    
+    function loadData() {
+      const saved = localStorage.getItem('chiatien_adv_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        yearsData = parsed.yearsData;
+        currentYear = parsed.currentYear || 2026;
+        currentMonth = parsed.currentMonth || 1;
+        ensureLegacyDataFormat();
+      } else {
+        yearsData[2026] = createEmptyYearData();
+      }
+    }
+    
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({yearsData}));
+      const el = document.createElement('a'); el.setAttribute("href", dataStr); el.setAttribute("download", `chi-tieu-nhom-backup-${new Date().getTime()}.json`);
+      document.body.appendChild(el); el.click(); el.remove();
+    }
+    
+    function importJSON(event) {
+      const file = event.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if(parsed.yearsData) { yearsData = parsed.yearsData; currentYear = parseInt(Object.keys(yearsData)[0], 10) || 2026; currentMonth = 1; updateUI(); saveData(); alert("Phục hồi dữ liệu thành công!"); }
+        } catch (err) { alert("File không hợp lệ!"); }
+      }; reader.readAsText(file);
+    }
+    
+    function exportCSV() {
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFFThang,Noi_Dung,Danh_Muc,Nguoi_Tra,So_Tien,Chi_Tiet_Phan\n";
+      for(let m=1; m<=12; m++) {
+        yearsData[currentYear][m].expenses.forEach(e => {
+          let shareStr = members.map(mbr => `${mbr}:${e.shares[mbr]}`).join("-");
+          csvContent += `${m},${e.desc},${categoryLabels[e.category || 'other']},${e.payer},${e.amount},${shareStr}\n`;
+        });
+      }
+      const el = document.createElement('a'); el.setAttribute("href", encodeURI(csvContent)); el.setAttribute("download", `chi-tieu-nhom-${currentYear}.csv`);
+      document.body.appendChild(el); el.click(); el.remove();
+    }
+    
+    function exportPDF() {
+      const element = document.getElementById('pdf-content');
+      html2pdf().set({ margin: 0.5, filename: `Bao-Cao-Chi-Tieu-${currentYear}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } }).from(element).save();
+    }
+
+    window.onload = function() {
+      loadData();
+      updateUI();
+    };
+
+  </script>
+</body>
+</html>
