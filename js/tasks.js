@@ -99,7 +99,7 @@ function taskTicketHTML(task) {
           ${
             isMine
               ? `<button class="btn btn-primary btn-sm" data-action="accept">Nhận việc</button>
-                 <button class="icon-btn" data-action="handoff" title="Bận — gửi yêu cầu cho 3 người còn lại">😅</button>`
+                 <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>`
               : ""
           }
           <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
@@ -124,7 +124,7 @@ function taskTicketHTML(task) {
         </div>
       </div>
       <div class="task-actions">
-        <button class="icon-btn" data-action="handoff" title="Bận — gửi yêu cầu cho 3 người còn lại">😅</button>
+        <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
         <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
         <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
       </div>
@@ -150,15 +150,19 @@ function renderTabsHTML() {
 }
 
 // Render "Phiếu việc ảo" cho việc luân phiên TỰ ĐỘNG ĐẾN LƯỢT
-function renderAutoRotationsHTML(rotations) {
+// queueHasTaskToday: các queue đã có 1 việc thật (đang chờ xử lý/xin chuyển) cho hôm nay rồi,
+// thì ẩn thẻ ảo đi vì việc đó đã hiện dưới dạng phiếu việc thật trong danh sách bên dưới.
+function renderAutoRotationsHTML(rotations, queueHasTaskToday = new Set()) {
   let html = '<div class="rotations-section" style="margin-bottom: 20px;">';
   html += '<h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--ink-faint);">Tới lượt luân phiên (Chưa làm)</h3>';
   
   // Lọc ra các queue mà current_index trỏ đúng vào người đang được chọn ở Tab
+  // và chưa có việc thật nào được tạo cho hôm nay (vd đã bấm "xin chuyển việc" rồi)
   const myRotations = rotations.filter(r => {
       if (!r.member_order || r.member_order.length === 0) return false;
       const currentTurnUserId = r.member_order[r.current_index];
-      return currentTurnUserId === selectedUserId;
+      if (currentTurnUserId !== selectedUserId) return false;
+      return !queueHasTaskToday.has(r.id);
   });
 
   if (myRotations.length === 0) {
@@ -179,7 +183,7 @@ function renderAutoRotationsHTML(rotations) {
                   </div>
               </div>
               <div class="task-actions">
-                  <button class="icon-btn" data-action="skip-rotation" title="Bận — Chuyển lượt cho người kế tiếp">😅</button>
+                  <button class="icon-btn" data-action="request-handoff" data-queue="${r.id}" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
               </div>
           </div>`;
       });
@@ -202,9 +206,18 @@ async function renderTasksView() {
   // Lọc task theo người đang được chọn ở Tab
   const filteredTasks = tasks.filter(t => t.assigned_to === selectedUserId);
 
+  // Những hàng đợi đã có 1 việc thật cho hôm nay (vd vừa "xin chuyển việc")
+  // thì không hiện thẻ ảo "Tới lượt luân phiên" nữa, tránh hiện trùng.
+  const today0 = todayStr();
+  const queueHasTaskToday = new Set(
+    tasks
+      .filter((t) => t.rotation_queue_id && t.due_date === today0 && t.status !== "hoan_thanh")
+      .map((t) => t.rotation_queue_id)
+  );
+
   // Dựng giao diện: Tabs -> Việc Luân Phiên (Auto) -> Các việc cụ thể
   let html = renderTabsHTML();
-  html += renderAutoRotationsHTML(rotations);
+  html += renderAutoRotationsHTML(rotations, queueHasTaskToday);
 
   html += '<h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--ink-faint); margin-top: 20px;">Công việc được gán</h3>';
   
@@ -344,19 +357,49 @@ async function handleCompleteAutoRotation(queueId) {
     refreshActiveView();
 }
 
-// NHÂN TÍNH NĂNG MỚI: Xử lý bỏ qua / chuyển lượt cho người sau
-async function handleSkipAutoRotation(queueId) {
-    const { data: queue } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
-    if(!queue) return;
+// XIN CHUYỂN VIỆC cho việc luân phiên phát sinh (chưa có phiếu việc thật):
+// tạo 1 phiếu việc thật gán cho người đang tới lượt, rồi gửi yêu cầu chuyển việc
+// cho 3 người còn lại — giống hệt việc thường (ai nhận trước thì được).
+// Nếu cả 3 từ chối, người đang tới lượt buộc phải tự làm (xử lý sẵn trong
+// rejectExchangeFromNotif ở notifications.js).
+async function requestRotationHandoff(queueId) {
+  const { data: queue, error } = await supabaseClient.from("rotation_queues").select("*").eq("id", queueId).single();
+  if (error || !queue) return alert("Không tìm thấy hàng đợi.");
 
-    const nextIndex = (queue.current_index + 1) % queue.member_order.length;
-    await supabaseClient.from('rotation_queues').update({ current_index: nextIndex }).eq('id', queueId);
-    
-    const nextUserId = queue.member_order[nextIndex];
-    if (typeof createNotification === "function") {
-        await createNotification(nextUserId, `😅 ${STATE.me.name} bận, luân phiên "${queue.label}" đã chuyển đến lượt bạn!`, { type: "den_luot" });
-    }
-    refreshActiveView();
+  const holder = currentHolder(queue);
+  if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
+
+  const today = todayStr();
+
+  // Nếu đã có sẵn 1 phiếu việc thật cho lượt này hôm nay thì dùng lại, tránh tạo trùng
+  const { data: existing, error: findErr } = await supabaseClient
+    .from("tasks")
+    .select("*")
+    .eq("rotation_queue_id", queueId)
+    .eq("due_date", today)
+    .neq("status", "hoan_thanh")
+    .maybeSingle();
+
+  let taskId = !findErr && existing ? existing.id : null;
+
+  if (!taskId) {
+    const payload = {
+      title: queue.label,
+      assigned_to: holder.id,
+      created_by: holder.id,
+      rotation_queue_id: queue.id,
+      due_date: today,
+      status: "chua_lam",
+      priority: "binh_thuong",
+      points: queue.points,
+    };
+    const { data: task, error: insertErr } = await supabaseClient.from("tasks").insert(payload).select().single();
+    if (insertErr) return alert("Lỗi tạo việc: " + insertErr.message);
+    taskId = task.id;
+  }
+
+  await handoffTask(taskId);
+  refreshActiveView();
 }
 
 async function acceptTask(id) {
@@ -492,7 +535,7 @@ function bindTaskEvents(containerId = "tasks-container") {
 
     // Xử lý các nút của Phiếu việc luân phiên tự động
     if (action === "complete-rotation") await handleCompleteAutoRotation(queueId);
-    if (action === "skip-rotation") await handleSkipAutoRotation(queueId);
+    if (action === "request-handoff") await requestRotationHandoff(queueId);
   });
 
   container.addEventListener("change", (e) => {
