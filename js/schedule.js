@@ -93,6 +93,25 @@ async function renderScheduleView() {
   const schedules = await fetchSchedules();
   const queues = await fetchRotationQueues();
   const queueMap = Object.fromEntries(queues.map((q) => [q.id, q]));
+  const { data: todayTasks, error: taskErr } = await supabaseClient
+    .from("tasks")
+    .select("rotation_queue_id, assigned_to, status")
+    .eq("due_date", todayStr())
+    .neq("status", "hoan_thanh");
+  const activeTaskByQueue = taskErr
+    ? {}
+    : Object.fromEntries(
+        (todayTasks || [])
+          .filter((task) => task.rotation_queue_id && task.assigned_to)
+          .map((task) => [task.rotation_queue_id, task])
+      );
+
+  const displayHolder = (queueId) => {
+    const activeTask = activeTaskByQueue[queueId];
+    return activeTask
+      ? findProfile(STATE.profiles, activeTask.assigned_to)
+      : currentHolder(queueMap[queueId]);
+  };
 
   // Lưới cả tuần: cột Thứ 2 -> Chủ Nhật, hàng theo từng thành viên hiện đang phụ trách
   const order = [1, 2, 3, 4, 5, 6, 0];
@@ -104,7 +123,10 @@ async function renderScheduleView() {
           const chips = schedules
             .filter((s) => {
               if (!s.active) return false;
-              if (effectiveAssigneeId(s, queueMap) !== p.id) return false;
+              const assigneeId = s.rotation_queue_id
+                ? displayHolder(s.rotation_queue_id)?.id
+                : s.assigned_to;
+              if (assigneeId !== p.id) return false;
               return s.repeat_type === "daily" || (s.repeat_type === "weekly" && (s.repeat_days || []).includes(d));
             })
             .map(scheduleChipHTML)
@@ -128,13 +150,13 @@ async function renderScheduleView() {
       const rotating = !!s.rotation_queue_id;
       const who = rotating
         ? `🔁 luân phiên — hôm nay: ${(() => {
-            const holder = currentHolder(queueMap[s.rotation_queue_id]);
+            const holder = displayHolder(s.rotation_queue_id);
             return holder ? escapeHTML(holder.name) : "?";
           })()}`
         : escapeHTML(findProfile(STATE.profiles, s.assigned_to)?.name || "?");
       const when = s.repeat_type === "daily" ? "Mỗi ngày" : "Mỗi " + (s.repeat_days || []).map((d) => WEEKDAY_LABEL[d]).join(", ");
       const holderColor = rotating
-        ? currentHolder(queueMap[s.rotation_queue_id])?.avatar_color || "#ccc"
+        ? displayHolder(s.rotation_queue_id)?.avatar_color || "#ccc"
         : findProfile(STATE.profiles, s.assigned_to)?.avatar_color || "#ccc";
       return `
       <div class="task-ticket" style="border-left-color:${holderColor}" data-id="${s.id}">

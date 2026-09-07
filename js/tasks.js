@@ -381,11 +381,13 @@ async function handleCompleteAutoRotation(queueId) {
     // Lấy thông tin queue
     const { data: queue, error: qErr } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
     if (qErr || !queue) return alert("Lỗi lấy thông tin luân phiên.");
+  const holder = currentHolder(queue);
+  if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
 
     // Tự động tạo 1 task trạng thái "hoan_thanh" để ghi nhận điểm và lịch sử
     const payload = {
         title: queue.label,
-        assigned_to: selectedUserId, // người đang làm
+    assigned_to: holder.id, // người đang tới lượt và hoàn thành việc
         created_by: STATE.me.id,
         rotation_queue_id: queue.id,
         status: 'hoan_thanh',

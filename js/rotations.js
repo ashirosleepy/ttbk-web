@@ -98,6 +98,21 @@ async function renderRotationAdmin() {
 
   if (!listEl) return;
 
+  // Nếu task hôm nay đã được tạo, task.assigned_to là nguồn chính xác hơn
+  // current_index vì lượt có thể đã được chuyển sau khi task được tạo.
+  const { data: todayTasks, error: taskErr } = await supabaseClient
+    .from("tasks")
+    .select("rotation_queue_id, assigned_to, status")
+    .eq("due_date", todayStr())
+    .neq("status", "hoan_thanh");
+  const activeTaskByQueue = taskErr
+    ? {}
+    : Object.fromEntries(
+        (todayTasks || [])
+          .filter((task) => task.rotation_queue_id && task.assigned_to)
+          .map((task) => [task.rotation_queue_id, task])
+      );
+
   const safeQueues = Array.isArray(queues) ? queues : [];
   if (safeQueues.length === 0) {
     listEl.innerHTML = `<p class="empty-state">Chưa có hàng đợi nào. Thử tạo cho "Đổ rác" hoặc "Thay bình nước".</p>`;
@@ -106,7 +121,10 @@ async function renderRotationAdmin() {
 
   listEl.innerHTML = safeQueues
     .map((q) => {
-      const holder = currentHolder(q);
+      const activeTask = activeTaskByQueue[q.id];
+      const holder = activeTask
+        ? findProfile(STATE.profiles, activeTask.assigned_to)
+        : currentHolder(q);
       const orderNames = (q.member_order || [])
         .map((id) => {
           const p = findProfile(Array.isArray(STATE.profiles) ? STATE.profiles : [], id);
