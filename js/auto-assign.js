@@ -21,7 +21,7 @@
 
 const PRESET_CHORES = [
   { title: "Quét nhà", points: 10 },
-  { title: "Lau nhà", points: 10 },
+  { title: "Lau nhà", points: 15 },
   { title: "Nấu ăn trưa", points: 30 },
   { title: "Nấu ăn tối", points: 30 },
   { title: "Lấy quần áo", points: 10 },
