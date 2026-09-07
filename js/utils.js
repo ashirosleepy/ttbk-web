@@ -2,6 +2,13 @@
 // UTILS.JS — các hàm nhỏ dùng chung cho nhiều trang
 // ============================================================
 
+// ---- Cấu hình hệ thống điểm công bằng ----
+// Bỏ việc (quá hạn, bấm "Không hoàn thành"): trừ một nửa điểm thưởng của việc đó.
+const MISS_PENALTY_RATIO = 0.5;
+// Xin đổi việc và có người khác nhận thành công: trừ 1 khoản cố định nhỏ,
+// đủ để không khuyến khích đổi việc tuỳ tiện nhưng không "phạt nặng" lý do chính đáng.
+const HANDOFF_PENALTY = 2;
+
 // Lấy chữ cái đầu của tên, vd "Tiến" -> "T"
 function initials(name) {
   if (!name) return "?";
@@ -48,6 +55,7 @@ function statusBadgeHTML(status) {
     chua_lam: `<span class="badge badge-todo">Chưa làm</span>`,
     dang_cho: `<span class="badge badge-wait">Đang chờ</span>`,
     hoan_thanh: `<span class="badge badge-done">Hoàn thành</span>`,
+    bo_lo: `<span class="badge badge-missed">Bỏ việc</span>`,
   };
   return map[status] || "";
 }
@@ -80,4 +88,58 @@ async function logHistory(taskId, userId, action, detail) {
     .from("task_history")
     .insert({ task_id: taskId, user_id: userId, action, detail });
   if (error) console.error("Không ghi được lịch sử:", error.message);
+}
+
+// ---- Điểm công bằng: cộng khi hoàn thành việc, trừ khi bỏ việc / xin đổi việc ----
+// Ghi 1 khoản cộng/trừ điểm vào bảng point_adjustments (cần tạo bảng này, xem sql/point_adjustments.sql).
+// reason gợi ý: "bo_viec" (bỏ việc), "xin_doi" (xin đổi việc thành công).
+async function addPointAdjustment(userId, taskId, delta, reason) {
+  if (!userId || !delta) return;
+  const { error } = await supabaseClient
+    .from("point_adjustments")
+    .insert({ user_id: userId, task_id: taskId, delta, reason });
+  if (error) console.error("Không ghi được điều chỉnh điểm:", error.message);
+}
+
+// Tổng các khoản cộng/trừ điểm của mọi người, tính từ 1 thời điểm (mặc định: từ đầu).
+async function fetchPointAdjustmentsSince(sinceISO = null) {
+  const map = {};
+  let query = supabaseClient.from("point_adjustments").select("user_id, delta");
+  if (sinceISO) query = query.gte("created_at", sinceISO);
+  const { data, error } = await query;
+  if (error) {
+    console.error("Không lấy được điều chỉnh điểm:", error.message);
+    return map;
+  }
+  (data || []).forEach((a) => {
+    map[a.user_id] = (map[a.user_id] || 0) + (a.delta || 0);
+  });
+  return map;
+}
+
+// Tổng điểm hiện tại của mỗi thành viên = tổng điểm việc đã hoàn thành (tasks.status = hoan_thanh)
+// + tổng các khoản cộng/trừ điểm (point_adjustments). Dùng cho trang Thành viên và
+// để ưu tiên chia việc mới cho người đang có ít điểm hơn.
+async function fetchMemberPointsMap() {
+  const map = {};
+  (STATE.profiles || []).forEach((p) => (map[p.id] = 0));
+
+  const { data: doneTasks, error: doneErr } = await supabaseClient
+    .from("tasks")
+    .select("assigned_to, points")
+    .eq("status", "hoan_thanh");
+  if (doneErr) {
+    console.error("Không lấy được việc đã hoàn thành:", doneErr.message);
+  } else {
+    (doneTasks || []).forEach((t) => {
+      if (map[t.assigned_to] !== undefined) map[t.assigned_to] += t.points || 0;
+    });
+  }
+
+  const adjustments = await fetchPointAdjustmentsSince();
+  Object.keys(adjustments).forEach((userId) => {
+    if (map[userId] !== undefined) map[userId] += adjustments[userId];
+  });
+
+  return map;
 }

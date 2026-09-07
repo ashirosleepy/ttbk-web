@@ -61,16 +61,26 @@ function collectSelectedItems() {
 
 // ---------------- Thuật toán chia công bằng ----------------
 
-// Tổng điểm các việc CHƯA XONG hiện tại của mỗi thành viên — dùng làm "mức độ bận"
+// "Mức độ bận" của mỗi thành viên = tổng điểm các việc CHƯA XONG hiện tại
+// + tổng điểm đã có (chấm điểm công bằng hơn: ưu tiên việc mới cho người đang ít điểm hơn).
+// Việc đã bị đánh dấu "bo_lo" (bỏ việc) không tính vào việc đang mở nữa.
 async function computeCurrentLoad() {
   const tasks = await fetchTasks();
   const load = {};
   STATE.profiles.forEach((p) => (load[p.id] = 0));
   tasks
-    .filter((t) => t.status !== "hoan_thanh")
+    .filter((t) => t.status !== "hoan_thanh" && t.status !== "bo_lo")
     .forEach((t) => {
       if (load[t.assigned_to] !== undefined) load[t.assigned_to] += t.points || 0;
     });
+
+  if (typeof fetchMemberPointsMap === "function") {
+    const pointsMap = await fetchMemberPointsMap();
+    STATE.profiles.forEach((p) => {
+      load[p.id] = (load[p.id] || 0) + (pointsMap[p.id] || 0);
+    });
+  }
+
   return load;
 }
 

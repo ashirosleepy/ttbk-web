@@ -1,0 +1,16 @@
+/* ============================================================
+   Thêm vào css/style.css — style cho trạng thái "bo_lo" (Bỏ việc)
+   mới thêm ở phiên bản chấm điểm công bằng hơn.
+   Bạn chưa upload style.css nên style hiện có cho .badge-* và
+   .task-ticket không xem được — hãy chỉnh màu bên dưới cho khớp
+   theme hiện tại nếu cần.
+   ============================================================ */
+
+.badge-missed {
+  background: #fdecea;
+  color: #c0392b;
+}
+
+.task-ticket.missed {
+  background: #fafafa;
+}

@@ -118,12 +118,18 @@ async function renderDashboard() {
     return { profile: p, pct };
   });
 
-  // Điểm công bằng: chỉ tính việc hoàn thành từ thứ 2 tuần này trở đi
-  const weekStart = new Date(mondayOfWeek(today) + "T00:00:00").getTime();
+  // Điểm công bằng: việc hoàn thành CỘNG các khoản trừ (bỏ việc, xin đổi việc)
+  // từ thứ 2 tuần này trở đi.
+  const weekStartDate = mondayOfWeek(today);
+  const weekStart = new Date(weekStartDate + "T00:00:00").getTime();
+  const weeklyAdjustments = typeof fetchPointAdjustmentsSince === "function"
+    ? await fetchPointAdjustmentsSince(new Date(weekStart).toISOString())
+    : {};
   const weekly = STATE.profiles.map((p) => {
-    const points = tasks
+    const earned = tasks
       .filter((t) => t.assigned_to === p.id && t.status === "hoan_thanh" && t.completed_at && new Date(t.completed_at).getTime() >= weekStart)
       .reduce((sum, t) => sum + (t.points || 0), 0);
+    const points = earned + (weeklyAdjustments[p.id] || 0);
     return { profile: p, points };
   });
   const maxPoints = Math.max(1, ...weekly.map((w) => w.points));
@@ -143,7 +149,7 @@ async function renderDashboard() {
           (w) => `
         <div class="progress-row">
           <span class="name">${escapeHTML(w.profile.name)}</span>
-          <div class="progress-track"><div class="progress-fill" style="width:${Math.round((w.points / maxPoints) * 100)}%;background:${w.profile.avatar_color}"></div></div>
+          <div class="progress-track"><div class="progress-fill" style="width:${Math.max(0, Math.round((w.points / maxPoints) * 100))}%;background:${w.profile.avatar_color}"></div></div>
           <span class="progress-pct">${w.points} đ</span>
         </div>`
         )

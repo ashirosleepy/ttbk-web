@@ -180,8 +180,14 @@ async function acceptExchangeFromNotif(exchangeId, taskId, notifId) {
 
   await supabaseClient.from("task_exchanges").update({ status: "cancelled" }).eq("task_id", taskId).eq("from_user", data.from_user).neq("id", resolvedExchangeId).eq("status", "open");
   await supabaseClient.from("tasks").update({ assigned_to: STATE.me.id }).eq("id", taskId);
-  await logHistory(taskId, STATE.me.id, "doi_viec", `${STATE.me.name} nhận đổi việc`);
-  await createNotification(data.from_user, `✅ ${STATE.me.name} đã nhận đổi việc giúp bạn.`, { type: "thong_bao", taskId });
+
+  // Xin đổi việc thành công (có người nhận) -> trừ điểm người xin đổi, chấm điểm công bằng hơn.
+  if (typeof addPointAdjustment === "function") {
+    await addPointAdjustment(data.from_user, taskId, -HANDOFF_PENALTY, "xin_doi");
+  }
+
+  await logHistory(taskId, STATE.me.id, "doi_viec", `${STATE.me.name} nhận đổi việc (người xin đổi bị trừ ${HANDOFF_PENALTY} điểm)`);
+  await createNotification(data.from_user, `✅ ${STATE.me.name} đã nhận đổi việc giúp bạn. Bạn bị trừ ${HANDOFF_PENALTY} điểm vì xin đổi việc.`, { type: "thong_bao", taskId });
   await markNotificationRead(notifId);
 
   renderNotifSection();
