@@ -355,22 +355,6 @@ async function toggleTaskDone(id) {
       if (typeof advanceQueueByCompleter === "function") {
         await advanceQueueByCompleter(data.rotation_queue_id, data.assigned_to);
       }
-    } else {
-      const nextAssignee = await pickLeastFrequentAssignee({
-        title: data.title,
-        rotation_queue_id: data.rotation_queue_id,
-        excludeUserIds: [data.assigned_to],
-      });
-      if (nextAssignee) {
-        const { error: assignErr } = await supabaseClient
-          .from("tasks")
-          .update({ assigned_to: nextAssignee.id })
-          .eq("id", id);
-        if (!assignErr) {
-          await logHistory(id, STATE.me.id, "giao_tiep", `${STATE.me.name} ưu tiên giao việc "${data.title}" cho ${nextAssignee.name} do tần suất làm ít hơn.`);
-          await createNotification(nextAssignee.id, `📌 ${STATE.me.name} đã hoàn thành việc "${data.title}". Hệ thống ưu tiên giao tiếp cho bạn vì bạn làm ít hơn.` , { type: "thong_bao", taskId: id });
-        }
-      }
     }
   }
 
@@ -382,11 +366,13 @@ async function handleCompleteAutoRotation(queueId) {
     // Lấy thông tin queue
     const { data: queue, error: qErr } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
     if (qErr || !queue) return alert("Lỗi lấy thông tin luân phiên.");
+    const holder = currentHolder(queue);
+    if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
 
     // Tự động tạo 1 task trạng thái "hoan_thanh" để ghi nhận điểm và lịch sử
     const payload = {
         title: queue.label,
-        assigned_to: selectedUserId, // người đang làm
+      assigned_to: holder.id, // người đang tới lượt và hoàn thành việc
         created_by: STATE.me.id,
         rotation_queue_id: queue.id,
         status: 'hoan_thanh',
