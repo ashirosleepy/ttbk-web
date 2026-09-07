@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>TTBK — Việc nhà</title>
+<title>TTBK</title>
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -293,6 +293,30 @@
               <div class="color-picker" id="st-colors"></div>
             </div>
             <button class="btn btn-primary btn-sm" id="save-settings">Lưu thay đổi</button>
+          </div>
+
+          <div class="settings-block">
+            <h3>Trạng thái</h3>
+            <div class="field" style="display:flex; align-items:center; gap:10px;">
+              <input type="checkbox" id="st-away-toggle" style="width:18px; height:18px;" />
+              <label for="st-away-toggle" style="margin:0;">✈️ Đang đi vắng</label>
+            </div>
+            <div id="st-away-dates" style="display:none;">
+              <div class="form-row">
+                <div class="field">
+                  <label for="st-away-from">Từ ngày</label>
+                  <input type="date" id="st-away-from" />
+                </div>
+                <div class="field">
+                  <label for="st-away-until">Đến ngày (không bắt buộc)</label>
+                  <input type="date" id="st-away-until" />
+                </div>
+              </div>
+              <p style="font-size:12px;color:var(--ink-faint);margin:0 0 14px;">
+                Nếu điền "Đến ngày", hệ thống sẽ tự khôi phục trạng thái có mặt cho bạn khi bạn mở app sau ngày đó.
+              </p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="save-away-status">Lưu trạng thái</button>
           </div>
 
           <div class="settings-block" style="margin-bottom:0;">

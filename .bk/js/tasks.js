@@ -64,13 +64,26 @@ async function buildTaskFrequencyMap({ title, rotation_queue_id, excludeUserIds 
 }
 
 async function pickLeastFrequentAssignee({ title, rotation_queue_id, excludeUserIds = [] }) {
-  const eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id));
+  // Người đang đi vắng không được coi là ứng cử viên nhận việc mới.
+  let eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id) && !p.is_away);
+  if (eligible.length === 0) {
+    // Nếu chỉ vì loại người đi vắng mà hết ứng viên thì đành bỏ ràng buộc đó để không bị kẹt.
+    eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id));
+  }
   if (eligible.length === 0) return null;
 
-  const frequencyMap = await buildTaskFrequencyMap({ title, rotation_queue_id, excludeUserIds });
+  const [frequencyMap, pointsMap] = await Promise.all([
+    buildTaskFrequencyMap({ title, rotation_queue_id, excludeUserIds }),
+    typeof fetchMemberPointsMap === "function" ? fetchMemberPointsMap() : Promise.resolve({}),
+  ]);
+
   return [...eligible].sort((a, b) => {
-    const diff = (frequencyMap[a.id] || 0) - (frequencyMap[b.id] || 0);
-    return diff !== 0 ? diff : a.name.localeCompare(b.name);
+    const freqDiff = (frequencyMap[a.id] || 0) - (frequencyMap[b.id] || 0);
+    if (freqDiff !== 0) return freqDiff;
+    // Làm ít bằng nhau -> ưu tiên người đang có ít điểm hơn (chấm điểm công bằng hơn)
+    const pointsDiff = (pointsMap[a.id] || 0) - (pointsMap[b.id] || 0);
+    if (pointsDiff !== 0) return pointsDiff;
+    return a.name.localeCompare(b.name);
   })[0] || null;
 }
 
@@ -81,6 +94,50 @@ function taskTicketHTML(task) {
   const isDone = task.status === "hoan_thanh";
   const assignee = findProfile(STATE.profiles, task.assigned_to);
   const borderColor = assignee ? assignee.avatar_color : "#ccc";
+
+  // Việc cố định rơi vào ngày người phụ trách đang đi vắng: không có ai làm, hiện cho
+  // TẤT CẢ mọi người thấy để ai đó bấm "Nhận thay" (được cộng thêm điểm thưởng).
+  if (task.status === "vo_chu") {
+    return `
+      <div class="task-ticket" style="border-left-color:#c9932e; border-left-style:dashed;" data-id="${task.id}">
+        <div class="task-check" style="border-style:dashed;">✈️</div>
+        <div class="task-body">
+          <div class="task-title">${escapeHTML(task.title)}</div>
+          <div class="task-meta">
+            ${statusBadgeHTML(task.status)}
+            <span>Người phụ trách đang đi vắng — chưa có ai làm việc này</span>
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="btn btn-primary btn-sm" data-action="claim-unassigned">🙋 Nhận thay (+${AWAY_COVER_BONUS}đ)</button>
+          <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
+          <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
+        </div>
+      </div>`;
+  }
+
+  const isMissed = task.status === "bo_lo";
+
+  // Việc bị đánh dấu "Không hoàn thành" — vẫn hiện trong danh sách (gạch ngang),
+  // có thể huỷ đánh dấu để hoàn lại điểm nếu đánh dấu nhầm.
+  if (isMissed) {
+    return `
+      <div class="task-ticket missed" style="border-left-color:${borderColor}; opacity:0.7;" data-id="${task.id}">
+        <div class="task-check" style="border-style:solid; border-color:#c0392b; color:#c0392b;">✕</div>
+        <div class="task-body">
+          <div class="task-title" style="text-decoration:line-through;">${escapeHTML(task.title)}</div>
+          <div class="task-meta">
+            ${statusBadgeHTML(task.status)}
+            <span>${assignee ? escapeHTML(assignee.name) : "?"} đã bỏ việc này</span>
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" data-action="undo-miss" title="Huỷ đánh dấu bỏ việc, hoàn lại điểm">↺</button>
+          <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
+          <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
+        </div>
+      </div>`;
+  }
 
   // Việc phát sinh / luân phiên đang chờ người được gán xác nhận
   if (isPending) {
@@ -102,6 +159,7 @@ function taskTicketHTML(task) {
                  <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>`
               : ""
           }
+          <button class="icon-btn" data-action="miss" title="Đánh dấu không hoàn thành (trừ điểm)">✕</button>
           <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
           <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
         </div>
@@ -125,6 +183,7 @@ function taskTicketHTML(task) {
       </div>
       <div class="task-actions">
         <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
+        ${!isDone ? `<button class="icon-btn" data-action="miss" title="Đánh dấu không hoàn thành (trừ điểm)">✕</button>` : ""}
         <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
         <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
       </div>
@@ -184,6 +243,7 @@ function renderAutoRotationsHTML(rotations, queueHasTaskToday = new Set()) {
               </div>
               <div class="task-actions">
                   <button class="icon-btn" data-action="request-handoff" data-queue="${r.id}" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
+                  <button class="icon-btn" data-action="miss-rotation" data-queue="${r.id}" title="Không hoàn thành — trừ điểm và chuyển lượt cho người kế tiếp">✕</button>
               </div>
           </div>`;
       });
@@ -224,20 +284,37 @@ async function renderTasksView() {
   if (filteredTasks.length === 0) {
     html += `<p class="empty-state">Chưa có việc nào. Bấm "+ Thêm việc" để tạo việc.</p>`;
   } else {
-    const today = todayStr();
-    const groups = groupTasksByDate(filteredTasks);
-    const dates = Object.keys(groups).sort();
+    // Việc gắn với hàng đợi luân phiên mà chưa xong (chưa hoàn thành, chưa bị đánh dấu bỏ)
+    // luôn hiện ở trên cùng, không bị chôn theo nhóm ngày, để không ai quên lượt của mình.
+    const rotationPinned = filteredTasks.filter(
+      (t) => t.rotation_queue_id && t.status !== "hoan_thanh" && t.status !== "bo_lo"
+    );
+    const rest = filteredTasks.filter((t) => !rotationPinned.includes(t));
 
-    dates.forEach((date) => {
-      let label;
-      if (date === today) label = "Hôm nay";
-      else if (date < today) label = `Trễ hạn — ${formatDateShort(date)}`;
-      else label = formatDateShort(date);
-
-      html += `<div class="day-label">${label}</div><div class="task-list">`;
-      groups[date].forEach((t) => (html += taskTicketHTML(t)));
+    if (rotationPinned.length > 0) {
+      html += `<div class="day-label">🔁 Việc luân phiên — chưa làm</div><div class="task-list">`;
+      rotationPinned.forEach((t) => (html += taskTicketHTML(t)));
       html += `</div>`;
-    });
+    }
+
+    if (rest.length === 0 && rotationPinned.length === 0) {
+      html += `<p class="empty-state">Chưa có việc nào. Bấm "+ Thêm việc" để tạo việc.</p>`;
+    } else if (rest.length > 0) {
+      const today = todayStr();
+      const groups = groupTasksByDate(rest);
+      const dates = Object.keys(groups).sort();
+
+      dates.forEach((date) => {
+        let label;
+        if (date === today) label = "Hôm nay";
+        else if (date < today) label = `Trễ hạn — ${formatDateShort(date)}`;
+        else label = formatDateShort(date);
+
+        html += `<div class="day-label">${label}</div><div class="task-list">`;
+        groups[date].forEach((t) => (html += taskTicketHTML(t)));
+        html += `</div>`;
+      });
+    }
   }
 
   container.innerHTML = html;
@@ -300,25 +377,28 @@ async function toggleTaskDone(id) {
   );
 
   if (newStatus === "hoan_thanh") {
+    if (typeof distributeAwayShadowPoints === "function") {
+      await distributeAwayShadowPoints(id, data.points);
+    }
+
     if (data.rotation_queue_id) {
       if (typeof advanceQueueByCompleter === "function") {
         await advanceQueueByCompleter(data.rotation_queue_id, data.assigned_to);
       }
     } else {
+      // CHỈ gợi ý cho lần giao việc TIẾP THEO — KHÔNG được đổi assigned_to của task vừa
+      // hoàn thành này, vì đó là bản ghi lịch sử dùng để tính điểm cho người đã làm.
       const nextAssignee = await pickLeastFrequentAssignee({
         title: data.title,
         rotation_queue_id: data.rotation_queue_id,
         excludeUserIds: [data.assigned_to],
       });
       if (nextAssignee) {
-        const { error: assignErr } = await supabaseClient
-          .from("tasks")
-          .update({ assigned_to: nextAssignee.id })
-          .eq("id", id);
-        if (!assignErr) {
-          await logHistory(id, STATE.me.id, "giao_tiep", `${STATE.me.name} ưu tiên giao việc "${data.title}" cho ${nextAssignee.name} do tần suất làm ít hơn.`);
-          await createNotification(nextAssignee.id, `📌 ${STATE.me.name} đã hoàn thành việc "${data.title}". Hệ thống ưu tiên giao tiếp cho bạn vì bạn làm ít hơn.` , { type: "thong_bao", taskId: id });
-        }
+        await createNotification(
+          nextAssignee.id,
+          `📌 ${STATE.me.name} đã hoàn thành việc "${data.title}". Lần sau việc này nên ưu tiên giao cho bạn vì bạn làm ít hơn.`,
+          { type: "thong_bao", taskId: id }
+        );
       }
     }
   }
@@ -331,11 +411,13 @@ async function handleCompleteAutoRotation(queueId) {
     // Lấy thông tin queue
     const { data: queue, error: qErr } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
     if (qErr || !queue) return alert("Lỗi lấy thông tin luân phiên.");
+  const holder = currentHolder(queue);
+  if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
 
     // Tự động tạo 1 task trạng thái "hoan_thanh" để ghi nhận điểm và lịch sử
     const payload = {
         title: queue.label,
-        assigned_to: selectedUserId, // người đang làm
+    assigned_to: holder.id, // người đang tới lượt và hoàn thành việc
         created_by: STATE.me.id,
         rotation_queue_id: queue.id,
         status: 'hoan_thanh',
@@ -347,6 +429,10 @@ async function handleCompleteAutoRotation(queueId) {
     const { data: task, error: tErr } = await supabaseClient.from('tasks').insert(payload).select().single();
     if (tErr) return alert("Lỗi ghi nhận công việc: " + tErr.message);
 
+    if (typeof distributeAwayShadowPoints === "function") {
+      await distributeAwayShadowPoints(task.id, queue.points);
+    }
+
     // Ghi lịch sử
     await logHistory(task.id, STATE.me.id, "hoan_thanh", `${STATE.me.name} đã làm xong việc luân phiên: ${queue.label}`);
 
@@ -355,6 +441,86 @@ async function handleCompleteAutoRotation(queueId) {
     await supabaseClient.from('rotation_queues').update({ current_index: nextIndex }).eq('id', queueId);
 
     refreshActiveView();
+}
+
+// Đánh dấu lượt luân phiên hiện tại là "Không hoàn thành": tạo 1 phiếu việc trạng thái
+// bo_lo để lưu lại lịch sử + trừ điểm người đang tới lượt, rồi tự chuyển sang người kế tiếp
+// (giống hệt việc họ đã "hoàn thành" về mặt chuyển lượt, chỉ khác là bị trừ điểm thay vì cộng).
+async function handleMissRotation(queueId) {
+  const { data: queue, error: qErr } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
+  if (qErr || !queue) return alert("Lỗi lấy thông tin luân phiên.");
+
+  const holder = currentHolder(queue);
+  if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
+
+  const penalty = -Math.round((queue.points || 0) * MISS_PENALTY_RATIO);
+  if (!confirm(`Đánh dấu "${queue.label}" là KHÔNG hoàn thành? ${holder.name} sẽ bị trừ ${Math.abs(penalty)} điểm và lượt sẽ chuyển cho người kế tiếp.`)) return;
+
+  const payload = {
+    title: queue.label,
+    assigned_to: holder.id,
+    created_by: STATE.me.id,
+    rotation_queue_id: queue.id,
+    status: 'bo_lo',
+    points: queue.points,
+    due_date: todayStr(),
+  };
+
+  const { data: task, error: tErr } = await supabaseClient.from('tasks').insert(payload).select().single();
+  if (tErr) return alert("Lỗi ghi nhận: " + tErr.message);
+
+  if (penalty !== 0) await addPointAdjustment(holder.id, task.id, penalty, "bo_viec");
+
+  await logHistory(task.id, STATE.me.id, "bo_viec", `${STATE.me.name} đánh dấu "${queue.label}" là không hoàn thành (trừ ${Math.abs(penalty)} điểm của ${holder.name}).`);
+
+  const nextIndex = (queue.current_index + 1) % queue.member_order.length;
+  await supabaseClient.from('rotation_queues').update({ current_index: nextIndex }).eq('id', queueId);
+
+  refreshActiveView();
+}
+
+// Đánh dấu 1 việc thường/việc phát sinh đã có phiếu thật là "Không hoàn thành": đổi trạng
+// thái sang bo_lo và trừ điểm người phụ trách (một nửa điểm thưởng của việc đó).
+async function markTaskMissed(id) {
+  const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
+  if (error || !task) return alert("Không tìm thấy việc.");
+  const assignee = findProfile(STATE.profiles, task.assigned_to);
+
+  const penalty = -Math.round((task.points || 0) * MISS_PENALTY_RATIO);
+  if (!confirm(`Đánh dấu "${task.title}" là KHÔNG hoàn thành? ${assignee ? assignee.name : "Người phụ trách"} sẽ bị trừ ${Math.abs(penalty)} điểm.`)) return;
+
+  const { error: updErr } = await supabaseClient.from("tasks").update({ status: "bo_lo" }).eq("id", id);
+  if (updErr) return alert("Lỗi: " + updErr.message);
+
+  if (penalty !== 0 && task.assigned_to) {
+    await addPointAdjustment(task.assigned_to, id, penalty, "bo_viec");
+  }
+
+  await logHistory(
+    id,
+    STATE.me.id,
+    "bo_viec",
+    `${STATE.me.name} đánh dấu "${task.title}" là không hoàn thành${penalty ? ` (trừ ${Math.abs(penalty)} điểm của ${assignee ? assignee.name : "?"})` : ""}.`
+  );
+  refreshActiveView();
+}
+
+// Huỷ đánh dấu "bỏ việc" nếu lỡ đánh dấu nhầm: trả việc về "chưa làm" và hoàn lại điểm đã trừ.
+async function undoMissedTask(id) {
+  if (!confirm("Huỷ đánh dấu bỏ việc? Việc sẽ trở lại trạng thái chưa làm và điểm đã trừ sẽ được hoàn lại.")) return;
+
+  const { error: updErr } = await supabaseClient.from("tasks").update({ status: "chua_lam" }).eq("id", id);
+  if (updErr) return alert("Lỗi: " + updErr.message);
+
+  const { error: delErr } = await supabaseClient
+    .from("point_adjustments")
+    .delete()
+    .eq("task_id", id)
+    .eq("reason", "bo_viec");
+  if (delErr) console.error("Không hoàn lại được điểm:", delErr.message);
+
+  await logHistory(id, STATE.me.id, "huy_bo_viec", `${STATE.me.name} huỷ đánh dấu bỏ việc, hoàn lại điểm.`);
+  refreshActiveView();
 }
 
 // XIN CHUYỂN VIỆC cho việc luân phiên phát sinh (chưa có phiếu việc thật):
@@ -415,6 +581,44 @@ async function acceptTask(id) {
   if (typeof refreshNotifBadge === "function") refreshNotifBadge();
 }
 
+// Nhận thay 1 việc "vô chủ" (người phụ trách gốc đang đi vắng): người đầu tiên bấm
+// "Nhận thay" sẽ được gán việc đó và được cộng thêm điểm thưởng AWAY_COVER_BONUS.
+async function claimUnassignedTask(id) {
+  const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
+  if (error || !task) return alert("Không tìm thấy việc.");
+  if (task.status !== "vo_chu") {
+    alert("Việc này đã có người nhận rồi.");
+    refreshActiveView();
+    return;
+  }
+
+  const { data, error: updErr } = await supabaseClient
+    .from("tasks")
+    .update({ assigned_to: STATE.me.id, status: "chua_lam" })
+    .eq("id", id)
+    .eq("status", "vo_chu")
+    .select()
+    .single();
+
+  if (updErr || !data) {
+    alert("Việc này vừa có người khác nhận mất rồi.");
+    refreshActiveView();
+    return;
+  }
+
+  await addPointAdjustment(STATE.me.id, id, AWAY_COVER_BONUS, "nhan_thay_vang_mat");
+  await logHistory(
+    id,
+    STATE.me.id,
+    "nhan_thay",
+    `${STATE.me.name} nhận thay việc "${task.title}" của người đang đi vắng (+${AWAY_COVER_BONUS} điểm thưởng).`
+  );
+
+  refreshActiveView();
+  if (typeof refreshNotifBadge === "function") refreshNotifBadge();
+  alert(`Bạn đã nhận thay việc này (+${AWAY_COVER_BONUS} điểm thưởng).`);
+}
+
 async function reassignTask(id, newUserId) {
   const newProfile = findProfile(STATE.profiles, newUserId);
   const { error } = await supabaseClient.from("tasks").update({ assigned_to: newUserId }).eq("id", id);
@@ -437,7 +641,11 @@ async function handoffTask(id) {
   if (error || !task) return alert("Không tìm thấy việc.");
 
   const reason = prompt("Lý do (không bắt buộc):", "Bận việc khác") || "";
-  const others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to);
+  let others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to && !p.is_away);
+  if (others.length === 0) {
+    // Nếu ai cũng đang đi vắng thì đành bỏ ràng buộc đó, còn hơn không gửi được cho ai.
+    others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to);
+  }
   const othersIds = others.map((p) => p.id);
 
   if (othersIds.length === 0) {
@@ -530,12 +738,16 @@ function bindTaskEvents(containerId = "tasks-container") {
     if (action === "toggle") toggleTaskDone(id);
     if (action === "accept") acceptTask(id);
     if (action === "handoff") handoffTask(id);
+    if (action === "miss") await markTaskMissed(id);
+    if (action === "undo-miss") await undoMissedTask(id);
     if (action === "history") toggleTaskHistory(id, ticket);
     if (action === "delete") deleteTask(id);
+    if (action === "claim-unassigned") await claimUnassignedTask(id);
 
     // Xử lý các nút của Phiếu việc luân phiên tự động
     if (action === "complete-rotation") await handleCompleteAutoRotation(queueId);
     if (action === "request-handoff") await requestRotationHandoff(queueId);
+    if (action === "miss-rotation") await handleMissRotation(queueId);
   });
 
   container.addEventListener("change", (e) => {
@@ -598,5 +810,6 @@ async function loadTasksSection() {
   }
   bindNewTaskForm();
   bindTaskEvents();
+  if (typeof bindAutoAssignEvents === "function") bindAutoAssignEvents();
   await renderTasksView();
 }

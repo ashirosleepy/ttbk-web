@@ -2,6 +2,13 @@
 // UTILS.JS — các hàm nhỏ dùng chung cho nhiều trang
 // ============================================================
 
+// ---- Cấu hình hệ thống điểm công bằng ----
+// Bỏ việc (quá hạn, bấm "Không hoàn thành"): trừ một nửa điểm thưởng của việc đó.
+const MISS_PENALTY_RATIO = 0.5;
+// Xin đổi việc và có người khác nhận thành công: trừ 1 khoản cố định nhỏ,
+// đủ để không khuyến khích đổi việc tuỳ tiện nhưng không "phạt nặng" lý do chính đáng.
+const HANDOFF_PENALTY = 2;
+
 // Lấy chữ cái đầu của tên, vd "Tiến" -> "T"
 function initials(name) {
   if (!name) return "?";
@@ -9,10 +16,13 @@ function initials(name) {
 }
 
 // Vẽ 1 avatar tròn có màu + chữ cái đầu, dựa trên profile {name, avatar_color}
+// Nếu thành viên đang đi vắng (is_away), avatar được làm mờ đi để mọi người dễ nhận biết.
 function avatarHTML(profile, size = "") {
   if (!profile) return `<div class="avatar ${size}" style="background:#ccc">?</div>`;
   const cls = size ? `avatar ${size}` : "avatar";
-  return `<div class="${cls}" style="background:${profile.avatar_color || "#3B6E8F"}">${initials(profile.name)}</div>`;
+  const awayStyle = profile.is_away ? "opacity:0.4;filter:grayscale(70%);" : "";
+  const title = profile.is_away ? ' title="Đang tạm vắng"' : "";
+  return `<div class="${cls}" style="background:${profile.avatar_color || "#3B6E8F"};${awayStyle}"${title}>${initials(profile.name)}</div>`;
 }
 
 // Định dạng ngày kiểu Việt Nam: 2026-09-06 -> 06/09
@@ -48,6 +58,8 @@ function statusBadgeHTML(status) {
     chua_lam: `<span class="badge badge-todo">Chưa làm</span>`,
     dang_cho: `<span class="badge badge-wait">Đang chờ</span>`,
     hoan_thanh: `<span class="badge badge-done">Hoàn thành</span>`,
+    bo_lo: `<span class="badge badge-missed">Bỏ việc</span>`,
+    vo_chu: `<span class="badge badge-pending">✈️ Vô chủ</span>`,
   };
   return map[status] || "";
 }
@@ -80,4 +92,80 @@ async function logHistory(taskId, userId, action, detail) {
     .from("task_history")
     .insert({ task_id: taskId, user_id: userId, action, detail });
   if (error) console.error("Không ghi được lịch sử:", error.message);
+}
+
+// ---- Điểm công bằng: cộng khi hoàn thành việc, trừ khi bỏ việc / xin đổi việc ----
+// Ghi 1 khoản cộng/trừ điểm vào bảng point_adjustments (cần tạo bảng này, xem sql/point_adjustments.sql).
+// reason gợi ý: "bo_viec" (bỏ việc), "xin_doi" (xin đổi việc thành công).
+async function addPointAdjustment(userId, taskId, delta, reason) {
+  if (!userId || !delta) return;
+  const { error } = await supabaseClient
+    .from("point_adjustments")
+    .insert({ user_id: userId, task_id: taskId, delta, reason });
+  if (error) console.error("Không ghi được điều chỉnh điểm:", error.message);
+}
+
+// Tổng các khoản cộng/trừ điểm của mọi người, tính từ 1 thời điểm (mặc định: từ đầu).
+async function fetchPointAdjustmentsSince(sinceISO = null) {
+  const map = {};
+  let query = supabaseClient.from("point_adjustments").select("user_id, delta");
+  if (sinceISO) query = query.gte("created_at", sinceISO);
+  const { data, error } = await query;
+  if (error) {
+    console.error("Không lấy được điều chỉnh điểm:", error.message);
+    return map;
+  }
+  (data || []).forEach((a) => {
+    map[a.user_id] = (map[a.user_id] || 0) + (a.delta || 0);
+  });
+  return map;
+}
+
+// ---- "Điểm bù vắng mặt" (shadow points) ----
+// Mỗi khi 1 người ĐANG CÓ MẶT hoàn thành 1 việc và nhận điểm, mọi người ĐANG ĐI VẮNG
+// được cộng thêm 1 khoản "điểm bù" = điểm việc đó / số người đang có mặt. Cộng dồn theo
+// thời gian, khoản này đúng bằng điểm trung bình mà những người ở nhà đã kiếm được — nhờ
+// vậy khi người đi vắng quay lại, điểm của họ vẫn cân bằng với mọi người và không bị hệ
+// thống "Chia việc tự động" dồn việc để bắt kịp điểm.
+async function distributeAwayShadowPoints(taskId, points) {
+  if (!points) return;
+  const awayMembers = (STATE.profiles || []).filter((p) => p.is_away);
+  if (awayMembers.length === 0) return;
+
+  const presentCount = (STATE.profiles || []).filter((p) => !p.is_away).length;
+  if (presentCount === 0) return;
+
+  const shadowAmount = Math.round(points / presentCount);
+  if (!shadowAmount) return;
+
+  for (const p of awayMembers) {
+    await addPointAdjustment(p.id, taskId, shadowAmount, "bu_vang_mat");
+  }
+}
+
+// Tổng điểm hiện tại của mỗi thành viên = tổng điểm việc đã hoàn thành (tasks.status = hoan_thanh)
+// + tổng các khoản cộng/trừ điểm (point_adjustments). Dùng cho trang Thành viên và
+// để ưu tiên chia việc mới cho người đang có ít điểm hơn.
+async function fetchMemberPointsMap() {
+  const map = {};
+  (STATE.profiles || []).forEach((p) => (map[p.id] = 0));
+
+  const { data: doneTasks, error: doneErr } = await supabaseClient
+    .from("tasks")
+    .select("assigned_to, points")
+    .eq("status", "hoan_thanh");
+  if (doneErr) {
+    console.error("Không lấy được việc đã hoàn thành:", doneErr.message);
+  } else {
+    (doneTasks || []).forEach((t) => {
+      if (map[t.assigned_to] !== undefined) map[t.assigned_to] += t.points || 0;
+    });
+  }
+
+  const adjustments = await fetchPointAdjustmentsSince();
+  Object.keys(adjustments).forEach((userId) => {
+    if (map[userId] !== undefined) map[userId] += adjustments[userId];
+  });
+
+  return map;
 }

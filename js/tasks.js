@@ -64,7 +64,12 @@ async function buildTaskFrequencyMap({ title, rotation_queue_id, excludeUserIds 
 }
 
 async function pickLeastFrequentAssignee({ title, rotation_queue_id, excludeUserIds = [] }) {
-  const eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id));
+  // Người đang đi vắng không được coi là ứng cử viên nhận việc mới.
+  let eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id) && !p.is_away);
+  if (eligible.length === 0) {
+    // Nếu chỉ vì loại người đi vắng mà hết ứng viên thì đành bỏ ràng buộc đó để không bị kẹt.
+    eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id));
+  }
   if (eligible.length === 0) return null;
 
   const [frequencyMap, pointsMap] = await Promise.all([
@@ -89,6 +94,27 @@ function taskTicketHTML(task) {
   const isDone = task.status === "hoan_thanh";
   const assignee = findProfile(STATE.profiles, task.assigned_to);
   const borderColor = assignee ? assignee.avatar_color : "#ccc";
+
+  // Việc cố định rơi vào ngày người phụ trách đang đi vắng: không có ai làm, hiện cho
+  // TẤT CẢ mọi người thấy để ai đó bấm "Nhận thay" (được cộng thêm điểm thưởng).
+  if (task.status === "vo_chu") {
+    return `
+      <div class="task-ticket" style="border-left-color:#c9932e; border-left-style:dashed;" data-id="${task.id}">
+        <div class="task-check" style="border-style:dashed;">✈️</div>
+        <div class="task-body">
+          <div class="task-title">${escapeHTML(task.title)}</div>
+          <div class="task-meta">
+            ${statusBadgeHTML(task.status)}
+            <span>Người phụ trách đang đi vắng — chưa có ai làm việc này</span>
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="btn btn-primary btn-sm" data-action="claim-unassigned">🙋 Nhận thay (+${AWAY_COVER_BONUS}đ)</button>
+          <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
+          <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
+        </div>
+      </div>`;
+  }
 
   const isMissed = task.status === "bo_lo";
 
@@ -351,6 +377,10 @@ async function toggleTaskDone(id) {
   );
 
   if (newStatus === "hoan_thanh") {
+    if (typeof distributeAwayShadowPoints === "function") {
+      await distributeAwayShadowPoints(id, data.points);
+    }
+
     if (data.rotation_queue_id) {
       if (typeof advanceQueueByCompleter === "function") {
         await advanceQueueByCompleter(data.rotation_queue_id, data.assigned_to);
@@ -398,6 +428,10 @@ async function handleCompleteAutoRotation(queueId) {
 
     const { data: task, error: tErr } = await supabaseClient.from('tasks').insert(payload).select().single();
     if (tErr) return alert("Lỗi ghi nhận công việc: " + tErr.message);
+
+    if (typeof distributeAwayShadowPoints === "function") {
+      await distributeAwayShadowPoints(task.id, queue.points);
+    }
 
     // Ghi lịch sử
     await logHistory(task.id, STATE.me.id, "hoan_thanh", `${STATE.me.name} đã làm xong việc luân phiên: ${queue.label}`);
@@ -547,6 +581,44 @@ async function acceptTask(id) {
   if (typeof refreshNotifBadge === "function") refreshNotifBadge();
 }
 
+// Nhận thay 1 việc "vô chủ" (người phụ trách gốc đang đi vắng): người đầu tiên bấm
+// "Nhận thay" sẽ được gán việc đó và được cộng thêm điểm thưởng AWAY_COVER_BONUS.
+async function claimUnassignedTask(id) {
+  const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
+  if (error || !task) return alert("Không tìm thấy việc.");
+  if (task.status !== "vo_chu") {
+    alert("Việc này đã có người nhận rồi.");
+    refreshActiveView();
+    return;
+  }
+
+  const { data, error: updErr } = await supabaseClient
+    .from("tasks")
+    .update({ assigned_to: STATE.me.id, status: "chua_lam" })
+    .eq("id", id)
+    .eq("status", "vo_chu")
+    .select()
+    .single();
+
+  if (updErr || !data) {
+    alert("Việc này vừa có người khác nhận mất rồi.");
+    refreshActiveView();
+    return;
+  }
+
+  await addPointAdjustment(STATE.me.id, id, AWAY_COVER_BONUS, "nhan_thay_vang_mat");
+  await logHistory(
+    id,
+    STATE.me.id,
+    "nhan_thay",
+    `${STATE.me.name} nhận thay việc "${task.title}" của người đang đi vắng (+${AWAY_COVER_BONUS} điểm thưởng).`
+  );
+
+  refreshActiveView();
+  if (typeof refreshNotifBadge === "function") refreshNotifBadge();
+  alert(`Bạn đã nhận thay việc này (+${AWAY_COVER_BONUS} điểm thưởng).`);
+}
+
 async function reassignTask(id, newUserId) {
   const newProfile = findProfile(STATE.profiles, newUserId);
   const { error } = await supabaseClient.from("tasks").update({ assigned_to: newUserId }).eq("id", id);
@@ -569,7 +641,11 @@ async function handoffTask(id) {
   if (error || !task) return alert("Không tìm thấy việc.");
 
   const reason = prompt("Lý do (không bắt buộc):", "Bận việc khác") || "";
-  const others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to);
+  let others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to && !p.is_away);
+  if (others.length === 0) {
+    // Nếu ai cũng đang đi vắng thì đành bỏ ràng buộc đó, còn hơn không gửi được cho ai.
+    others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to);
+  }
   const othersIds = others.map((p) => p.id);
 
   if (othersIds.length === 0) {
@@ -666,6 +742,7 @@ function bindTaskEvents(containerId = "tasks-container") {
     if (action === "undo-miss") await undoMissedTask(id);
     if (action === "history") toggleTaskHistory(id, ticket);
     if (action === "delete") deleteTask(id);
+    if (action === "claim-unassigned") await claimUnassignedTask(id);
 
     // Xử lý các nút của Phiếu việc luân phiên tự động
     if (action === "complete-rotation") await handleCompleteAutoRotation(queueId);

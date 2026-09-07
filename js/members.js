@@ -12,11 +12,14 @@ async function renderMembers() {
       const done = assigned.filter((t) => t.status === "hoan_thanh");
       const missed = assigned.filter((t) => t.status === "bo_lo");
       const points = pointsMap[p.id] || 0;
+      const awayBadge = p.is_away
+        ? `<span style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:10px;background:#fdf1dc;color:#a86b16;font-size:12px;font-weight:600;">✈️ Tạm vắng${p.away_until ? ` đến ${formatDateShort(p.away_until)}` : ""}</span>`
+        : "";
       return `
       <div class="card member-card">
         ${avatarHTML(p)}
         <div>
-          <div class="m-name">${escapeHTML(p.name)}</div>
+          <div class="m-name">${escapeHTML(p.name)}${awayBadge}</div>
           <div class="m-sub">${assigned.length} việc • ${done.length} hoàn thành${missed.length ? ` • ${missed.length} bỏ việc` : ""}</div>
         </div>
         <div class="m-points"><div class="n">${points}</div><div class="l">điểm</div></div>

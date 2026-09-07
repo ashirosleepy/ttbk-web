@@ -27,19 +27,35 @@ async function fetchRotationQueues() {
   return data;
 }
 
+// Người đang tới lượt trong hàng đợi. Nếu người đó đang đi vắng, tự động bỏ qua (skip)
+// và chuyển cho người kế tiếp trong hàng đợi — không cần đổi current_index lưu trong DB,
+// vì lần "hoàn thành/không hoàn thành" tiếp theo sẽ tự dựa trên người thực sự đã làm.
 function currentHolder(queue) {
   if (!queue || !queue.member_order || queue.member_order.length === 0) return null;
-  const id = queue.member_order[queue.current_index % queue.member_order.length];
-  return findProfile(STATE.profiles, id);
+  const order = queue.member_order;
+  const n = order.length;
+  for (let i = 0; i < n; i++) {
+    const id = order[(queue.current_index + i) % n];
+    const profile = findProfile(STATE.profiles, id);
+    if (profile && !profile.is_away) return profile;
+  }
+  // Cả hàng đợi đều đang đi vắng -> đành trả về người theo lượt gốc để không bị kẹt.
+  return findProfile(STATE.profiles, order[queue.current_index % n]);
 }
 
-// Người kế tiếp NGAY SAU 1 người cụ thể trong hàng đợi (dùng khi báo bận, chuyển việc)
+// Người kế tiếp NGAY SAU 1 người cụ thể trong hàng đợi (dùng khi báo bận, chuyển việc),
+// cũng bỏ qua những người đang đi vắng.
 function nextAfterUser(queue, userId) {
   const order = queue.member_order || [];
   const idx = order.indexOf(userId);
   if (idx === -1 || order.length === 0) return null;
-  const nextId = order[(idx + 1) % order.length];
-  return findProfile(STATE.profiles, nextId);
+  const n = order.length;
+  for (let i = 1; i <= n; i++) {
+    const id = order[(idx + i) % n];
+    const profile = findProfile(STATE.profiles, id);
+    if (profile && !profile.is_away) return profile;
+  }
+  return findProfile(STATE.profiles, order[(idx + 1) % n]);
 }
 
 // Gọi khi 1 việc thuộc hàng đợi được hoàn thành: chuyển lượt cho người SAU người vừa làm xong

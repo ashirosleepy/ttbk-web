@@ -56,12 +56,38 @@ async function generateTodayTasks() {
   }
 
   const already = new Set((existing || []).map((t) => t.schedule_id));
-  const toInsert = matching
+  const toInsert = [];
+  // Lịch cố định (không luân phiên) mà người phụ trách đang đi vắng hôm nay -> ghi lại
+  // để sau khi tạo xong, báo cho các thành viên còn lại biết ai có thể nhận thay.
+  const unownedBySchedule = new Map(); // schedule.id -> { title, awayName }
+
+  matching
     .filter((s) => !already.has(s.id))
-    .map((s) => {
+    .forEach((s) => {
+      const isRotation = !!s.rotation_queue_id;
+      const fixedProfile = !isRotation ? findProfile(STATE.profiles, s.assigned_to) : null;
+
+      // Việc luân phiên: currentHolder() ở rotations.js đã tự bỏ qua người đang đi vắng rồi.
+      if (!isRotation && fixedProfile && fixedProfile.is_away) {
+        toInsert.push({
+          title: s.title,
+          description: s.description || null,
+          assigned_to: null,
+          created_by: s.assigned_to,
+          schedule_id: s.id,
+          rotation_queue_id: null,
+          due_date: today,
+          status: "vo_chu",
+          priority: "binh_thuong",
+          points: s.points,
+        });
+        unownedBySchedule.set(s.id, { title: s.title, awayName: fixedProfile.name });
+        return;
+      }
+
       const assignee = effectiveAssigneeId(s, queueMap);
-      if (!assignee) return null; // lịch luân phiên nhưng hàng đợi rỗng -> bỏ qua
-      return {
+      if (!assignee) return; // lịch luân phiên nhưng hàng đợi rỗng -> bỏ qua
+      toInsert.push({
         title: s.title,
         description: s.description || null,
         assigned_to: assignee,
@@ -72,13 +98,31 @@ async function generateTodayTasks() {
         status: "chua_lam",
         priority: "binh_thuong",
         points: s.points,
-      };
-    })
-    .filter(Boolean);
+      });
+    });
 
-  if (toInsert.length > 0) {
-    const { error: insertErr } = await supabaseClient.from("tasks").insert(toInsert);
-    if (insertErr) console.error("Không tạo được việc từ lịch:", insertErr.message);
+  if (toInsert.length === 0) return;
+
+  const { data: insertedRows, error: insertErr } = await supabaseClient.from("tasks").insert(toInsert).select();
+  if (insertErr) {
+    console.error("Không tạo được việc từ lịch:", insertErr.message);
+    return;
+  }
+
+  if (unownedBySchedule.size > 0) {
+    const presentMembers = (STATE.profiles || []).filter((p) => !p.is_away);
+    const rowByScheduleId = new Map((insertedRows || []).map((row) => [row.schedule_id, row]));
+
+    for (const [scheduleId, info] of unownedBySchedule) {
+      const row = rowByScheduleId.get(scheduleId);
+      for (const member of presentMembers) {
+        await createNotification(
+          member.id,
+          `📣 ${info.awayName} đang đi vắng — ai có thể nhận thay việc "${info.title}" hôm nay?`,
+          { type: "thong_bao", taskId: row ? row.id : null }
+        );
+      }
+    }
   }
 }
 
@@ -93,6 +137,25 @@ async function renderScheduleView() {
   const schedules = await fetchSchedules();
   const queues = await fetchRotationQueues();
   const queueMap = Object.fromEntries(queues.map((q) => [q.id, q]));
+  const { data: todayTasks, error: taskErr } = await supabaseClient
+    .from("tasks")
+    .select("rotation_queue_id, assigned_to, status")
+    .eq("due_date", todayStr())
+    .neq("status", "hoan_thanh");
+  const activeTaskByQueue = taskErr
+    ? {}
+    : Object.fromEntries(
+        (todayTasks || [])
+          .filter((task) => task.rotation_queue_id && task.assigned_to)
+          .map((task) => [task.rotation_queue_id, task])
+      );
+
+  const displayHolder = (queueId) => {
+    const activeTask = activeTaskByQueue[queueId];
+    return activeTask
+      ? findProfile(STATE.profiles, activeTask.assigned_to)
+      : currentHolder(queueMap[queueId]);
+  };
 
   // Lưới cả tuần: cột Thứ 2 -> Chủ Nhật, hàng theo từng thành viên hiện đang phụ trách
   const order = [1, 2, 3, 4, 5, 6, 0];
@@ -104,7 +167,10 @@ async function renderScheduleView() {
           const chips = schedules
             .filter((s) => {
               if (!s.active) return false;
-              if (effectiveAssigneeId(s, queueMap) !== p.id) return false;
+              const assigneeId = s.rotation_queue_id
+                ? displayHolder(s.rotation_queue_id)?.id
+                : s.assigned_to;
+              if (assigneeId !== p.id) return false;
               return s.repeat_type === "daily" || (s.repeat_type === "weekly" && (s.repeat_days || []).includes(d));
             })
             .map(scheduleChipHTML)
@@ -128,13 +194,13 @@ async function renderScheduleView() {
       const rotating = !!s.rotation_queue_id;
       const who = rotating
         ? `🔁 luân phiên — hôm nay: ${(() => {
-            const holder = currentHolder(queueMap[s.rotation_queue_id]);
+            const holder = displayHolder(s.rotation_queue_id);
             return holder ? escapeHTML(holder.name) : "?";
           })()}`
         : escapeHTML(findProfile(STATE.profiles, s.assigned_to)?.name || "?");
       const when = s.repeat_type === "daily" ? "Mỗi ngày" : "Mỗi " + (s.repeat_days || []).map((d) => WEEKDAY_LABEL[d]).join(", ");
       const holderColor = rotating
-        ? currentHolder(queueMap[s.rotation_queue_id])?.avatar_color || "#ccc"
+        ? displayHolder(s.rotation_queue_id)?.avatar_color || "#ccc"
         : findProfile(STATE.profiles, s.assigned_to)?.avatar_color || "#ccc";
       return `
       <div class="task-ticket" style="border-left-color:${holderColor}" data-id="${s.id}">

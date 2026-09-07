@@ -19,6 +19,10 @@ const STATUS_LABEL = {
   chua_lam: "Chưa làm",
   dang_cho: "Đang chờ",
   hoan_thanh: "Hoàn thành",
+  vo_chu: "Vô chủ — cần người nhận thay",
 };
+
+// Điểm thưởng thêm khi 1 người nhận thay việc của thành viên đang đi vắng
+const AWAY_COVER_BONUS = 5;
 
 const WEEKDAY_LABEL = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];

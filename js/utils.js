@@ -16,10 +16,13 @@ function initials(name) {
 }
 
 // Vẽ 1 avatar tròn có màu + chữ cái đầu, dựa trên profile {name, avatar_color}
+// Nếu thành viên đang đi vắng (is_away), avatar được làm mờ đi để mọi người dễ nhận biết.
 function avatarHTML(profile, size = "") {
   if (!profile) return `<div class="avatar ${size}" style="background:#ccc">?</div>`;
   const cls = size ? `avatar ${size}` : "avatar";
-  return `<div class="${cls}" style="background:${profile.avatar_color || "#3B6E8F"}">${initials(profile.name)}</div>`;
+  const awayStyle = profile.is_away ? "opacity:0.4;filter:grayscale(70%);" : "";
+  const title = profile.is_away ? ' title="Đang tạm vắng"' : "";
+  return `<div class="${cls}" style="background:${profile.avatar_color || "#3B6E8F"};${awayStyle}"${title}>${initials(profile.name)}</div>`;
 }
 
 // Định dạng ngày kiểu Việt Nam: 2026-09-06 -> 06/09
@@ -56,6 +59,7 @@ function statusBadgeHTML(status) {
     dang_cho: `<span class="badge badge-wait">Đang chờ</span>`,
     hoan_thanh: `<span class="badge badge-done">Hoàn thành</span>`,
     bo_lo: `<span class="badge badge-missed">Bỏ việc</span>`,
+    vo_chu: `<span class="badge badge-pending">✈️ Vô chủ</span>`,
   };
   return map[status] || "";
 }
@@ -115,6 +119,28 @@ async function fetchPointAdjustmentsSince(sinceISO = null) {
     map[a.user_id] = (map[a.user_id] || 0) + (a.delta || 0);
   });
   return map;
+}
+
+// ---- "Điểm bù vắng mặt" (shadow points) ----
+// Mỗi khi 1 người ĐANG CÓ MẶT hoàn thành 1 việc và nhận điểm, mọi người ĐANG ĐI VẮNG
+// được cộng thêm 1 khoản "điểm bù" = điểm việc đó / số người đang có mặt. Cộng dồn theo
+// thời gian, khoản này đúng bằng điểm trung bình mà những người ở nhà đã kiếm được — nhờ
+// vậy khi người đi vắng quay lại, điểm của họ vẫn cân bằng với mọi người và không bị hệ
+// thống "Chia việc tự động" dồn việc để bắt kịp điểm.
+async function distributeAwayShadowPoints(taskId, points) {
+  if (!points) return;
+  const awayMembers = (STATE.profiles || []).filter((p) => p.is_away);
+  if (awayMembers.length === 0) return;
+
+  const presentCount = (STATE.profiles || []).filter((p) => !p.is_away).length;
+  if (presentCount === 0) return;
+
+  const shadowAmount = Math.round(points / presentCount);
+  if (!shadowAmount) return;
+
+  for (const p of awayMembers) {
+    await addPointAdjustment(p.id, taskId, shadowAmount, "bu_vang_mat");
+  }
 }
 
 // Tổng điểm hiện tại của mỗi thành viên = tổng điểm việc đã hoàn thành (tasks.status = hoan_thanh)

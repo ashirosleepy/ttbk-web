@@ -27,19 +27,35 @@ async function fetchRotationQueues() {
   return data;
 }
 
+// Người đang tới lượt trong hàng đợi. Nếu người đó đang đi vắng, tự động bỏ qua (skip)
+// và chuyển cho người kế tiếp trong hàng đợi — không cần đổi current_index lưu trong DB,
+// vì lần "hoàn thành/không hoàn thành" tiếp theo sẽ tự dựa trên người thực sự đã làm.
 function currentHolder(queue) {
   if (!queue || !queue.member_order || queue.member_order.length === 0) return null;
-  const id = queue.member_order[queue.current_index % queue.member_order.length];
-  return findProfile(STATE.profiles, id);
+  const order = queue.member_order;
+  const n = order.length;
+  for (let i = 0; i < n; i++) {
+    const id = order[(queue.current_index + i) % n];
+    const profile = findProfile(STATE.profiles, id);
+    if (profile && !profile.is_away) return profile;
+  }
+  // Cả hàng đợi đều đang đi vắng -> đành trả về người theo lượt gốc để không bị kẹt.
+  return findProfile(STATE.profiles, order[queue.current_index % n]);
 }
 
-// Người kế tiếp NGAY SAU 1 người cụ thể trong hàng đợi (dùng khi báo bận, chuyển việc)
+// Người kế tiếp NGAY SAU 1 người cụ thể trong hàng đợi (dùng khi báo bận, chuyển việc),
+// cũng bỏ qua những người đang đi vắng.
 function nextAfterUser(queue, userId) {
   const order = queue.member_order || [];
   const idx = order.indexOf(userId);
   if (idx === -1 || order.length === 0) return null;
-  const nextId = order[(idx + 1) % order.length];
-  return findProfile(STATE.profiles, nextId);
+  const n = order.length;
+  for (let i = 1; i <= n; i++) {
+    const id = order[(idx + i) % n];
+    const profile = findProfile(STATE.profiles, id);
+    if (profile && !profile.is_away) return profile;
+  }
+  return findProfile(STATE.profiles, order[(idx + 1) % n]);
 }
 
 // Gọi khi 1 việc thuộc hàng đợi được hoàn thành: chuyển lượt cho người SAU người vừa làm xong
@@ -59,7 +75,16 @@ async function reportAdhocTask(queueId) {
   const { data: queue, error } = await supabaseClient.from("rotation_queues").select("*").eq("id", queueId).single();
   if (error || !queue) return alert("Không tìm thấy hàng đợi.");
 
-  const holder = currentHolder(queue);
+  const { data: activeTask } = await supabaseClient
+    .from("tasks")
+    .select("assigned_to")
+    .eq("rotation_queue_id", queueId)
+    .eq("due_date", todayStr())
+    .neq("status", "hoan_thanh")
+    .maybeSingle();
+  const holder = activeTask?.assigned_to
+    ? findProfile(STATE.profiles, activeTask.assigned_to)
+    : currentHolder(queue);
   if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
 
   // Chỉ gửi thông báo nhắc người tới lượt, không tạo thêm task mới.
@@ -98,6 +123,21 @@ async function renderRotationAdmin() {
 
   if (!listEl) return;
 
+  // Nếu task hôm nay đã được tạo, task.assigned_to là nguồn chính xác hơn
+  // current_index vì lượt có thể đã được chuyển sau khi task được tạo.
+  const { data: todayTasks, error: taskErr } = await supabaseClient
+    .from("tasks")
+    .select("rotation_queue_id, assigned_to, status")
+    .eq("due_date", todayStr())
+    .neq("status", "hoan_thanh");
+  const activeTaskByQueue = taskErr
+    ? {}
+    : Object.fromEntries(
+        (todayTasks || [])
+          .filter((task) => task.rotation_queue_id && task.assigned_to)
+          .map((task) => [task.rotation_queue_id, task])
+      );
+
   const safeQueues = Array.isArray(queues) ? queues : [];
   if (safeQueues.length === 0) {
     listEl.innerHTML = `<p class="empty-state">Chưa có hàng đợi nào. Thử tạo cho "Đổ rác" hoặc "Thay bình nước".</p>`;
@@ -106,7 +146,10 @@ async function renderRotationAdmin() {
 
   listEl.innerHTML = safeQueues
     .map((q) => {
-      const holder = currentHolder(q);
+      const activeTask = activeTaskByQueue[q.id];
+      const holder = activeTask
+        ? findProfile(STATE.profiles, activeTask.assigned_to)
+        : currentHolder(q);
       const orderNames = (q.member_order || [])
         .map((id) => {
           const p = findProfile(Array.isArray(STATE.profiles) ? STATE.profiles : [], id);

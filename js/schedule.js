@@ -56,12 +56,38 @@ async function generateTodayTasks() {
   }
 
   const already = new Set((existing || []).map((t) => t.schedule_id));
-  const toInsert = matching
+  const toInsert = [];
+  // Lịch cố định (không luân phiên) mà người phụ trách đang đi vắng hôm nay -> ghi lại
+  // để sau khi tạo xong, báo cho các thành viên còn lại biết ai có thể nhận thay.
+  const unownedBySchedule = new Map(); // schedule.id -> { title, awayName }
+
+  matching
     .filter((s) => !already.has(s.id))
-    .map((s) => {
+    .forEach((s) => {
+      const isRotation = !!s.rotation_queue_id;
+      const fixedProfile = !isRotation ? findProfile(STATE.profiles, s.assigned_to) : null;
+
+      // Việc luân phiên: currentHolder() ở rotations.js đã tự bỏ qua người đang đi vắng rồi.
+      if (!isRotation && fixedProfile && fixedProfile.is_away) {
+        toInsert.push({
+          title: s.title,
+          description: s.description || null,
+          assigned_to: null,
+          created_by: s.assigned_to,
+          schedule_id: s.id,
+          rotation_queue_id: null,
+          due_date: today,
+          status: "vo_chu",
+          priority: "binh_thuong",
+          points: s.points,
+        });
+        unownedBySchedule.set(s.id, { title: s.title, awayName: fixedProfile.name });
+        return;
+      }
+
       const assignee = effectiveAssigneeId(s, queueMap);
-      if (!assignee) return null; // lịch luân phiên nhưng hàng đợi rỗng -> bỏ qua
-      return {
+      if (!assignee) return; // lịch luân phiên nhưng hàng đợi rỗng -> bỏ qua
+      toInsert.push({
         title: s.title,
         description: s.description || null,
         assigned_to: assignee,
@@ -72,13 +98,31 @@ async function generateTodayTasks() {
         status: "chua_lam",
         priority: "binh_thuong",
         points: s.points,
-      };
-    })
-    .filter(Boolean);
+      });
+    });
 
-  if (toInsert.length > 0) {
-    const { error: insertErr } = await supabaseClient.from("tasks").insert(toInsert);
-    if (insertErr) console.error("Không tạo được việc từ lịch:", insertErr.message);
+  if (toInsert.length === 0) return;
+
+  const { data: insertedRows, error: insertErr } = await supabaseClient.from("tasks").insert(toInsert).select();
+  if (insertErr) {
+    console.error("Không tạo được việc từ lịch:", insertErr.message);
+    return;
+  }
+
+  if (unownedBySchedule.size > 0) {
+    const presentMembers = (STATE.profiles || []).filter((p) => !p.is_away);
+    const rowByScheduleId = new Map((insertedRows || []).map((row) => [row.schedule_id, row]));
+
+    for (const [scheduleId, info] of unownedBySchedule) {
+      const row = rowByScheduleId.get(scheduleId);
+      for (const member of presentMembers) {
+        await createNotification(
+          member.id,
+          `📣 ${info.awayName} đang đi vắng — ai có thể nhận thay việc "${info.title}" hôm nay?`,
+          { type: "thong_bao", taskId: row ? row.id : null }
+        );
+      }
+    }
   }
 }
 

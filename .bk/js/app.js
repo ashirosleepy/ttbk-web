@@ -37,6 +37,26 @@ async function loadSection(name) {
   if (loader) await loader();
 }
 
+// Nếu người này đã đặt "Đến ngày" cho chế độ đi vắng và ngày đó đã qua, tự động
+// khôi phục trạng thái có mặt ngay khi họ mở lại app — đúng như lúc bật họ mong muốn.
+async function autoResumeIfNeeded() {
+  if (!STATE.me || !STATE.me.is_away || !STATE.me.away_until) return;
+  if (STATE.me.away_until >= todayStr()) return;
+
+  const { error } = await supabaseClient
+    .from("profiles")
+    .update({ is_away: false, away_from: null, away_until: null })
+    .eq("id", STATE.me.id);
+  if (error) return;
+
+  await logHistory(null, STATE.me.id, "ket_thuc_vang", `${STATE.me.name} đã tự động được khôi phục trạng thái có mặt (hết hạn đi vắng).`);
+
+  STATE.me.is_away = false;
+  STATE.me.away_from = null;
+  STATE.me.away_until = null;
+  STATE.profiles = await getAllProfiles();
+}
+
 async function init() {
   const session = await requireSession();
   if (!session) return; // requireSession đã tự chuyển về login.html
@@ -47,6 +67,7 @@ async function init() {
     return;
   }
   STATE.profiles = await getAllProfiles();
+  await autoResumeIfNeeded();
 
   updateTopbar();
   setupNav();
