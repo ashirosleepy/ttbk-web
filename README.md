@@ -7,6 +7,11 @@ Web app quản lý việc nhà cho 4 người, dùng **GitHub Pages** (host web)
 cứng theo thứ), xin đổi việc/báo bận, và trang **Thông báo** ngay trên thanh menu để
 nhận việc — theo đúng đề xuất trong tài liệu thiết kế.
 
+**Bản 2.1** bổ sung: trang **Lịch** giờ hiển thị dạng **Lịch Tháng** thật (có điều
+hướng Tháng trước/sau/Hôm nay), tô màu theo trạng thái từng việc — xanh lá (đã xong),
+đỏ (bỏ lỡ/quá hạn), hồng nhạt (hôm nay chưa xong), xanh xám nhạt viền đứt nét (dự kiến
+sắp tới) — thay cho "Lưới cả tuần" cũ.
+
 ## Cấu trúc file
 
 ```
@@ -20,7 +25,8 @@ ttbk-web/
 ├── js/rotations.js       Hàng đợi luân phiên: tạo, báo có việc, tự chuyển lượt
 ├── js/notifications.js   Trang Thông báo trên menu + badge số chưa đọc + Realtime
 ├── js/tasks.js           Trang Công việc: thêm / xong / đổi người / gia hạn / chuyển việc / xem lịch sử / xoá
-├── js/schedule.js        Trang Lịch: việc lặp lại (cố định hoặc luân phiên) + tự sinh việc mỗi ngày
+├── js/schedule.js        Trang Lịch: quản lý việc lặp lại (cố định hoặc luân phiên) + tự sinh việc mỗi ngày
+├── js/calendar.js        Trang Lịch: vẽ Lịch Tháng (điều hướng, tô màu, nạp việc quá khứ + dự kiến tương lai)
 ├── js/dashboard.js       Trang Tổng quan: thống kê + công bằng tuần này + việc đang chờ nhận
 ├── js/members.js         Trang Thành viên
 ├── js/settings.js        Trang Cài đặt hồ sơ
@@ -70,6 +76,12 @@ ttbk-web/
 - **🕘 Xem lịch sử**: bấm biểu tượng đồng hồ trên phiếu việc để xem toàn bộ thay đổi của
   việc đó (ai tạo, ai đổi người, ai báo bận, ai hoàn thành...) — không xoá lịch sử cũ,
   đúng như tài liệu yêu cầu, để tránh tranh cãi.
+
+- **📅 Lịch Tháng**: xem toàn bộ tháng cùng lúc thay vì từng tuần. Ngày đã qua lấy đúng
+  dữ liệu thật từ lịch sử việc; ngày tương lai là **dự kiến** — được tính từ các lịch
+  lặp lại và hàng đợi luân phiên đang bật, giả định hàng đợi dịch chuyển đúng 1 bước mỗi
+  lần xảy ra. Nếu có ai bấm "Báo có việc" thủ công xen giữa, phần dự kiến xa có thể lệch
+  nhẹ so với thực tế — đây là đánh đổi để giữ việc báo bận/đổi việc vẫn linh hoạt.
 
 ## Ghi chú
 - App dùng vanilla JavaScript (không React, không bước build) — mở thẳng file `.html` là chạy.
