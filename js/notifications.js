@@ -314,7 +314,10 @@ function subscribeRealtime() {
       const activeSection = document.querySelector(".nav-item.active")?.dataset.section;
       if (activeSection === "tasks") renderTasksView();
       if (activeSection === "dashboard") renderDashboard();
-      if (activeSection === "schedule") renderScheduleView();
+      if (activeSection === "schedule") {
+        renderScheduleView();
+        if (typeof renderMonthCalendar === "function") renderMonthCalendar();
+      }
     })
     .subscribe();
 }

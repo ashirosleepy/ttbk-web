@@ -126,13 +126,6 @@ async function generateTodayTasks() {
   }
 }
 
-function scheduleChipHTML(schedule) {
-  const rotating = !!schedule.rotation_queue_id;
-  const color = rotating ? "#6B5B95" : findProfile(STATE.profiles, schedule.assigned_to)?.avatar_color || "#999";
-  const label = rotating ? `🔁 ${escapeHTML(schedule.title)}` : escapeHTML(schedule.title);
-  return `<span class="week-chip" style="background:${color}">${label}</span>`;
-}
-
 async function renderScheduleView() {
   const schedules = await fetchSchedules();
   const queues = await fetchRotationQueues();
@@ -156,33 +149,6 @@ async function renderScheduleView() {
       ? findProfile(STATE.profiles, activeTask.assigned_to)
       : currentHolder(queueMap[queueId]);
   };
-
-  // Lưới cả tuần: cột Thứ 2 -> Chủ Nhật, hàng theo từng thành viên hiện đang phụ trách
-  const order = [1, 2, 3, 4, 5, 6, 0];
-  const thead = `<tr><th>Thành viên</th>${order.map((d) => `<th>${WEEKDAY_LABEL[d]}</th>`).join("")}</tr>`;
-  const rows = STATE.profiles
-    .map((p) => {
-      const cells = order
-        .map((d) => {
-          const chips = schedules
-            .filter((s) => {
-              if (!s.active) return false;
-              const assigneeId = s.rotation_queue_id
-                ? displayHolder(s.rotation_queue_id)?.id
-                : s.assigned_to;
-              if (assigneeId !== p.id) return false;
-              return s.repeat_type === "daily" || (s.repeat_type === "weekly" && (s.repeat_days || []).includes(d));
-            })
-            .map(scheduleChipHTML)
-            .join("");
-          return `<td>${chips || "—"}</td>`;
-        })
-        .join("");
-      return `<tr><td><span style="display:flex;align-items:center;gap:6px">${avatarHTML(p, "avatar-sm")}${escapeHTML(p.name)}</span></td>${cells}</tr>`;
-    })
-    .join("");
-
-  document.getElementById("schedule-grid").innerHTML = `<table class="week-table"><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
 
   const listEl = document.getElementById("schedule-list");
   if (schedules.length === 0) {
@@ -311,4 +277,5 @@ async function loadScheduleSection() {
   bindScheduleEvents();
   await renderScheduleView();
   await loadRotationAdmin();
+  await loadMonthCalendar();
 }

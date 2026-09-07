@@ -164,7 +164,25 @@
       <!-- ---------- LỊCH ---------- -->
       <section id="section-schedule" class="view">
         <div class="view-head">
-          <div><h2>Lịch việc lặp lại</h2><p>Việc lặp lại sẽ tự động tạo mỗi ngày</p></div>
+          <div><h2>Lịch</h2><p>Xem lịch tháng — việc đã xong, bỏ lỡ và dự kiến sắp tới</p></div>
+        </div>
+
+        <div class="card" style="margin-bottom:22px;">
+          <div class="cal-nav">
+            <button class="btn btn-ghost btn-sm" id="cal-prev">‹ Tháng trước</button>
+            <div class="cal-nav-center">
+              <span class="cal-month-label" id="cal-month-label">—</span>
+              <button class="btn btn-ghost btn-sm" id="cal-today">Hôm nay</button>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="cal-next">Tháng sau ›</button>
+          </div>
+          <div class="cal-legend">
+            <span class="cal-legend-item"><i class="cal-dot cal-dot-done"></i> Đã hoàn thành</span>
+            <span class="cal-legend-item"><i class="cal-dot cal-dot-missed"></i> Bỏ lỡ / quá hạn</span>
+            <span class="cal-legend-item"><i class="cal-dot cal-dot-todo"></i> Hôm nay — chưa xong</span>
+            <span class="cal-legend-item"><i class="cal-dot cal-dot-future"></i> Dự kiến sắp tới</span>
+          </div>
+          <div class="cal-grid" id="cal-grid"><p class="empty-state">Đang tải...</p></div>
         </div>
 
         <div class="card" style="margin-bottom:22px;">
@@ -254,11 +272,6 @@
           <div id="rotation-list" class="task-list" style="margin-top:18px;"><p class="empty-state">Đang tải...</p></div>
         </div>
 
-        <div class="card" style="margin-bottom:22px; overflow-x:auto;">
-          <h3 style="font-size:15px; margin-bottom:14px;">Lưới cả tuần</h3>
-          <div id="schedule-grid"></div>
-        </div>
-
         <h3 style="font-size:15px; margin-bottom:12px;">Lịch đang chạy</h3>
         <div id="schedule-list" class="task-list"><p class="empty-state">Đang tải...</p></div>
       </section>
@@ -339,6 +352,7 @@
 <script src="js/tasks.js"></script>
 <script src="js/auto-assign.js"></script>
 <script src="js/schedule.js"></script>
+<script src="js/calendar.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/members.js"></script>
 <script src="js/settings.js"></script>
