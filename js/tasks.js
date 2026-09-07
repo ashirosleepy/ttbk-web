@@ -355,6 +355,21 @@ async function toggleTaskDone(id) {
       if (typeof advanceQueueByCompleter === "function") {
         await advanceQueueByCompleter(data.rotation_queue_id, data.assigned_to);
       }
+    } else {
+      // CHỈ gợi ý cho lần giao việc TIẾP THEO — KHÔNG được đổi assigned_to của task vừa
+      // hoàn thành này, vì đó là bản ghi lịch sử dùng để tính điểm cho người đã làm.
+      const nextAssignee = await pickLeastFrequentAssignee({
+        title: data.title,
+        rotation_queue_id: data.rotation_queue_id,
+        excludeUserIds: [data.assigned_to],
+      });
+      if (nextAssignee) {
+        await createNotification(
+          nextAssignee.id,
+          `📌 ${STATE.me.name} đã hoàn thành việc "${data.title}". Lần sau việc này nên ưu tiên giao cho bạn vì bạn làm ít hơn.`,
+          { type: "thong_bao", taskId: id }
+        );
+      }
     }
   }
 
@@ -366,13 +381,11 @@ async function handleCompleteAutoRotation(queueId) {
     // Lấy thông tin queue
     const { data: queue, error: qErr } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
     if (qErr || !queue) return alert("Lỗi lấy thông tin luân phiên.");
-    const holder = currentHolder(queue);
-    if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
 
     // Tự động tạo 1 task trạng thái "hoan_thanh" để ghi nhận điểm và lịch sử
     const payload = {
         title: queue.label,
-      assigned_to: holder.id, // người đang tới lượt và hoàn thành việc
+        assigned_to: selectedUserId, // người đang làm
         created_by: STATE.me.id,
         rotation_queue_id: queue.id,
         status: 'hoan_thanh',
