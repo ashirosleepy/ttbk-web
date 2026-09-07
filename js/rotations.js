@@ -59,7 +59,16 @@ async function reportAdhocTask(queueId) {
   const { data: queue, error } = await supabaseClient.from("rotation_queues").select("*").eq("id", queueId).single();
   if (error || !queue) return alert("Không tìm thấy hàng đợi.");
 
-  const holder = currentHolder(queue);
+  const { data: activeTask } = await supabaseClient
+    .from("tasks")
+    .select("assigned_to")
+    .eq("rotation_queue_id", queueId)
+    .eq("due_date", todayStr())
+    .neq("status", "hoan_thanh")
+    .maybeSingle();
+  const holder = activeTask?.assigned_to
+    ? findProfile(STATE.profiles, activeTask.assigned_to)
+    : currentHolder(queue);
   if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
 
   // Chỉ gửi thông báo nhắc người tới lượt, không tạo thêm task mới.
