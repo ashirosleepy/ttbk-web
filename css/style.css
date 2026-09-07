@@ -495,7 +495,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .cal-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .cal-dot-done { background: var(--ok); }
 .cal-dot-missed { background: #c0392b; }
-.cal-dot-todo { background: var(--todo); }
+.cal-dot-todo { background: #D9A441; }
 .cal-dot-future { background: var(--ink-faint); }
 
 .cal-grid {
