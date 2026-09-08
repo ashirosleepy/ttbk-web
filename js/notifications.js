@@ -20,7 +20,7 @@ async function createNotification(userId, message, opts = {}) {
   const { error: pushError } = await supabaseClient.functions.invoke("send-push", {
     body: {
       user_id: userId,
-      title: opts.title || "TTBK - Việc nhà",
+      title: opts.title || "Nhiệm vụ hệ thống",
       body: message,
       url: opts.url || new URL("index.html", document.baseURI).href,
       tag: opts.type || "thong_bao",
