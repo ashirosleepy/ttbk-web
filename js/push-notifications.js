@@ -28,7 +28,7 @@ function urlBase64ToUint8Array(base64String) {
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return null;
   try {
-    return await navigator.serviceWorker.register('/sw.js');
+    return await navigator.serviceWorker.register('/ttbk-web/sw.js');
   } catch (err) {
     console.error('Không đăng ký được service worker:', err);
     return null;
