@@ -247,7 +247,32 @@ function renderTabsHTML() {
 //   -> không hiện thẻ ảo trùng, vì việc thật của queue đó đã nằm trong rotationPinnedTasks
 // - rotationPinnedTasks: các việc thật (đã tạo), gắn với hàng đợi, của người đang được chọn,
 //   mà chưa hoàn thành / chưa bị đánh dấu bỏ
-function renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinnedTasks) {
+function rotationTaskTicketHTML(task, queue) {
+  if (!queue) return taskTicketHTML(task);
+
+  const assignee = findProfile(STATE.profiles, task.assigned_to);
+  const borderColor = assignee ? assignee.avatar_color : "#ccc";
+  return `
+    <div class="task-ticket" style="border-left-color:${borderColor}" data-id="${task.id}">
+      <button class="task-check" data-action="toggle" title="Đánh dấu hoàn thành"></button>
+      <div class="task-body">
+        <div class="task-title">${queue.icon} ${escapeHTML(queue.label)}</div>
+        <div class="task-meta">
+          <span class="badge badge-wait">Đến lượt</span>
+          <span class="task-no-due">Không có ngày</span>
+          <span>+${queue.points} điểm</span>
+        </div>
+      </div>
+      <div class="task-actions">
+        <button class="icon-btn" data-action="handoff" title="Xin chuyển việc">😅</button>
+        <button class="icon-btn" data-action="miss" title="Không hoàn thành">✕</button>
+        <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
+        <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
+      </div>
+    </div>`;
+}
+
+function renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinnedTasks, queueMap) {
   const myVirtualTurns = rotations.filter((r) => {
     if (!r.member_order || r.member_order.length === 0) return false;
     const currentTurnUserId = r.member_order[r.current_index];
@@ -281,7 +306,7 @@ function renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinnedT
       </div>`;
   });
 
-  rotationPinnedTasks.forEach((t) => (html += taskTicketHTML(t)));
+  rotationPinnedTasks.forEach((t) => (html += rotationTaskTicketHTML(t, queueMap[t.rotation_queue_id])));
 
   html += "</div>";
   return html;
@@ -321,6 +346,7 @@ async function renderTasksView() {
 
   // Tải song song cả danh sách task truyền thống và danh sách luân phiên
   const [tasks, rotations] = await Promise.all([fetchTasks(), fetchRotations()]);
+  const queueMap = Object.fromEntries(rotations.map((queue) => [queue.id, queue]));
 
   // Lọc task theo người đang được chọn ở Tab
   const filteredTasks = tasks.filter((t) => t.assigned_to === selectedUserId);
@@ -354,7 +380,7 @@ async function renderTasksView() {
     .filter((t) => t.status === "hoan_thanh" && t.completed_at && new Date(t.completed_at).getTime() >= doneCutoffMs)
     .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
 
-  const rotationSectionHTML = renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinned);
+  const rotationSectionHTML = renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinned, queueMap);
   const hasRotationTurn = rotationSectionHTML !== "";
 
   const sections = [];
