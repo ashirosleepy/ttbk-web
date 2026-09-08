@@ -5,7 +5,7 @@
 //   1) `getSupabaseClient()` bên dưới — trỏ đúng biến client bạn tạo trong js/supabase-client.js
 //   2) `getCurrentUserId()` bên dưới — trỏ đúng nơi bạn lưu user đang đăng nhập (thường ở js/auth.js)
 
-const VAPID_PUBLIC_KEY = 'DÁN_VAPID_PUBLIC_KEY_CỦA_BẠN_VÀO_ĐÂY';
+const VAPID_PUBLIC_KEY = 'BCWBh0KLHKyR-ULt1mlaR4oHQefPFryHd7osKGKZ4bGz3WxzagVAOGkcfDlIXCyrajukDrsktgUBz5aC8R4QcE0';
 
 function getSupabaseClient() {
   return typeof supabaseClient !== 'undefined' ? supabaseClient : null;
