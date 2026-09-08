@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TTBK</title>
 <link rel="stylesheet" href="css/style.css" />
+<link rel="manifest" href="css/manifest.json" />
+<meta name="theme-color" content="#0f172a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 </head>
 <body>
 
@@ -292,6 +296,15 @@
 
         <div class="card" style="max-width:420px;">
           <div class="settings-block">
+            <div class="settings-block">
+            <h3>Thông báo đẩy</h3>
+            <p style="font-size:13px;color:var(--ink-soft);margin:0 0 10px;">
+              Bật để nhận thông báo ngay trên điện thoại khi đến lượt bạn hoặc có ai đổi việc.
+            </p>
+            <button class="btn btn-primary btn-sm" id="st-push-enable">Bật thông báo đẩy</button>
+            <button class="btn btn-ghost btn-sm" id="st-push-disable" style="display:none;">Tắt thông báo đẩy</button>
+            <p id="st-push-status" style="font-size:12px;color:var(--ink-faint);margin:8px 0 0;"></p>
+          </div>
             <h3>Hồ sơ</h3>
             <div class="field">
               <label for="st-name">Tên hiển thị</label>
@@ -357,5 +370,7 @@
 <script src="js/members.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/app.js"></script>
+<script src="js/push-notifications.js"></script>
+<script src="js/pwa.js"></script>
 </body>
 </html>
