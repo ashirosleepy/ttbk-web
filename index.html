@@ -191,64 +191,6 @@
         </div>
 
         <div class="card" style="margin-bottom:22px;">
-          <h3 style="font-size:15px; margin-bottom:14px;">Thêm lịch mới</h3>
-          <div class="field">
-            <label for="sc-title">Tên việc</label>
-            <input type="text" id="sc-title" placeholder="VD: Đổ rác, Trực đun nước, Tổng vệ sinh WC" />
-          </div>
-          <div class="field">
-            <label for="sc-assign-mode">Cách gán người làm</label>
-            <select id="sc-assign-mode">
-              <option value="fixed">Cố định 1 người</option>
-              <option value="rotation">Luân phiên theo hàng đợi</option>
-            </select>
-          </div>
-          <div class="field" id="sc-fixed-wrap">
-            <label for="sc-assigned">Ai làm</label>
-            <select id="sc-assigned"></select>
-          </div>
-          <div class="field" id="sc-rotation-wrap" style="display:none;">
-            <label for="sc-rotation-queue">Hàng đợi luân phiên</label>
-            <select id="sc-rotation-queue"></select>
-            <p style="font-size:12px;color:var(--ink-faint);margin:6px 0 0;">Chưa có hàng đợi? Tạo ở khối "Việc luân phiên" bên dưới trước.</p>
-          </div>
-          <div class="field">
-            <label for="sc-repeat-type">Lặp lại</label>
-            <select id="sc-repeat-type">
-              <option value="daily">Mỗi ngày</option>
-              <option value="weekly" selected>Vào các ngày trong tuần</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Chọn ngày trong tuần</label>
-            <div class="days-picker" id="sc-days-picker">
-              <button type="button" class="day-toggle" data-day="1">T2</button>
-              <button type="button" class="day-toggle" data-day="2">T3</button>
-              <button type="button" class="day-toggle" data-day="3">T4</button>
-              <button type="button" class="day-toggle" data-day="4">T5</button>
-              <button type="button" class="day-toggle" data-day="5">T6</button>
-              <button type="button" class="day-toggle" data-day="6">T7</button>
-              <button type="button" class="day-toggle" data-day="0">CN</button>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="field">
-              <label for="sc-start">Bắt đầu từ</label>
-              <input type="date" id="sc-start" />
-            </div>
-            <div class="field">
-              <label for="sc-end">Kết thúc (không bắt buộc)</label>
-              <input type="date" id="sc-end" />
-            </div>
-          </div>
-          <div class="field" style="max-width:140px;">
-            <label for="sc-points">Điểm thưởng</label>
-            <input type="number" id="sc-points" value="10" min="0" />
-          </div>
-          <button class="btn btn-primary btn-sm" id="save-schedule">Lưu lịch</button>
-        </div>
-
-        <div class="card" style="margin-bottom:22px;">
           <h3 style="font-size:15px; margin-bottom:4px;">⚡ Việc luân phiên (phát sinh)</h3>
           <p style="font-size:13px;color:var(--ink-soft);margin:0 0 14px;">
             Dùng cho việc không có giờ cố định như đổ rác, thay bình nước, đi chợ — thay vì chia cứng theo thứ,

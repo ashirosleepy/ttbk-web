@@ -211,6 +211,10 @@ function bindScheduleEvents() {
 
   const repeatTypeSel = document.getElementById("sc-repeat-type");
   const daysPicker = document.getElementById("sc-days-picker");
+  const assignModeSel = document.getElementById("sc-assign-mode");
+  const saveBtn = document.getElementById("save-schedule");
+  if (!repeatTypeSel || !daysPicker || !assignModeSel || !saveBtn) return;
+
   if (!repeatTypeSel.dataset.bound) {
     repeatTypeSel.dataset.bound = "1";
     repeatTypeSel.addEventListener("change", () => {
@@ -225,13 +229,11 @@ function bindScheduleEvents() {
     });
   }
 
-  const assignModeSel = document.getElementById("sc-assign-mode");
   if (!assignModeSel.dataset.bound) {
     assignModeSel.dataset.bound = "1";
     assignModeSel.addEventListener("change", toggleAssignModeUI);
   }
 
-  const saveBtn = document.getElementById("save-schedule");
   if (!saveBtn.dataset.bound) {
     saveBtn.dataset.bound = "1";
     saveBtn.addEventListener("click", async () => {
@@ -269,11 +271,14 @@ function bindScheduleEvents() {
 }
 
 async function loadScheduleSection() {
-  document.getElementById("sc-assigned").innerHTML = STATE.profiles
-    .map((p) => `<option value="${p.id}">${escapeHTML(p.name)}</option>`)
-    .join("");
+  const assignedSelect = document.getElementById("sc-assigned");
+  if (assignedSelect) {
+    assignedSelect.innerHTML = STATE.profiles
+      .map((p) => `<option value="${p.id}">${escapeHTML(p.name)}</option>`)
+      .join("");
+  }
   await refreshScheduleRotationOptions();
-  toggleAssignModeUI();
+  if (document.getElementById("sc-assign-mode")) toggleAssignModeUI();
   bindScheduleEvents();
   await renderScheduleView();
   await loadRotationAdmin();

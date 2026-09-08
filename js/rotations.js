@@ -70,6 +70,15 @@ async function advanceQueueByCompleter(queueId, completedUserId) {
   await supabaseClient.from("rotation_queues").update({ current_index: newIndex }).eq("id", queueId);
 }
 
+async function restoreQueueToUser(queueId, userId) {
+  const { data: queue, error } = await supabaseClient.from("rotation_queues").select("member_order").eq("id", queueId).single();
+  if (error || !queue || !Array.isArray(queue.member_order)) return;
+
+  const userIndex = queue.member_order.indexOf(userId);
+  if (userIndex === -1) return;
+  await supabaseClient.from("rotation_queues").update({ current_index: userIndex }).eq("id", queueId);
+}
+
 // Tạo 1 việc phát sinh (đổ rác, thay bình nước...) giao cho người đang tới lượt
 async function reportAdhocTask(queueId) {
   const { data: queue, error } = await supabaseClient.from("rotation_queues").select("*").eq("id", queueId).single();

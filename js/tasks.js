@@ -521,6 +521,8 @@ async function toggleTaskDone(id) {
         );
       }
     }
+  } else if (data.rotation_queue_id && typeof restoreQueueToUser === "function") {
+    await restoreQueueToUser(data.rotation_queue_id, data.assigned_to);
   }
 
   refreshActiveView();
