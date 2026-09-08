@@ -39,6 +39,26 @@ function todayStr() {
   return local.toISOString().slice(0, 10);
 }
 
+// Số ngày đã trễ so với hạn (0 nếu chưa tới hạn hoặc chưa có hạn).
+// referenceDateStr mặc định là hôm nay, có thể truyền ngày khác (vd ngày hoàn thành)
+// để tính "trễ N ngày so với hạn" ngay trên phiếu việc đã xong.
+function daysOverdue(dueDate, referenceDateStr = todayStr()) {
+  if (!dueDate) return 0;
+  const due = new Date(dueDate + "T00:00:00");
+  const ref = new Date(referenceDateStr + "T00:00:00");
+  const diff = Math.round((ref - due) / 86400000);
+  return diff > 0 ? diff : 0;
+}
+
+// Định dạng ngày giờ đầy đủ kiểu Việt Nam từ 1 chuỗi ISO: "06/09 14:35"
+function formatDateTimeShort(isoString) {
+  if (!isoString) return "—";
+  const d = new Date(isoString);
+  const dateStr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const timeStr = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${dateStr} ${timeStr}`;
+}
+
 // Trả về id (uuid) của profile theo tên, dùng khi cần tra nhanh trong danh sách đã tải sẵn
 function findProfile(profiles, id) {
   return profiles.find((p) => p.id === id) || null;

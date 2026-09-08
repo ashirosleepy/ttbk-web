@@ -166,24 +166,53 @@ function taskTicketHTML(task) {
       </div>`;
   }
 
+  const isRotationLinked = !!task.rotation_queue_id;
+
+  // Phiếu việc ĐÃ HOÀN THÀNH: không cần sửa người làm / hạn nữa — chỉ cần biết
+  // hoàn thành lúc nào, và nếu có hạn thì có trễ hay không.
+  if (isDone) {
+    const late = task.due_date ? daysOverdue(task.due_date, (task.completed_at || "").slice(0, 10)) : 0;
+    return `
+      <div class="task-ticket done" style="border-left-color:${borderColor}" data-id="${task.id}">
+        <button class="task-check done" data-action="toggle" title="Mở lại việc này">✓</button>
+        <div class="task-body">
+          <div class="task-title">${escapeHTML(task.title)}</div>
+          <div class="task-meta">
+            <span class="task-done-meta">✅ Hoàn thành lúc ${formatDateTimeShort(task.completed_at)}</span>
+            ${late > 0 ? `<span class="task-overdue-tag">⚠️ Trễ ${late} ngày so với hạn ${formatDateShort(task.due_date)}</span>` : ""}
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
+          <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
+        </div>
+      </div>`;
+  }
+
   const options = STATE.profiles
     .map((p) => `<option value="${p.id}" ${p.id === task.assigned_to ? "selected" : ""}>${escapeHTML(p.name)}</option>`)
     .join("");
 
+  const late = !isRotationLinked ? daysOverdue(task.due_date) : 0;
+  const dueControl = isRotationLinked
+    ? `<span class="task-no-due">🔁 Việc luân phiên — không có hạn</span>`
+    : `<input type="date" data-action="due" value="${task.due_date}" class="task-mini-date" title="Đổi hạn" />`;
+
   return `
-    <div class="task-ticket ${isDone ? "done" : ""}" style="border-left-color:${borderColor}" data-id="${task.id}">
-      <button class="task-check ${isDone ? "done" : ""}" data-action="toggle" title="Đánh dấu hoàn thành">${isDone ? "✓" : ""}</button>
+    <div class="task-ticket" style="border-left-color:${borderColor}" data-id="${task.id}">
+      <button class="task-check" data-action="toggle" title="Đánh dấu hoàn thành"></button>
       <div class="task-body">
         <div class="task-title">${escapeHTML(task.title)}</div>
         <div class="task-meta">
           ${statusBadgeHTML(task.status)}
+          ${late > 0 ? `<span class="task-overdue-tag">⚠️ Trễ ${late} ngày</span>` : ""}
           <select data-action="reassign" class="task-mini-select" title="Đổi người làm">${options}</select>
-          <input type="date" data-action="due" value="${task.due_date}" class="task-mini-date" title="Đổi hạn" />
+          ${dueControl}
         </div>
       </div>
       <div class="task-actions">
         <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
-        ${!isDone ? `<button class="icon-btn" data-action="miss" title="Đánh dấu không hoàn thành (trừ điểm)">✕</button>` : ""}
+        <button class="icon-btn" data-action="miss" title="Đánh dấu không hoàn thành (trừ điểm)">✕</button>
         <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
         <button class="icon-btn" data-action="delete" title="Xoá việc">🗑</button>
       </div>
@@ -208,53 +237,83 @@ function renderTabsHTML() {
   return html;
 }
 
-// Render "Phiếu việc ảo" cho việc luân phiên TỰ ĐỘNG ĐẾN LƯỢT
-// queueHasTaskToday: các queue đã có 1 việc thật (đang chờ xử lý/xin chuyển) cho hôm nay rồi,
-// thì ẩn thẻ ảo đi vì việc đó đã hiện dưới dạng phiếu việc thật trong danh sách bên dưới.
-function renderAutoRotationsHTML(rotations, queueHasTaskToday = new Set()) {
-  let html = '<div class="rotations-section" style="margin-bottom: 20px;">';
-  html += '<h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--ink-faint);">Tới lượt luân phiên (Chưa làm)</h3>';
-  
-  // Lọc ra các queue mà current_index trỏ đúng vào người đang được chọn ở Tab
-  // và chưa có việc thật nào được tạo cho hôm nay (vd đã bấm "xin chuyển việc" rồi)
-  const myRotations = rotations.filter(r => {
-      if (!r.member_order || r.member_order.length === 0) return false;
-      const currentTurnUserId = r.member_order[r.current_index];
-      if (currentTurnUserId !== selectedUserId) return false;
-      return !queueHasTaskToday.has(r.id);
+// Việc luân phiên chỉ có 1 trạng thái đáng quan tâm khi CHƯA XONG: "đang tới lượt ai".
+// Trước đây trang này tách làm 2 khu vực (thẻ ảo "Tới lượt luân phiên" + thẻ thật
+// "Việc luân phiên — chưa làm") dù về bản chất là cùng 1 loại dữ liệu, gây trùng lặp.
+// Hàm này gộp lại thành DUY NHẤT 1 danh sách "🔁 Đang tới lượt", không hiển thị ngày hạn.
+//
+// - rotations: tất cả hàng đợi luân phiên đang active
+// - queueHasTaskToday: các queue đã có 1 việc thật cho hôm nay rồi (vd vừa "xin chuyển việc")
+//   -> không hiện thẻ ảo trùng, vì việc thật của queue đó đã nằm trong rotationPinnedTasks
+// - rotationPinnedTasks: các việc thật (đã tạo), gắn với hàng đợi, của người đang được chọn,
+//   mà chưa hoàn thành / chưa bị đánh dấu bỏ
+function renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinnedTasks) {
+  const myVirtualTurns = rotations.filter((r) => {
+    if (!r.member_order || r.member_order.length === 0) return false;
+    const currentTurnUserId = r.member_order[r.current_index];
+    if (currentTurnUserId !== selectedUserId) return false;
+    return !queueHasTaskToday.has(r.id);
   });
 
-  if (myRotations.length === 0) {
-      html += '<p class="empty-state" style="padding: 10px; background: var(--bg-faint); border-radius: 8px;">Không có việc luân phiên nào đang chờ.</p>';
-  } else {
-      const assignee = findProfile(STATE.profiles, selectedUserId);
-      const borderColor = assignee ? assignee.avatar_color : "#ccc";
+  if (myVirtualTurns.length === 0 && rotationPinnedTasks.length === 0) return "";
 
-      myRotations.forEach(r => {
-          html += `
-          <div class="task-ticket" style="border-left-color: ${borderColor}" data-queue-id="${r.id}">
-              <button class="task-check" data-action="complete-rotation" title="Đánh dấu đã làm xong"></button>
-              <div class="task-body">
-                  <div class="task-title">${r.icon} ${escapeHTML(r.label)}</div>
-                  <div class="task-meta">
-                      <span style="background: #ff9800; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem;">Đến lượt</span>
-                      <span>+${r.points} điểm</span>
-                  </div>
+  let html = '<div class="section-title rotation">🔁 Đang tới lượt</div><div class="task-list">';
+
+  const assignee = findProfile(STATE.profiles, selectedUserId);
+  const borderColor = assignee ? assignee.avatar_color : "#ccc";
+
+  myVirtualTurns.forEach((r) => {
+    html += `
+      <div class="task-ticket" style="border-left-color: ${borderColor}" data-queue-id="${r.id}">
+          <button class="task-check" data-action="complete-rotation" title="Đánh dấu đã làm xong"></button>
+          <div class="task-body">
+              <div class="task-title">${r.icon} ${escapeHTML(r.label)}</div>
+              <div class="task-meta">
+                  <span class="badge badge-wait">Đến lượt</span>
+                  <span class="task-no-due">Không có ngày</span>
+                  <span>+${r.points} điểm</span>
               </div>
-              <div class="task-actions">
-                  <button class="icon-btn" data-action="request-handoff" data-queue="${r.id}" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
-                  <button class="icon-btn" data-action="miss-rotation" data-queue="${r.id}" title="Không hoàn thành — trừ điểm và chuyển lượt cho người kế tiếp">✕</button>
-              </div>
-          </div>`;
-      });
-  }
-  html += '</div>';
+          </div>
+          <div class="task-actions">
+              <button class="icon-btn" data-action="request-handoff" data-queue="${r.id}" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
+              <button class="icon-btn" data-action="miss-rotation" data-queue="${r.id}" title="Không hoàn thành — trừ điểm và chuyển lượt cho người kế tiếp">✕</button>
+          </div>
+      </div>`;
+  });
+
+  rotationPinnedTasks.forEach((t) => (html += taskTicketHTML(t)));
+
+  html += "</div>";
   return html;
+}
+
+// Việc vừa hoàn thành vẫn hiện ở đây (có ghi giờ) trong vài ngày, sau đó mới coi là
+// "cũ" và chỉ còn nằm trong Nhật ký hoạt động — tránh vừa bấm xong là biến mất luôn.
+const RECENT_DONE_DAYS = 3;
+
+// Bộ lọc nhanh đang chọn cho trang Công việc: all | today | rotation | overdue | done
+let taskDisplayFilter = "all";
+
+function renderTaskFilterBarHTML() {
+  const filters = [
+    { key: "all", label: "Tất cả" },
+    { key: "today", label: "🔥 Hôm nay" },
+    { key: "rotation", label: "🔁 Luân phiên" },
+    { key: "overdue", label: "⚠️ Trễ hạn" },
+    { key: "done", label: "✅ Đã xong" },
+  ];
+  const chips = filters
+    .map(
+      (f) =>
+        `<button type="button" class="filter-chip ${taskDisplayFilter === f.key ? "on" : ""}" data-filter="${f.key}">${f.label}</button>`
+    )
+    .join("");
+  return `<div class="task-filter-bar">${chips}</div>`;
 }
 
 async function renderTasksView() {
   const container = document.getElementById("tasks-container");
-  
+
   // Mặc định chọn người đang đăng nhập nếu chưa chọn ai
   if (!selectedUserId) {
     selectedUserId = STATE.me.id;
@@ -264,57 +323,92 @@ async function renderTasksView() {
   const [tasks, rotations] = await Promise.all([fetchTasks(), fetchRotations()]);
 
   // Lọc task theo người đang được chọn ở Tab
-  const filteredTasks = tasks.filter(t => t.assigned_to === selectedUserId);
+  const filteredTasks = tasks.filter((t) => t.assigned_to === selectedUserId);
+
+  const today = todayStr();
 
   // Những hàng đợi đã có 1 việc thật cho hôm nay (vd vừa "xin chuyển việc")
-  // thì không hiện thẻ ảo "Tới lượt luân phiên" nữa, tránh hiện trùng.
-  const today0 = todayStr();
+  // thì không hiện thẻ ảo "Đang tới lượt" nữa, tránh hiện trùng.
   const queueHasTaskToday = new Set(
     tasks
-      .filter((t) => t.rotation_queue_id && t.due_date === today0 && t.status !== "hoan_thanh")
+      .filter((t) => t.rotation_queue_id && t.due_date === today && t.status !== "hoan_thanh")
       .map((t) => t.rotation_queue_id)
   );
 
-  // Dựng giao diện: Tabs -> Việc Luân Phiên (Auto) -> Các việc cụ thể
-  let html = renderTabsHTML();
-  html += renderAutoRotationsHTML(rotations, queueHasTaskToday);
+  // Việc gắn với hàng đợi luân phiên, chưa xong / chưa bị đánh dấu bỏ -> không có hạn,
+  // luôn nằm trong nhóm "Đang tới lượt" (không chôn theo ngày như việc thường).
+  const rotationPinned = filteredTasks.filter(
+    (t) => t.rotation_queue_id && t.status !== "hoan_thanh" && t.status !== "bo_lo"
+  );
+  const rest = filteredTasks.filter((t) => !rotationPinned.includes(t));
 
-  html += '<h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--ink-faint); margin-top: 20px;">Công việc được gán</h3>';
-  
-  if (filteredTasks.length === 0) {
+  const todayTasks = rest.filter((t) => t.status !== "hoan_thanh" && t.due_date === today);
+  const overdueTasks = rest
+    .filter((t) => t.status !== "hoan_thanh" && t.due_date < today)
+    .sort((a, b) => (a.due_date < b.due_date ? -1 : 1)); // trễ lâu nhất lên trước
+  const upcomingTasks = rest.filter((t) => t.status !== "hoan_thanh" && t.due_date > today);
+
+  // Hoàn thành gần đây: gồm cả việc thường lẫn việc luân phiên đã xong, mới nhất lên trước.
+  const doneCutoffMs = Date.now() - RECENT_DONE_DAYS * 86400000;
+  const recentDone = filteredTasks
+    .filter((t) => t.status === "hoan_thanh" && t.completed_at && new Date(t.completed_at).getTime() >= doneCutoffMs)
+    .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+
+  const rotationSectionHTML = renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinned);
+  const hasRotationTurn = rotationSectionHTML !== "";
+
+  const sections = [];
+
+  if (todayTasks.length > 0) {
+    sections.push({
+      key: "today",
+      html: `<div class="section-title today">🔥 Hôm nay</div><div class="task-list">${todayTasks
+        .map((t) => taskTicketHTML(t))
+        .join("")}</div>`,
+    });
+  }
+  if (hasRotationTurn) {
+    sections.push({ key: "rotation", html: rotationSectionHTML });
+  }
+  if (overdueTasks.length > 0) {
+    sections.push({
+      key: "overdue",
+      html: `<div class="section-title overdue">⚠️ Cần xử lý</div><div class="task-list">${overdueTasks
+        .map((t) => taskTicketHTML(t))
+        .join("")}</div>`,
+    });
+  }
+  if (upcomingTasks.length > 0) {
+    const groups = groupTasksByDate(upcomingTasks);
+    const dates = Object.keys(groups).sort();
+    const body = dates
+      .map((date) => `<div class="day-label">${formatDateShort(date)}</div><div class="task-list">${groups[date].map((t) => taskTicketHTML(t)).join("")}</div>`)
+      .join("");
+    sections.push({ key: "upcoming", html: `<div class="section-title upcoming">📅 Sắp tới</div>${body}` });
+  }
+  if (recentDone.length > 0) {
+    sections.push({
+      key: "done",
+      html: `<div class="section-title done">✅ Hoàn thành gần đây</div><div class="task-list">${recentDone
+        .map((t) => taskTicketHTML(t))
+        .join("")}</div>`,
+    });
+  }
+
+  let html = renderTabsHTML() + renderTaskFilterBarHTML();
+
+  // Bộ lọc nhanh: "Tất cả" hiện mọi nhóm, còn lại chỉ hiện đúng 1 nhóm tương ứng.
+  // "Trễ hạn" hiện nhóm "Cần xử lý", "Luân phiên" hiện nhóm "Đang tới lượt".
+  const filterToSection = { today: "today", rotation: "rotation", overdue: "overdue", done: "done" };
+  const visibleSections =
+    taskDisplayFilter === "all" ? sections : sections.filter((s) => s.key === filterToSection[taskDisplayFilter]);
+
+  if (sections.length === 0) {
     html += `<p class="empty-state">Chưa có việc nào. Bấm "+ Thêm việc" để tạo việc.</p>`;
+  } else if (visibleSections.length === 0) {
+    html += `<p class="empty-state">Không có việc nào trong bộ lọc này.</p>`;
   } else {
-    // Việc gắn với hàng đợi luân phiên mà chưa xong (chưa hoàn thành, chưa bị đánh dấu bỏ)
-    // luôn hiện ở trên cùng, không bị chôn theo nhóm ngày, để không ai quên lượt của mình.
-    const rotationPinned = filteredTasks.filter(
-      (t) => t.rotation_queue_id && t.status !== "hoan_thanh" && t.status !== "bo_lo"
-    );
-    const rest = filteredTasks.filter((t) => !rotationPinned.includes(t));
-
-    if (rotationPinned.length > 0) {
-      html += `<div class="day-label">🔁 Việc luân phiên — chưa làm</div><div class="task-list">`;
-      rotationPinned.forEach((t) => (html += taskTicketHTML(t)));
-      html += `</div>`;
-    }
-
-    if (rest.length === 0 && rotationPinned.length === 0) {
-      html += `<p class="empty-state">Chưa có việc nào. Bấm "+ Thêm việc" để tạo việc.</p>`;
-    } else if (rest.length > 0) {
-      const today = todayStr();
-      const groups = groupTasksByDate(rest);
-      const dates = Object.keys(groups).sort();
-
-      dates.forEach((date) => {
-        let label;
-        if (date === today) label = "Hôm nay";
-        else if (date < today) label = `Trễ hạn — ${formatDateShort(date)}`;
-        else label = formatDateShort(date);
-
-        html += `<div class="day-label">${label}</div><div class="task-list">`;
-        groups[date].forEach((t) => (html += taskTicketHTML(t)));
-        html += `</div>`;
-      });
-    }
+    html += visibleSections.map((s) => s.html).join("");
   }
 
   container.innerHTML = html;
@@ -725,6 +819,14 @@ function bindTaskEvents(containerId = "tasks-container") {
         selectedUserId = tab.dataset.user;
         renderTasksView(); // Render lại danh sách
         return;
+    }
+
+    // 1b. Xử lý click bộ lọc nhanh
+    const filterChip = e.target.closest(".filter-chip");
+    if (filterChip) {
+      taskDisplayFilter = filterChip.dataset.filter;
+      renderTasksView();
+      return;
     }
 
     // 2. Xử lý click phiếu việc

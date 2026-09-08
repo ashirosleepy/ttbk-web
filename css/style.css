@@ -407,6 +407,51 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 .day-label:first-child { margin-top: 0; }
 
+/* ---------------- Nhóm việc theo mức ưu tiên (Hôm nay / Luân phiên / Trễ hạn...) ---------------- */
+.section-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin: 26px 0 12px;
+  padding-left: 10px;
+  border-left: 4px solid var(--border);
+}
+.section-title:first-of-type { margin-top: 0; }
+.section-title.today { color: var(--accent); border-left-color: var(--accent); }
+.section-title.rotation { color: var(--wait); border-left-color: var(--wait); }
+.section-title.overdue { color: #c0392b; border-left-color: #c0392b; }
+.section-title.upcoming { color: var(--ink-soft); border-left-color: var(--border); }
+.section-title.done { color: var(--ok); border-left-color: var(--ok); }
+
+/* ---------------- Bộ lọc nhanh trang Công việc ---------------- */
+.task-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.filter-chip {
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.filter-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.filter-chip:hover:not(.on) { background: var(--surface-soft); }
+
+/* ---------------- Cảnh báo trễ hạn / không có hạn (việc luân phiên) ---------------- */
+.task-overdue-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: #fdecea;
+  color: #c0392b;
+}
+.task-no-due { color: var(--ink-faint); font-style: italic; }
+.task-done-meta { color: var(--ok); font-weight: 600; }
+
 /* ---------------- Form thêm việc ---------------- */
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-inline { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 22px; }
