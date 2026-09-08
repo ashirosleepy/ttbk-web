@@ -8,14 +8,11 @@
 const VAPID_PUBLIC_KEY = 'DÁN_VAPID_PUBLIC_KEY_CỦA_BẠN_VÀO_ĐÂY';
 
 function getSupabaseClient() {
-  // Thử vài tên biến phổ biến — sửa lại thành đúng tên bạn dùng trong supabase-client.js
-  return window.sb || window.supabaseClient || window.db || window._supabase || null;
+  return typeof supabaseClient !== 'undefined' ? supabaseClient : null;
 }
 
 function getCurrentUserId() {
-  // Sửa lại theo cách auth.js của bạn lưu user hiện tại, ví dụ:
-  // return window.currentUser?.id;
-  return window.currentUser?.id || window.CURRENT_USER_ID || null;
+  return typeof STATE !== 'undefined' ? STATE.me?.id || null : null;
 }
 
 function urlBase64ToUint8Array(base64String) {
@@ -28,7 +25,8 @@ function urlBase64ToUint8Array(base64String) {
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return null;
   try {
-    return await navigator.serviceWorker.register('/ttbk-web/sw.js');
+    const serviceWorkerUrl = new URL('sw.js', document.baseURI);
+    return await navigator.serviceWorker.register(serviceWorkerUrl);
   } catch (err) {
     console.error('Không đăng ký được service worker:', err);
     return null;
@@ -62,41 +60,47 @@ async function enablePush() {
     return false;
   }
 
-  let subscription = await registration.pushManager.getSubscription();
-  if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
-  }
+  try {
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
 
-  const supabase = getSupabaseClient();
-  const userId = getCurrentUserId();
+    const supabase = getSupabaseClient();
+    const userId = getCurrentUserId();
 
-  if (!supabase || !userId) {
-    console.warn('Chưa kết nối được Supabase client hoặc user id — xem TODO ở đầu file push-notifications.js');
-    if (statusEl) statusEl.textContent = 'Thiếu cấu hình (xem console).';
+    if (!supabase || !userId) {
+      console.warn('Chưa kết nối được Supabase client hoặc user id — xem TODO ở đầu file push-notifications.js');
+      if (statusEl) statusEl.textContent = 'Thiếu cấu hình (xem console).';
+      return false;
+    }
+
+    const { error } = await supabase.from('push_subscriptions').upsert(
+      {
+        user_id: userId,
+        endpoint: subscription.endpoint,
+        subscription: subscription.toJSON(),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'endpoint' }
+    );
+
+    if (error) {
+      console.error('Lỗi lưu subscription:', error);
+      if (statusEl) statusEl.textContent = 'Lỗi khi lưu đăng ký. Xem console.';
+      return false;
+    }
+
+    if (statusEl) statusEl.textContent = 'Đã bật thông báo đẩy trên thiết bị này.';
+    return true;
+  } catch (err) {
+    console.error('Không tạo được đăng ký push:', err);
+    if (statusEl) statusEl.textContent = 'Không tạo được đăng ký push. Kiểm tra VAPID key và quyền thông báo.';
     return false;
   }
-
-  const { error } = await supabase.from('push_subscriptions').upsert(
-    {
-      user_id: userId,
-      endpoint: subscription.endpoint,
-      subscription: subscription.toJSON(),
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'endpoint' }
-  );
-
-  if (error) {
-    console.error('Lỗi lưu subscription:', error);
-    if (statusEl) statusEl.textContent = 'Lỗi khi lưu đăng ký. Xem console.';
-    return false;
-  }
-
-  if (statusEl) statusEl.textContent = 'Đã bật thông báo đẩy trên thiết bị này.';
-  return true;
 }
 
 async function disablePush() {
