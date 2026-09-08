@@ -11,7 +11,7 @@ self.addEventListener('activate', (event) => {
 
 // Nhận push từ server (Supabase Edge Function) và hiển thị notification
 self.addEventListener('push', (event) => {
-  let payload = { title: 'TTBK — Việc nhà', body: 'Bạn có thông báo mới.' };
+  let payload = { title: 'Nhiệm vụ hệ thống', body: 'Bạn có thông báo mới.' };
 
   if (event.data) {
     try {
@@ -30,7 +30,7 @@ self.addEventListener('push', (event) => {
     vibrate: [100, 50, 100],
   };
 
-  event.waitUntil(self.registration.showNotification(payload.title || 'TTBK — Việc nhà', options));
+  event.waitUntil(self.registration.showNotification(payload.title || 'Nhiệm vụ hệ thống', options));
 });
 
 // Khi người dùng bấm vào notification -> mở/focus đúng tab của app
