@@ -12,7 +12,21 @@ async function createNotification(userId, message, opts = {}) {
     exchange_id: opts.exchangeId || null,
   };
   const { error } = await supabaseClient.from("notifications").insert(payload);
-  if (error) console.error("Không gửi được thông báo:", error.message);
+  if (error) {
+    console.error("Không gửi được thông báo:", error.message);
+    return;
+  }
+
+  const { error: pushError } = await supabaseClient.functions.invoke("send-push", {
+    body: {
+      user_id: userId,
+      title: opts.title || "TTBK - Việc nhà",
+      body: message,
+      url: opts.url || new URL("index.html", document.baseURI).href,
+      tag: opts.type || "thong_bao",
+    },
+  });
+  if (pushError) console.error("Không gửi được push notification:", pushError.message);
 }
 
 async function fetchNotifications() {

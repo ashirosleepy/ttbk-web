@@ -19,14 +19,26 @@ const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com'
 webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     const { user_id, user_ids, title, body, url, tag } = await req.json();
     const targetIds: string[] = user_ids ?? (user_id ? [user_id] : []);
 
     if (targetIds.length === 0 || !title) {
-      return new Response(JSON.stringify({ error: 'Thiếu user_id/user_ids hoặc title' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Thiếu user_id/user_ids hoặc title' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const { data: subs, error } = await supabase
@@ -59,10 +71,13 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ sent: results.filter((r) => r.status === 'fulfilled').length, total: results.length }),
-      { headers: { 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
