@@ -560,7 +560,18 @@ async function handleCompleteAutoRotation(queueId) {
 
     // Tự động tăng current_index lên người tiếp theo
     const nextIndex = (queue.current_index + 1) % queue.member_order.length;
-    await supabaseClient.from('rotation_queues').update({ current_index: nextIndex }).eq('id', queueId);
+    const { error: queueError } = await supabaseClient
+      .from('rotation_queues')
+      .update({ current_index: nextIndex })
+      .eq('id', queueId);
+    if (!queueError) {
+      const nextHolder = currentHolder({ ...queue, current_index: nextIndex });
+      if (nextHolder && nextHolder.id !== holder.id) {
+        await createNotification(nextHolder.id, `${queue.icon} ${queue.label} — đến lượt bạn.`, {
+          type: "den_luot",
+        });
+      }
+    }
 
     refreshActiveView();
 }
@@ -926,6 +937,7 @@ function bindNewTaskForm() {
     if (error) return alert("Lỗi: " + error.message);
 
     await logHistory(data.id, STATE.me.id, "tao_viec", `${STATE.me.name} tạo việc "${title}"`);
+    await notifyTaskAssignee(data);
     formCard.style.display = "none";
     document.getElementById("nt-title").value = "";
     document.getElementById("nt-desc").value = "";

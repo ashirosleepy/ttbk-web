@@ -265,6 +265,10 @@ async function confirmCreateTasks() {
     }
   }
 
+  for (const row of data || []) {
+    await notifyTaskAssignee(row, `📌 Bạn được giao việc mới: "${row.title}".`);
+  }
+
   // Dọn form và ẩn bảng
   aaPreviewItems = [];
   document.getElementById("aa-custom").value = "";

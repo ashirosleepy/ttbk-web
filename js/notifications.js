@@ -29,6 +29,15 @@ async function createNotification(userId, message, opts = {}) {
   if (pushError) console.error("Không gửi được push notification:", pushError.message);
 }
 
+async function notifyTaskAssignee(task, message) {
+  if (!task || !task.assigned_to) return;
+  await createNotification(
+    task.assigned_to,
+    message || `📌 Bạn có việc mới: "${task.title}".`,
+    { type: "thong_bao", taskId: task.id }
+  );
+}
+
 async function fetchNotifications() {
   const { data, error } = await supabaseClient
     .from("notifications")

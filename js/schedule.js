@@ -124,6 +124,12 @@ async function generateTodayTasks() {
       }
     }
   }
+
+  for (const row of insertedRows || []) {
+    if (row.assigned_to) {
+      await notifyTaskAssignee(row, `📌 Bạn có việc mới hôm nay: "${row.title}".`);
+    }
+  }
 }
 
 async function renderScheduleView() {

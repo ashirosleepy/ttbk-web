@@ -67,7 +67,19 @@ async function advanceQueueByCompleter(queueId, completedUserId) {
   const idx = order.indexOf(completedUserId);
   const newIndex = idx === -1 ? (queue.current_index + 1) % order.length : (idx + 1) % order.length;
 
-  await supabaseClient.from("rotation_queues").update({ current_index: newIndex }).eq("id", queueId);
+  const { error: updateError } = await supabaseClient
+    .from("rotation_queues")
+    .update({ current_index: newIndex })
+    .eq("id", queueId);
+  if (updateError) return;
+
+  const nextQueue = { ...queue, current_index: newIndex };
+  const nextHolder = currentHolder(nextQueue);
+  if (nextHolder && nextHolder.id !== completedUserId) {
+    await createNotification(nextHolder.id, `${queue.icon} ${queue.label} — đến lượt bạn.`, {
+      type: "den_luot",
+    });
+  }
 }
 
 async function restoreQueueToUser(queueId, userId) {
