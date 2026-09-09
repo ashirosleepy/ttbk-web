@@ -101,51 +101,52 @@ function projectFutureOccurrences(schedules, queues, startStr, endStr, todayStr_
     });
   }
 
-  // Nếu lịch gốc đã bị xoá nhưng các task luân phiên đã tạo vẫn còn,
-  // dùng các thứ trong tuần của task cũ để không làm mất dự báo tương lai.
-  const scheduledQueueIds = new Set(schedules.filter((s) => s.rotation_queue_id).map((s) => s.rotation_queue_id));
-  const inferredByQueue = {};
+  // Học lịch sử của mọi task cũ, kể cả task không còn schedule/rotation_queue.
+  // Nhờ vậy việc xuất hiện 2 lần trong một ngày vẫn được dự báo 2 lần.
+  const scheduledTitles = new Set(schedules.map((s) => s.title));
+  const queueTitles = new Set(queues.map((q) => q.label));
+  const inferredTasks = {};
   existingTasks
-    .filter((task) => task.rotation_queue_id && task.due_date <= todayStr_)
+    .filter((task) => task.due_date <= todayStr_ && !scheduledTitles.has(task.title) && !queueTitles.has(task.title))
     .forEach((task) => {
-      if (scheduledQueueIds.has(task.rotation_queue_id)) return;
-      const date = new Date(task.due_date + "T00:00:00");
-      if (!inferredByQueue[task.rotation_queue_id]) {
-        inferredByQueue[task.rotation_queue_id] = { weekdays: new Set(), dates: new Set() };
-      }
-      inferredByQueue[task.rotation_queue_id].weekdays.add(date.getDay());
-      inferredByQueue[task.rotation_queue_id].dates.add(task.due_date);
+      if (!inferredTasks[task.title]) inferredTasks[task.title] = { byDate: {}, rows: [] };
+      if (!inferredTasks[task.title].byDate[task.due_date]) inferredTasks[task.title].byDate[task.due_date] = [];
+      inferredTasks[task.title].byDate[task.due_date].push(task);
+      inferredTasks[task.title].rows.push(task);
     });
 
-  Object.values(inferredByQueue).forEach((pattern) => {
-    const dates = [...pattern.dates].sort();
+  Object.values(inferredTasks).forEach((pattern) => {
+    const dates = Object.keys(pattern.byDate).sort();
+    pattern.weekdays = new Set(dates.map((date) => new Date(date + "T00:00:00").getDay()));
     pattern.daily = dates.some((date, index) => {
       if (index === 0) return false;
       const previous = new Date(dates[index - 1] + "T00:00:00");
       const current = new Date(date + "T00:00:00");
       return current - previous === 86400000;
     });
+    pattern.count = Math.max(...dates.map((date) => pattern.byDate[date].length));
+    pattern.rows.sort((a, b) => `${a.due_date}-${a.created_at}`.localeCompare(`${b.due_date}-${b.created_at}`));
+    pattern.points = pattern.rows[pattern.rows.length - 1]?.points || 0;
+    pattern.cursor = 0;
   });
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dStr = calDateStrFromDate(d);
     if (dStr <= todayStr_) continue;
 
-    Object.entries(inferredByQueue).forEach(([queueId, pattern]) => {
+    Object.entries(inferredTasks).forEach(([title, pattern]) => {
       if (!pattern.daily && !pattern.weekdays.has(d.getDay())) return;
-      const queue = queueMap[queueId];
-      if (!queue || !Array.isArray(queue.member_order) || queue.member_order.length === 0) return;
-      const n = queue.member_order.length;
-      const step = queueStep[queueId] || 0;
-      const assigneeId = queue.member_order[(queue.current_index + step) % n];
-      queueStep[queueId] = step + 1;
       if (!occurrencesByDate[dStr]) occurrencesByDate[dStr] = [];
-      occurrencesByDate[dStr].push({
-        title: queue.label,
-        assigneeId,
-        points: queue.points,
-        projected: true,
-      });
+      for (let count = 0; count < pattern.count; count++) {
+        const source = pattern.rows[pattern.cursor % pattern.rows.length];
+        pattern.cursor += 1;
+        occurrencesByDate[dStr].push({
+          title,
+          assigneeId: source.assigned_to,
+          points: pattern.points,
+          projected: true,
+        });
+      }
     });
   }
 
@@ -188,8 +189,11 @@ async function renderMonthCalendar() {
   const rangeEnd = calDateStrFromDate(lastCellDate);
   const today = todayStr();
 
+  const historyStartDate = new Date(rangeStart + "T00:00:00");
+  historyStartDate.setDate(historyStartDate.getDate() - 90);
+  const historyStart = calDateStrFromDate(historyStartDate);
   const [tasks, schedules, queues] = await Promise.all([
-    fetchTasksInRange(rangeStart, today < rangeEnd ? today : rangeEnd),
+    fetchTasksInRange(historyStart, today < rangeEnd ? today : rangeEnd),
     fetchSchedules(),
     fetchRotationQueues(),
   ]);
