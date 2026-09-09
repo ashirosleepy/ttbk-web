@@ -167,6 +167,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border: 1px solid var(--border);
   animation: auth-in .5s var(--ease) both;
 }
+.auth-theme-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin: -12px 0 16px; color: var(--ink-soft); font-size: 12px; }
+.auth-theme-row .theme-switch { flex: 0 0 auto; }
 
 .auth-mark {
   font-size: 30px;
