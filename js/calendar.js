@@ -61,6 +61,20 @@ async function fetchTasksInRange(startStr, endStr) {
   return data || [];
 }
 
+function calendarTaskIsRequired(task) {
+  return task.priority === "cao";
+}
+
+function calendarDisplayDate(task, todayStr_) {
+  const isOpen = task.status !== "hoan_thanh" && task.status !== "bo_lo";
+  const isOldRotation = task.rotation_queue_id && task.due_date < todayStr_;
+
+  // Việc luân phiên chưa xong không bị kẹt ở ngày cũ; chỉ việc bắt buộc
+  // mới giữ lại ngày quá hạn để đánh dấu đỏ trong lịch.
+  if (isOpen && isOldRotation && !calendarTaskIsRequired(task)) return todayStr_;
+  return task.due_date;
+}
+
 // Chiếu (dự kiến) các lịch lặp lại vào những ngày TƯƠNG LAI trong khoảng xem.
 // Trả về map: "YYYY-MM-DD" -> [{ title, assigneeId, points, projected: true }]
 function projectFutureOccurrences(schedules, queues, startStr, endStr, todayStr_, existingTasks = []) {
@@ -201,6 +215,7 @@ function calChipHTML(item) {
   if (!item.projected) {
     if (item.status === "hoan_thanh") cls = "cal-chip-done";
     else if (item.status === "bo_lo") cls = "cal-chip-missed";
+    else if (item.overdueRequired) cls = "cal-chip-missed";
     else cls = "cal-chip-todo";
   }
 
@@ -247,11 +262,11 @@ function calOpenDetailModal(dateStr) {
   list.innerHTML = items.length
     ? items.map((item) => {
         const assignee = findProfile(STATE.profiles || [], item.assigneeId);
-        const status = item.projected ? "Dự kiến" : item.status === "hoan_thanh" ? "Đã hoàn thành" : item.status === "bo_lo" ? "Đã bỏ việc" : "Chưa hoàn thành";
-        const statusClass = item.projected ? "future" : item.status === "hoan_thanh" ? "done" : item.status === "bo_lo" ? "missed" : "todo";
+        const status = item.projected ? "Dự kiến" : item.status === "hoan_thanh" ? "Đã hoàn thành" : item.status === "bo_lo" ? "Đã bỏ việc" : item.overdueRequired ? "Bắt buộc chưa hoàn thành" : "Chưa hoàn thành";
+        const statusClass = item.projected ? "future" : item.status === "hoan_thanh" ? "done" : item.status === "bo_lo" || item.overdueRequired ? "missed" : "todo";
         return `
           <div class="calendar-detail-item">
-            <div class="calendar-detail-icon ${statusClass}">${item.projected ? "◷" : item.status === "hoan_thanh" ? "✓" : item.status === "bo_lo" ? "×" : "•"}</div>
+            <div class="calendar-detail-icon ${statusClass}">${item.projected ? "◷" : item.status === "hoan_thanh" ? "✓" : item.status === "bo_lo" || item.overdueRequired ? "!" : "•"}</div>
             <div class="calendar-detail-body">
               <strong>${escapeHTML(item.title)}</strong>
               <span>${assignee ? `Người làm: ${escapeHTML(assignee.name)}` : "Chưa có người làm"}</span>
@@ -301,8 +316,9 @@ async function renderMonthCalendar() {
 
   const tasksByDate = {};
   tasks.forEach((t) => {
-    if (!tasksByDate[t.due_date]) tasksByDate[t.due_date] = [];
-    tasksByDate[t.due_date].push(t);
+    const displayDate = calendarDisplayDate(t, today);
+    if (!tasksByDate[displayDate]) tasksByDate[displayDate] = [];
+    tasksByDate[displayDate].push({ ...t, calendarDisplayDate: displayDate });
   });
 
   const futureByDate = projectFutureOccurrences(schedules, queues, rangeStart, rangeEnd, today, tasks);
@@ -314,6 +330,7 @@ async function renderMonthCalendar() {
       assigneeId: task.assigned_to,
       points: task.points,
       projected: false,
+      overdueRequired: date < today && calendarTaskIsRequired(task) && task.status !== "hoan_thanh" && task.status !== "bo_lo",
     }));
   });
   Object.entries(futureByDate).forEach(([date, items]) => {
@@ -340,7 +357,7 @@ async function renderMonthCalendar() {
             title: t.title,
             status: t.status,
             assigneeId: t.assigned_to,
-            missedByDate: dStr < today && t.status !== "hoan_thanh" && t.status !== "bo_lo",
+            overdueRequired: dStr < today && calendarTaskIsRequired(t) && t.status !== "hoan_thanh" && t.status !== "bo_lo",
           })
         )
         .join("");
