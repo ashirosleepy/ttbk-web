@@ -266,6 +266,14 @@ function bindRotationEvents() {
         const { error } = await supabaseClient.from("rotation_queues").update(payload).eq("id", editingRotationId);
         if (error) return alert("Lỗi: " + error.message);
       } else {
+        const { data: duplicate } = await supabaseClient
+          .from("rotation_queues")
+          .select("id")
+          .ilike("label", label)
+          .eq("active", true)
+          .limit(1)
+          .maybeSingle();
+        if (duplicate) return alert("Công việc luân phiên này đã tồn tại.");
         const { error } = await supabaseClient.from("rotation_queues").insert(payload);
         if (error) return alert("Lỗi: " + error.message);
       }

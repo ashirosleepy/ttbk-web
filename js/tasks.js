@@ -48,18 +48,28 @@ async function fetchTasks() {
   return data;
 }
 
-function keepOneOpenRotationTask(tasks) {
+function rotationDisplayKey(label) {
+  return String(label || "").trim().toLocaleLowerCase("vi");
+}
+
+function keepOneOpenRotationTask(tasks, rotations = []) {
+  const queueLabelById = new Map(rotations.map((queue) => [queue.id, rotationDisplayKey(queue.label)]));
   const latestByQueue = new Map();
   const openTasks = (tasks || [])
     .filter((task) => task.rotation_queue_id && task.status !== "hoan_thanh" && task.status !== "bo_lo")
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
   openTasks.forEach((task) => {
-    if (!latestByQueue.has(task.rotation_queue_id)) latestByQueue.set(task.rotation_queue_id, task.id);
+    const key = queueLabelById.get(task.rotation_queue_id) || task.rotation_queue_id;
+    if (!latestByQueue.has(key)) latestByQueue.set(key, task.id);
   });
 
   return (tasks || []).filter(
-    (task) => !task.rotation_queue_id || task.status === "hoan_thanh" || task.status === "bo_lo" || latestByQueue.get(task.rotation_queue_id) === task.id
+    (task) => {
+      if (!task.rotation_queue_id || task.status === "hoan_thanh" || task.status === "bo_lo") return true;
+      const key = queueLabelById.get(task.rotation_queue_id) || task.rotation_queue_id;
+      return latestByQueue.get(key) === task.id;
+    }
   );
 }
 
@@ -320,11 +330,15 @@ function rotationTaskTicketHTML(task, queue) {
     </div>`;
 }
 
-function renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinnedTasks, queueMap) {
+function renderRotationSectionHTML(rotations, queueHasTaskToday, activeRotationLabels, rotationPinnedTasks, queueMap) {
+  const renderedLabels = new Set();
   const myVirtualTurns = rotations.filter((r) => {
     if (!r.member_order || r.member_order.length === 0) return false;
+    const labelKey = rotationDisplayKey(r.label);
+    if (renderedLabels.has(labelKey) || activeRotationLabels.has(labelKey)) return false;
     const currentTurnUserId = typeof currentHolder === "function" ? currentHolder(r)?.id : r.member_order[r.current_index];
     if (currentTurnUserId !== selectedUserId) return false;
+    renderedLabels.add(labelKey);
     return !queueHasTaskToday.has(r.id);
   });
 
@@ -394,7 +408,7 @@ async function renderTasksView() {
 
   // Tải song song cả danh sách task truyền thống và danh sách luân phiên
   const [loadedTasks, rotations] = await Promise.all([fetchTasks(), fetchRotations()]);
-  const tasks = keepOneOpenRotationTask(loadedTasks);
+  const tasks = keepOneOpenRotationTask(loadedTasks, rotations);
   const queueMap = Object.fromEntries(rotations.map((queue) => [queue.id, queue]));
 
   // Lọc task theo người đang được chọn ở Tab
@@ -409,6 +423,11 @@ async function renderTasksView() {
       .filter((t) => t.rotation_queue_id && t.due_date === today && t.status !== "hoan_thanh" && t.status !== "bo_lo")
       .map((t) => t.rotation_queue_id)
   );
+  const activeRotationLabels = new Set(
+    tasks
+      .filter((t) => t.rotation_queue_id && t.status !== "hoan_thanh" && t.status !== "bo_lo")
+      .map((t) => rotationDisplayKey(queueMap[t.rotation_queue_id]?.label || t.title))
+  );
 
   // Việc gắn với hàng đợi luân phiên, chưa xong / chưa bị đánh dấu bỏ -> không có hạn,
   // luôn nằm trong nhóm "Đang tới lượt" (không chôn theo ngày như việc thường).
@@ -416,12 +435,15 @@ async function renderTasksView() {
   // task trùng queue, giữ task mới nhất để không hiện hai việc giống nhau.
   const rotationPinned = [];
   const pinnedQueueIds = new Set();
+  const pinnedLabels = new Set();
   [...filteredTasks]
     .filter((t) => t.rotation_queue_id && t.status !== "hoan_thanh" && t.status !== "bo_lo")
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
     .forEach((task) => {
-      if (pinnedQueueIds.has(task.rotation_queue_id)) return;
+      const labelKey = rotationDisplayKey(queueMap[task.rotation_queue_id]?.label || task.title);
+      if (pinnedQueueIds.has(task.rotation_queue_id) || pinnedLabels.has(labelKey)) return;
       pinnedQueueIds.add(task.rotation_queue_id);
+      pinnedLabels.add(labelKey);
       rotationPinned.push(task);
     });
   const rest = filteredTasks.filter((t) => !rotationPinned.includes(t));
@@ -438,7 +460,7 @@ async function renderTasksView() {
     .filter((t) => !t.rotation_queue_id && t.status === "hoan_thanh" && t.completed_at && new Date(t.completed_at).getTime() >= doneCutoffMs)
     .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
 
-  const rotationSectionHTML = renderRotationSectionHTML(rotations, activeRotationQueues, rotationPinned, queueMap);
+  const rotationSectionHTML = renderRotationSectionHTML(rotations, activeRotationQueues, activeRotationLabels, rotationPinned, queueMap);
   const hasRotationTurn = rotationSectionHTML !== "";
 
   const sections = [];
