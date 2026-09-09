@@ -4,10 +4,23 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>TTBK</title>
+<script>
+/* Áp dụng theme sáng/tối trước khi trang vẽ, tránh nháy màu */
+(function(){
+  try{
+    var t = localStorage.getItem('ttbk-theme');
+    if (t !== 'light' && t !== 'dark') {
+      t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){}
+})();
+</script>
+<meta name="color-scheme" content="light dark" />
 <link rel="stylesheet" href="./css/style.css" />
 <link rel="manifest" href="./manifest.json" />
 <link rel="apple-touch-icon" href="./css/ttbk.png" />
-<meta name="theme-color" content="#0f172a" />
+<meta name="theme-color" content="#A13F52" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 </head>
@@ -41,6 +54,9 @@
       <button class="btn-hamburger" id="btn-menu-toggle" aria-label="Mở menu">☰</button>
       <div class="topbar-title" id="topbar-title">Nhiệm vụ hệ thống</div>
       <div class="user-chip">
+        <button type="button" class="theme-switch" id="theme-switch" aria-label="Chuyển giao diện sáng / tối" aria-pressed="false" title="Chuyển giao diện sáng / tối">
+          <span class="theme-switch-track"><span class="theme-switch-thumb"></span></span>
+        </button>
         <span id="topbar-user"></span>
         <button class="btn btn-ghost btn-sm" id="btn-logout">Đăng xuất</button>
       </div>
@@ -317,5 +333,6 @@
 <script src="js/settings.js"></script>
 <script src="js/app.js"></script>
 <script src="js/push-notifications.js"></script>
+<script src="js/theme.js"></script>
 </body>
 </html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>TTBK — Xem trước giao diện</title>
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('ttbk-theme');
+    if (t !== 'light' && t !== 'dark') {
+      t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){}
+})();
+</script>
+<meta name="color-scheme" content="light dark" />
+<link rel="stylesheet" href="./css/style.css" />
+<meta name="theme-color" content="#A13F52" />
+</head>
+<body>
+
+<div class="app">
+  <div class="nav-backdrop" id="nav-backdrop"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-mark">TT<span>BK</span></div>
+    <button class="nav-item" data-section="dashboard"><span class="icon">🏠</span> Tổng quan</button>
+    <button class="nav-item" data-section="notifications"><span class="icon">🔔</span> Thông báo <span class="nav-badge" id="notif-badge">3</span></button>
+    <button class="nav-item" data-section="activity"><span class="icon">📜</span> Nhật ký</button>
+    <button class="nav-item active" data-section="tasks"><span class="icon">📝</span> Công việc</button>
+    <button class="nav-item" data-section="schedule"><span class="icon">📅</span> Lịch</button>
+    <button class="nav-item" data-section="members"><span class="icon">👥</span> Thành viên</button>
+    <button class="nav-item"><span class="icon">💰</span> Chi tiêu</button>
+    <button class="nav-item" data-section="settings"><span class="icon">⚙️</span> Cài đặt</button>
+    <div class="sidebar-foot">Nhà TTBK</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn-hamburger" id="btn-menu-toggle" aria-label="Mở menu">☰</button>
+      <div class="topbar-title" id="topbar-title">Công việc</div>
+      <div class="user-chip">
+        <button type="button" class="theme-switch" id="theme-switch" aria-label="Chuyển giao diện sáng / tối" aria-pressed="false">
+          <span class="theme-switch-track"><span class="theme-switch-thumb"></span></span>
+        </button>
+        <span id="topbar-user"><span class="avatar avatar-sm" style="background:#3B6E8F">A</span><span>An</span></span>
+        <button class="btn btn-ghost btn-sm">Đăng xuất</button>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- TỔNG QUAN -->
+      <section id="section-dashboard" class="view">
+        <div class="view-head"><div><h2>Tổng quan</h2><p>Tình hình việc nhà hôm nay</p></div></div>
+        <div id="dashboard-content">
+          <div class="grid-stats">
+            <div class="stat wait"><div class="num">3</div><div class="label">Việc chưa làm hôm nay</div></div>
+            <div class="stat ok"><div class="num">5</div><div class="label">Việc đã hoàn thành hôm nay</div></div>
+            <div class="stat"><div class="num">42</div><div class="label">Tổng số việc trong nhà</div></div>
+          </div>
+          <div class="card" style="margin-bottom:22px;">
+            <h3 style="margin-bottom:14px;font-size:15px;">⚖️ Công bằng tuần này</h3>
+            <div class="progress-row"><span class="name">An</span><div class="progress-track"><div class="progress-fill" style="width:82%;background:#3B6E8F"></div></div><span class="progress-pct">41 đ</span></div>
+            <div class="progress-row"><span class="name">Lan</span><div class="progress-track"><div class="progress-fill" style="width:70%;background:#C77B2E"></div></div><span class="progress-pct">35 đ</span></div>
+            <div class="progress-row"><span class="name">Minh</span><div class="progress-track"><div class="progress-fill" style="width:100%;background:#2F8F6B"></div></div><span class="progress-pct">50 đ</span></div>
+            <div class="progress-row"><span class="name">Khoa</span><div class="progress-track"><div class="progress-fill" style="width:56%;background:#A24E6B"></div></div><span class="progress-pct">28 đ</span></div>
+          </div>
+          <div class="card">
+            <h3 style="margin-bottom:14px;font-size:15px;">⚡ Việc phát sinh đang chờ nhận</h3>
+            <div class="task-list">
+              <div class="task-ticket" style="border-left-color:#C77B2E">
+                <button class="task-check" style="border-style:dashed;"></button>
+                <div class="task-body">
+                  <div class="task-title">🔁 Đổ rác</div>
+                  <div class="task-meta"><span class="badge badge-pending">Chờ nhận</span><span>Đang chờ Lan nhận</span></div>
+                </div>
+                <div class="task-actions"><button class="btn btn-primary btn-sm">Nhận việc</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- THÔNG BÁO -->
+      <section id="section-notifications" class="view">
+        <div class="view-head">
+          <div><h2>Thông báo</h2><p>Việc đến lượt bạn và yêu cầu đổi việc từ mọi người</p></div>
+          <button class="btn btn-ghost btn-sm">Đánh dấu đã đọc hết</button>
+        </div>
+        <div class="task-list">
+          <div class="task-ticket" style="border-left-color:var(--accent)">
+            <div class="task-check" style="border:none;font-size:16px;">🔁</div>
+            <div class="task-body"><div class="task-title" style="font-weight:700">Đến lượt bạn — Rửa bát</div><div class="task-meta"><span>5 phút trước</span></div></div>
+            <div class="task-actions"><button class="btn btn-primary btn-sm">Nhận việc</button><button class="icon-btn" title="Đánh dấu đã đọc">✓</button></div>
+          </div>
+          <div class="task-ticket" style="border-left-color:var(--accent)">
+            <div class="task-check" style="border:none;font-size:16px;">🔄</div>
+            <div class="task-body"><div class="task-title" style="font-weight:700">Minh muốn đổi việc "Dọn phòng khách". Ai nhận giúp?</div><div class="task-meta"><span>1 giờ trước</span></div></div>
+            <div class="task-actions"><button class="btn btn-primary btn-sm">Nhận đổi việc</button><button class="btn btn-ghost btn-sm">Từ chối</button></div>
+          </div>
+          <div class="task-ticket done" style="border-left-color:#ccc">
+            <div class="task-check" style="border:none;font-size:16px;">🔔</div>
+            <div class="task-body"><div class="task-title" style="font-weight:500">Lan vừa hoàn thành "Giặt đồ"</div><div class="task-meta"><span>hôm qua</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NHẬT KÝ -->
+      <section id="section-activity" class="view">
+        <div class="view-head"><div><h2>Nhật ký hoạt động</h2><p>Toàn bộ thay đổi và sự kiện gần đây trong nhà</p></div></div>
+        <div id="activity-log">
+          <div>
+            <div class="day-label">Hôm nay</div>
+            <div class="task-list">
+              <div class="task-ticket" style="border-left-color:#2F8F6B">
+                <div class="task-check" style="border:none;font-size:16px;">🕘</div>
+                <div class="task-body"><div class="task-title">Minh: Hoàn thành</div><div class="task-meta"><span>Nấu ăn tối</span><span>18:42</span></div></div>
+              </div>
+              <div class="task-ticket" style="border-left-color:#C77B2E">
+                <div class="task-check" style="border:none;font-size:16px;">🕘</div>
+                <div class="task-body"><div class="task-title">Lan: Đổi hạn thành 12/09</div><div class="task-meta"><span>Hút bụi</span><span>14:05</span></div></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="day-label">Hôm qua</div>
+            <div class="task-list">
+              <div class="task-ticket" style="border-left-color:#3B6E8F">
+                <div class="task-check" style="border:none;font-size:16px;">🕘</div>
+                <div class="task-body"><div class="task-title">An: Tạo việc "Lau cửa sổ"</div><div class="task-meta"><span>Lau cửa sổ</span><span>09:12</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CÔNG VIỆC -->
+      <section id="section-tasks" class="view active">
+        <div class="view-head">
+          <div><h2>Công việc</h2><p>Đánh dấu xong, đổi người, gia hạn ngay trên từng phiếu việc</p></div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-ghost btn-sm">🤖 Chia việc tự động</button>
+            <button class="btn btn-primary btn-sm">+ Thêm việc</button>
+          </div>
+        </div>
+
+        <div class="tabs-container" style="display:flex; gap:10px; margin-bottom:20px; overflow-x:auto; padding-bottom:5px;">
+          <button class="btn-tab" style="padding:6px 16px;border-radius:20px;font-weight:bold;white-space:nowrap;background:#3B6E8F;color:#fff;border:1px solid #3B6E8F;">An</button>
+          <button class="btn-tab" style="padding:6px 16px;border-radius:20px;font-weight:bold;white-space:nowrap;background:transparent;color:#C77B2E;border:1px solid #C77B2E;">Lan</button>
+          <button class="btn-tab" style="padding:6px 16px;border-radius:20px;font-weight:bold;white-space:nowrap;background:transparent;color:#2F8F6B;border:1px solid #2F8F6B;">Minh</button>
+          <button class="btn-tab" style="padding:6px 16px;border-radius:20px;font-weight:bold;white-space:nowrap;background:transparent;color:#A24E6B;border:1px solid #A24E6B;">Khoa</button>
+        </div>
+
+        <div class="task-filter-bar" id="demo-filters">
+          <button type="button" class="filter-chip on">Tất cả</button>
+          <button type="button" class="filter-chip">🔥 Hôm nay</button>
+          <button type="button" class="filter-chip">🔁 Luân phiên</button>
+          <button type="button" class="filter-chip">⚠️ Trễ hạn</button>
+          <button type="button" class="filter-chip">✅ Đã xong</button>
+        </div>
+
+        <div class="section-title today">🔥 Hôm nay</div>
+        <div class="task-list">
+          <div class="task-ticket" style="border-left-color:#3B6E8F">
+            <button class="task-check" title="Đánh dấu hoàn thành"></button>
+            <div class="task-body">
+              <div class="task-title">Rửa bát</div>
+              <div class="task-meta">
+                <span class="badge badge-todo">Chưa làm</span>
+                <select class="task-mini-select"><option>An</option><option>Lan</option></select>
+                <input type="date" class="task-mini-date" value="2026-09-09" />
+              </div>
+            </div>
+            <div class="task-actions">
+              <button class="icon-btn" title="Xin chuyển việc">😅</button>
+              <button class="icon-btn" title="Không hoàn thành">✕</button>
+              <button class="icon-btn" title="Xem lịch sử">🕘</button>
+              <button class="icon-btn" title="Xoá việc">🗑</button>
+            </div>
+          </div>
+          <div class="task-ticket done" style="border-left-color:#2F8F6B">
+            <button class="task-check done" title="Mở lại việc này">✓</button>
+            <div class="task-body">
+              <div class="task-title">Nấu ăn tối</div>
+              <div class="task-meta"><span class="task-done-meta">✅ Hoàn thành lúc 09/09 18:42</span></div>
+            </div>
+            <div class="task-actions"><button class="icon-btn" title="Xem lịch sử">🕘</button><button class="icon-btn" title="Xoá việc">🗑</button></div>
+          </div>
+        </div>
+
+        <div class="section-title rotation">🔁 Đang tới lượt</div>
+        <div class="task-list">
+          <div class="task-ticket" style="border-left-color:#C77B2E">
+            <button class="task-check" title="Đánh dấu đã làm xong"></button>
+            <div class="task-body">
+              <div class="task-title">🚰 Thay bình nước</div>
+              <div class="task-meta"><span class="badge badge-wait">Đến lượt</span><span class="task-no-due">Không có ngày</span><span>+10 điểm</span></div>
+            </div>
+            <div class="task-actions"><button class="icon-btn" title="Xin chuyển việc">😅</button><button class="icon-btn" title="Không hoàn thành">✕</button></div>
+          </div>
+        </div>
+
+        <div class="section-title overdue">⚠️ Cần xử lý</div>
+        <div class="task-list">
+          <div class="task-ticket" style="border-left-color:#A24E6B">
+            <button class="task-check" title="Đánh dấu hoàn thành"></button>
+            <div class="task-body">
+              <div class="task-title">Dọn ban công</div>
+              <div class="task-meta">
+                <span class="badge badge-todo">Chưa làm</span>
+                <span class="task-overdue-tag">⚠️ Trễ 2 ngày</span>
+              </div>
+            </div>
+            <div class="task-actions"><button class="icon-btn" title="Xoá việc">🗑</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LỊCH -->
+      <section id="section-schedule" class="view">
+        <div class="view-head"><div><h2>Lịch</h2><p>Xem lịch tháng — việc đã xong, bỏ lỡ và dự kiến sắp tới</p></div></div>
+        <div class="card" style="margin-bottom:22px;">
+          <div class="cal-nav">
+            <button class="btn btn-ghost btn-sm">‹ Tháng trước</button>
+            <div class="cal-nav-center"><span class="cal-month-label">Tháng 9, 2026</span><button class="btn btn-ghost btn-sm">Hôm nay</button></div>
+            <button class="btn btn-ghost btn-sm">Tháng sau ›</button>
+          </div>
+          <div class="cal-legend">
+            <span class="cal-legend-item"><i class="cal-dot cal-dot-done"></i> Đã hoàn thành</span>
+            <span class="cal-legend-item"><i class="cal-dot cal-dot-missed"></i> Đã đánh dấu bỏ việc</span>
+            <span class="cal-legend-item"><i class="cal-dot cal-dot-todo"></i> Chưa hoàn thành</span>
+            <span class="cal-legend-item"><i class="cal-dot cal-dot-future"></i> Dự kiến sắp tới</span>
+          </div>
+          <div class="cal-grid" id="cal-grid-demo"></div>
+        </div>
+        <div class="card" style="margin-bottom:22px;">
+          <h3 style="font-size:15px; margin-bottom:14px;">⚡ Việc luân phiên (phát sinh)</h3>
+          <div class="task-list">
+            <div class="task-ticket" style="border-left-color:#C77B2E">
+              <div class="task-body">
+                <div class="task-title">🚰 Thay bình nước</div>
+                <div class="task-meta"><span>Thứ tự: An → Lan → Minh → Khoa</span><span>Đang tới lượt: <strong>Lan</strong></span><span>10 điểm</span></div>
+              </div>
+              <div class="task-actions"><button class="btn btn-primary btn-sm">Báo có việc</button><button class="icon-btn">✏️</button><button class="icon-btn">🗑</button></div>
+            </div>
+          </div>
+        </div>
+        <h3 style="font-size:15px; margin-bottom:12px;">Lịch đang chạy</h3>
+        <div class="task-list">
+          <div class="task-ticket" style="border-left-color:#2F8F6B">
+            <div class="task-body"><div class="task-title">Nấu ăn tối</div><div class="task-meta"><span>Mỗi ngày</span><span>Minh</span><span>30 điểm</span></div></div>
+            <div class="task-actions"><button class="icon-btn">🗑</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- THÀNH VIÊN -->
+      <section id="section-members" class="view">
+        <div class="view-head"><div><h2>Thành viên</h2><p>Số việc và điểm công bằng của từng người</p></div></div>
+        <div class="member-grid">
+          <div class="card member-card">
+            <div class="avatar" style="background:#3B6E8F">A</div>
+            <div><div class="m-name">An</div><div class="m-sub">6 việc • 5 hoàn thành</div></div>
+            <div class="m-points"><div class="n">41</div><div class="l">điểm</div></div>
+          </div>
+          <div class="card member-card">
+            <div class="avatar" style="background:#C77B2E">L</div>
+            <div><div class="m-name">Lan<span style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:10px;background:#fdf1dc;color:#a86b16;font-size:12px;font-weight:600;">✈️ Tạm vắng đến 12/09</span></div><div class="m-sub">5 việc • 4 hoàn thành</div></div>
+            <div class="m-points"><div class="n">35</div><div class="l">điểm</div></div>
+          </div>
+          <div class="card member-card">
+            <div class="avatar" style="background:#2F8F6B">M</div>
+            <div><div class="m-name">Minh</div><div class="m-sub">7 việc • 7 hoàn thành</div></div>
+            <div class="m-points"><div class="n">50</div><div class="l">điểm</div></div>
+          </div>
+          <div class="card member-card">
+            <div class="avatar" style="background:#A24E6B">K</div>
+            <div><div class="m-name">Khoa</div><div class="m-sub">5 việc • 3 hoàn thành • 1 bỏ việc</div></div>
+            <div class="m-points"><div class="n">28</div><div class="l">điểm</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CÀI ĐẶT -->
+      <section id="section-settings" class="view">
+        <div class="view-head"><div><h2>Cài đặt</h2><p>Thông tin cá nhân của bạn</p></div></div>
+        <div class="card" style="max-width:420px;">
+          <div class="settings-block">
+            <h3>Thông báo đẩy</h3>
+            <p style="font-size:13px;color:var(--ink-soft);margin:0 0 10px;">Bật để nhận thông báo ngay trên điện thoại khi đến lượt bạn hoặc có ai đổi việc.</p>
+            <button class="btn btn-primary btn-sm">Bật thông báo đẩy</button>
+          </div>
+          <div class="settings-block">
+            <h3>Hồ sơ</h3>
+            <div class="field"><label>Tên hiển thị</label><input type="text" value="An" /></div>
+            <div class="field"><label>Tên nhà</label><input type="text" value="Nhà TTBK" /></div>
+            <div class="field">
+              <label>Màu đại diện</label>
+              <div class="color-picker">
+                <button type="button" class="color-dot on" style="background:#3B6E8F"></button>
+                <button type="button" class="color-dot" style="background:#C77B2E"></button>
+                <button type="button" class="color-dot" style="background:#2F8F6B"></button>
+                <button type="button" class="color-dot" style="background:#A24E6B"></button>
+                <button type="button" class="color-dot" style="background:#6B5B95"></button>
+                <button type="button" class="color-dot" style="background:#4A7A96"></button>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm">Lưu thay đổi</button>
+          </div>
+          <div class="settings-block">
+            <h3>Trạng thái</h3>
+            <div class="field" style="display:flex; align-items:center; gap:10px;">
+              <input type="checkbox" id="demo-away" style="width:18px;height:18px;" />
+              <label for="demo-away" style="margin:0;">✈️ Đang đi vắng</label>
+            </div>
+            <button class="btn btn-primary btn-sm">Lưu trạng thái</button>
+          </div>
+          <div class="settings-block" style="margin-bottom:0;">
+            <h3>Tài khoản</h3>
+            <button class="btn btn-danger btn-sm">Đăng xuất</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="./js/theme.js"></script>
+<script>
+/* Chỉ dùng cho trang xem trước: chuyển section + tương tác nhẹ + dựng lưới lịch mẫu */
+document.querySelectorAll('.nav-item[data-section]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.nav-item[data-section]').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('section-' + btn.dataset.section).classList.add('active');
+    document.getElementById('topbar-title').textContent = btn.textContent.trim();
+  });
+});
+document.getElementById('btn-menu-toggle').addEventListener('click', function () {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('nav-backdrop').classList.toggle('show');
+});
+document.getElementById('nav-backdrop').addEventListener('click', function () {
+  document.getElementById('sidebar').classList.remove('open');
+  this.classList.remove('show');
+});
+document.querySelectorAll('#demo-filters .filter-chip').forEach(function (chip) {
+  chip.addEventListener('click', function () {
+    document.querySelectorAll('#demo-filters .filter-chip').forEach(function (c) { c.classList.remove('on'); });
+    chip.classList.add('on');
+  });
+});
+document.querySelectorAll('.color-dot').forEach(function (dot) {
+  dot.addEventListener('click', function () {
+    document.querySelectorAll('.color-dot').forEach(function (d) { d.classList.remove('on'); });
+    dot.classList.add('on');
+  });
+});
+document.querySelectorAll('.task-check:not(.done)').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    btn.classList.toggle('done');
+    btn.textContent = btn.classList.contains('done') ? '✓' : '';
+  });
+});
+
+(function buildCalendar() {
+  const grid = document.getElementById('cal-grid-demo');
+  const weekdayHeader = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+    .map((d) => `<div class="cal-weekday">${d}</div>`).join('');
+  const sample = {
+    3: [{ t: 'Rửa bát', c: 'cal-chip-done' }],
+    5: [{ t: 'Hút bụi', c: 'cal-chip-missed' }],
+    9: [{ t: 'Nấu ăn tối', c: 'cal-chip-done' }, { t: 'Đổ rác', c: 'cal-chip-todo' }],
+    12: [{ t: 'Thay bình nước', c: 'cal-chip-future' }],
+    18: [{ t: 'Lau cửa sổ', c: 'cal-chip-future' }],
+    24: [{ t: 'Dọn ban công', c: 'cal-chip-future' }],
+  };
+  let cells = '';
+  const offset = 1; // tháng 9/2026 bắt đầu vào Thứ 3
+  for (let i = 0; i < 35; i++) {
+    const dayNum = i - offset + 1;
+    const outside = dayNum < 1 || dayNum > 30;
+    const isToday = dayNum === 9;
+    const items = (sample[dayNum] || [])
+      .map((it) => `<div class="cal-chip ${it.c}">${it.t}</div>`)
+      .join('');
+    const label = outside ? ((dayNum < 1) ? 31 + dayNum : dayNum - 30) : dayNum;
+    cells += `<div class="cal-day ${outside ? 'outside' : ''} ${isToday ? 'today' : ''}">
+      <div class="cal-day-num">${label}</div>
+      <div class="cal-day-chips">${items}</div>
+    </div>`;
+  }
+  grid.innerHTML = weekdayHeader + cells;
+})();
+</script>
+</body>
+</html>
