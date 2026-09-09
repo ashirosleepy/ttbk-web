@@ -5,61 +5,77 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản Lý Chi Tiêu</title>
+  <script>
+  (function(){
+    try{
+      var t = localStorage.getItem('ttbk-theme');
+      if (t !== 'light' && t !== 'dark') {
+        t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    }catch(e){}
+    document.documentElement.classList.add('pg-fade');
+  })();
+  </script>
+  <meta name="color-scheme" content="light dark" />
   <!-- Chart.js for charts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- html2pdf.js for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background: #f4f6f8; color: #333; }
-    h1, h2, h3 { text-align: center; color: #1a252f; margin-bottom: 10px; }
+    body { font-family: var(--font); margin: 0; padding: 0; background: var(--bg); color: var(--ink); transition: background-color .3s var(--ease), color .3s var(--ease); }
+    h1, h2, h3 { text-align: center; color: var(--ink); margin-bottom: 10px; }
     
     #main-app { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
 
-    .status-bar { text-align: center; font-size: 0.85em; color: #28a745; margin-bottom: 15px; font-weight: 600; }
-    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .status-bar { text-align: center; font-size: 0.85em; color: var(--ok); margin-bottom: 15px; font-weight: 600; }
+    .card { background: var(--surface); padding: 20px; border-radius: 8px; box-shadow: var(--shadow-1); margin-bottom: 20px; }
+    .theme-toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 0.8em; color: var(--ink-soft); font-weight: 600; }
+    .theme-toggle-wrap .theme-switch, .theme-toggle-wrap .theme-switch:hover { background: none; padding: 0; border: none; }
     
     /* Header Controls */
     .top-controls { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
     
     /* Year & Month Selection */
-    .year-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef; }
+    .year-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
     .year-controls { display: flex; gap: 10px; align-items: center; }
     .month-tabs { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 10px; }
     @media (max-width: 600px) { .month-tabs { grid-template-columns: repeat(3, 1fr); } }
-    .month-btn { padding: 10px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 6px; cursor: pointer; font-weight: 600; text-align: center; color: #495057; transition: all 0.2s; }
-    .month-btn:hover { background: #dee2e6; }
-    .month-btn.active { background: #007bff; color: white; border-color: #007bff; box-shadow: 0 2px 4px rgba(0,123,255,0.3); }
+    .month-btn { padding: 10px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-weight: 600; text-align: center; color: var(--ink-soft); transition: all 0.2s; }
+    .month-btn:hover { background: var(--border); }
+    .month-btn.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); box-shadow: 0 2px 4px rgba(var(--accent-rgb),0.3); }
 
     /* Form Inputs */
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
     .input-group { display: flex; flex-direction: column; margin-bottom: 10px; }
-    label { font-weight: 600; margin-bottom: 5px; font-size: 0.9em; }
-    input[type="text"], input[type="number"], select, button { padding: 9px 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+    label { font-weight: 600; margin-bottom: 5px; font-size: 0.9em; color: var(--ink); }
+    input[type="text"], input[type="number"], select, button { padding: 9px 12px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; }
+    input[type="text"], input[type="number"], select { background: var(--surface); color: var(--ink); }
     
     /* Buttons */
-    button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: 600; border-radius: 5px; transition: background 0.2s;}
-    button:hover { background-color: #0056b3; }
-    .btn-success { background-color: #28a745; }
+    button { background-color: var(--accent); color: var(--accent-ink); border: none; cursor: pointer; font-weight: 600; border-radius: 5px; transition: background 0.2s;}
+    button:hover { background-color: var(--accent-strong); }
+    .btn-success { background-color: #28a745; color: #fff; }
     .btn-success:hover { background-color: #218838; }
     .btn-danger { background-color: #dc3545; }
     .btn-danger:hover { background-color: #bd2130; }
     .btn-warning { background-color: #ffc107; color: #212529; }
     .btn-warning:hover { background-color: #e0a800; }
-    .btn-secondary { background-color: #6c757d; }
+    .btn-secondary { background-color: #6c757d; color: #fff; }
     .btn-secondary:hover { background-color: #5a6268; }
     .btn-info { background-color: #17a2b8; color: white; }
     .btn-info:hover { background-color: #138496; }
     
     /* Tables */
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th, td { border: 1px solid #e0e0e0; padding: 10px; text-align: center; font-size: 0.9em; }
-    th { background-color: #f1f3f5; }
-    .positive { color: #28a745; font-weight: bold; }
-    .negative { color: #dc3545; font-weight: bold; }
+    th, td { border: 1px solid var(--border); padding: 10px; text-align: center; font-size: 0.9em; color: var(--ink); }
+    th { background-color: var(--surface-soft); }
+    .positive { color: var(--ok); font-weight: bold; }
+    .negative { color: var(--missed); font-weight: bold; }
     
     /* Lists & Badges */
     .settlement-list { list-style: none; padding: 0; margin-top: 10px; }
-    .settlement-list li { background: #e7f5ff; border-left: 4px solid #1c7ed6; padding: 10px 15px; margin-bottom: 8px; border-radius: 4px; font-size: 1.05em;}
+    .settlement-list li { background: var(--pending-soft); border-left: 4px solid var(--pending); padding: 10px 15px; margin-bottom: 8px; border-radius: 4px; font-size: 1.05em; color: var(--ink);}
     .badge { padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin: 2px; display: inline-block; color: white; }
     
     /* Category Colors */
@@ -79,12 +95,16 @@
 
     /* Chart Container */
     .chart-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 20px; }
-    .chart-box { width: 100%; max-width: 450px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0; }
+    .chart-box { width: 100%; max-width: 450px; background: var(--surface); padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+
+    html[data-theme="dark"] .chart-box { background: var(--surface); border-color: var(--border); }
+    html[data-theme="dark"] th, html[data-theme="dark"] td { color: var(--ink); border-color: var(--border); }
 
     /* Hide on print/pdf */
     @media print {
       .no-print { display: none !important; }
-      body { background: white; }
+      body, .card, .chart-box, th, td, .month-btn, .settlement-list li { background: #fff !important; color: #333 !important; border-color: #ddd !important; }
+      h1, h2, h3 { color: #1a252f !important; }
       .card { box-shadow: none; border: 1px solid #ddd; }
     }
   </style>
@@ -95,14 +115,22 @@
   <div id="main-app">
     <div class="top-controls no-print">
       <div>
-        <button class="btn-secondary" onclick="window.location.href='index.html'" style="background-color: #343a40;">⬅️ Trang chủ</button>
+        <button class="btn-secondary" onclick="(window.ttbkNavigate||function(u){window.location.href=u;})('index.html')" style="background-color: #343a40;">⬅️ Trang chủ</button>
         <button class="btn-secondary" onclick="exportJSON()">💾 Backup</button>
         <input type="file" id="importFile" style="display:none" onchange="importJSON(event)" accept=".json">
         <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 Phục Hồi Dữ Liệu</button>
       </div>
-      <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div class="theme-toggle-wrap">
+          <span>🌗 Giao diện</span>
+          <button type="button" class="theme-switch" id="theme-switch" aria-label="Chuyển giao diện sáng / tối" aria-pressed="false" title="Chuyển giao diện sáng / tối">
+            <span class="theme-switch-track"><span class="theme-switch-thumb"></span></span>
+          </button>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
         <button class="btn-warning" onclick="exportPDF()">📄 Xuất Báo Cáo PDF</button>
         <button class="btn-success" onclick="exportCSV()">📊 Xuất File Excel</button>
+        </div>
       </div>
     </div>
 
@@ -376,11 +404,45 @@
     </div>
   </div>
 
+  <script src="js/page-transition.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/auth.js"></script>
 
   <script>
+    (function () {
+      var switchBtn = document.getElementById('theme-switch');
+
+      function currentTheme() {
+        return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      }
+
+      function reflectButton() {
+        if (switchBtn) switchBtn.setAttribute('aria-pressed', currentTheme() === 'dark' ? 'true' : 'false');
+      }
+
+      function applyTheme(theme, persist) {
+        document.documentElement.setAttribute('data-theme', theme);
+        if (persist) {
+          try { localStorage.setItem('ttbk-theme', theme); } catch (e) {}
+        }
+        reflectButton();
+        if (typeof syncChartsTheme === 'function') syncChartsTheme();
+      }
+
+      reflectButton();
+      if (switchBtn) {
+        switchBtn.addEventListener('click', function () {
+          applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true);
+        });
+      }
+      window.addEventListener('storage', function (e) {
+        if (e.key === 'ttbk-theme' && (e.newValue === 'light' || e.newValue === 'dark')) {
+          applyTheme(e.newValue, false);
+        }
+      });
+    })();
+
     // --- LOGIC APP CHI TIÊU ---
     const members = ["Tiến", "Tài", "Bách", "Khoa"];
     const categoryLabels = { 'food': 'Ăn uống', 'rent': 'Tiền nhà/Điện nước', 'entertainment': 'Giải trí', 'shopping': 'Mua sắm', 'other': 'Khác' };
@@ -957,13 +1019,17 @@
     }
 
     function updateCharts() {
+      if (typeof Chart === 'undefined') return;
+      Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--ink-soft').trim() || '#495057';
+      Chart.defaults.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || '#e0e0e0';
       const catTotals = { 'food':0, 'rent':0, 'entertainment':0, 'shopping':0, 'other':0 };
       yearsData[currentYear][currentMonth].expenses.forEach(e => catTotals[e.category || 'other'] += e.amount);
       const catCtx = document.getElementById('categoryChart').getContext('2d');
       if(categoryChartInstance) categoryChartInstance.destroy();
       categoryChartInstance = new Chart(catCtx, {
         type: 'doughnut',
-        data: { labels: Object.values(categoryLabels), datasets: [{ data: Object.values(catTotals), backgroundColor: ['#ff9f43', '#54a0ff', '#ff6b6b', '#1dd1a1', '#8395a7'] }] }
+        data: { labels: Object.values(categoryLabels), datasets: [{ data: Object.values(catTotals), backgroundColor: ['#ff9f43', '#54a0ff', '#ff6b6b', '#1dd1a1', '#8395a7'] }] },
+        options: { plugins: { legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#333' } } } }
       });
 
       const categories = ['food', 'rent', 'entertainment', 'shopping', 'other'];
@@ -987,10 +1053,20 @@
         data: { labels: ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'], datasets: datasets },
         options: {
           responsive: true,
-          scales: { x: { stacked: true }, y: { stacked: true } },
-          plugins: { tooltip: { callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) { label += ': '; } if (context.parsed.y !== null) { label += new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(context.parsed.y); } return label; } } } }
+          scales: {
+            x: { stacked: true, ticks: { color: Chart.defaults.color }, grid: { color: Chart.defaults.borderColor } },
+            y: { stacked: true, ticks: { color: Chart.defaults.color }, grid: { color: Chart.defaults.borderColor } }
+          },
+          plugins: {
+            legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#333' } },
+            tooltip: { callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) { label += ': '; } if (context.parsed.y !== null) { label += new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(context.parsed.y); } return label; } } }
+          }
         }
       });
+    }
+
+    function syncChartsTheme() {
+      if (categoryChartInstance || trendChartInstance) updateCharts();
     }
 
 async function loadData() {

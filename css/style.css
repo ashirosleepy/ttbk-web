@@ -1083,4 +1083,10 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+  html.pg-fade, html.pg-fade.pg-ready, html.pg-fade.pg-leave { opacity: 1 !important; }
 }
+
+/* ---------------- Chuyen trang giua cac trang HTML ---------------- */
+html.pg-fade { opacity: 0; }
+html.pg-fade.pg-ready { opacity: 1; transition: opacity .32s var(--ease); }
+html.pg-fade.pg-leave { opacity: 0 !important; transition: opacity .22s var(--ease) !important; }
