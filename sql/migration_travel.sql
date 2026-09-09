@@ -12,10 +12,10 @@ alter table profiles
   add column if not exists school_lat double precision,
   add column if not exists school_lng double precision,
   add column if not exists transport_type text default 'motorbike',
-  -- transport_type ∈ 'motorbike' | 'bike' | 'walk' | 'car'
+  -- transport_type ∈ 'motorbike' | 'bike' | 'walk' | 'car' | 'bus'
   add column if not exists average_speed_kmh numeric default 25;
 
-comment on column profiles.transport_type is 'motorbike | bike | walk | car — ảnh hưởng tốc độ mặc định gợi ý';
+comment on column profiles.transport_type is 'motorbike | bike | walk | car | bus — ảnh hưởng tốc độ mặc định gợi ý';
 comment on column profiles.average_speed_kmh is 'Tốc độ trung bình thực tế của người này, dùng để tính thời gian di chuyển nhà-trường';
 
 -- Nếu home_lat/lng hoặc school_lat/lng còn trống, hệ thống sẽ tự fallback về

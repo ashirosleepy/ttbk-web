@@ -27,6 +27,13 @@ const UNIVERSITY_TRAVEL_DISTANCE_KM = {
   HUST: 5,
   HUCE: 4.8,
 };
+const DEFAULT_TRAVEL_SPEED_KMH = {
+  motorbike: 25,
+  bike: 15,
+  walk: 5,
+  car: 22,
+  bus: 18,
+};
 
 const CLASS_WEEKDAY_SHORT = { 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 0: "CN" };
 
@@ -125,7 +132,7 @@ function getRushFactor(minutesOfDay) {
 function computeTravelMinutes(profile, atMinutes) {
   const distanceKm = UNIVERSITY_TRAVEL_DISTANCE_KM[profile?.university];
   if (distanceKm == null) return null;
-  const speed = Number(profile.average_speed_kmh) || 25;
+  const speed = Number(profile.average_speed_kmh) || DEFAULT_TRAVEL_SPEED_KMH[profile.transport_type] || 25;
   const baseMinutes = (distanceKm / speed) * 60;
   const factor = getRushFactor(atMinutes);
   return Math.max(5, Math.round(baseMinutes * factor));

@@ -396,7 +396,8 @@ function bindSettingsEvents() {
     saveLocationBtn.addEventListener("click", async () => {
       const payload = {
         transport_type: document.getElementById("st-transport").value,
-        average_speed_kmh: Number(document.getElementById("st-speed").value) || 25,
+        average_speed_kmh:
+          Number(document.getElementById("st-speed").value) || DEFAULT_TRAVEL_SPEED_KMH[document.getElementById("st-transport").value] || 25,
       };
 
       const { error } = await supabaseClient.from("profiles").update(payload).eq("id", STATE.me.id);
@@ -406,6 +407,16 @@ function bindSettingsEvents() {
       STATE.profiles = await getAllProfiles();
       const statusEl = document.getElementById("st-location-status");
       if (statusEl) statusEl.textContent = "Đã lưu phương tiện & tốc độ di chuyển.";
+    });
+  }
+
+  const transportEl = document.getElementById("st-transport");
+  const speedEl = document.getElementById("st-speed");
+  if (transportEl && speedEl && !transportEl.dataset.speedBound) {
+    transportEl.dataset.speedBound = "1";
+    transportEl.addEventListener("change", () => {
+      const defaultSpeed = DEFAULT_TRAVEL_SPEED_KMH[transportEl.value];
+      if (defaultSpeed) speedEl.value = defaultSpeed;
     });
   }
 
@@ -558,7 +569,7 @@ async function loadSettingsSection() {
   const transportEl = document.getElementById("st-transport");
   if (transportEl) transportEl.value = STATE.me.transport_type || "motorbike";
   const speedEl = document.getElementById("st-speed");
-  if (speedEl) speedEl.value = STATE.me.average_speed_kmh ?? 25;
+  if (speedEl) speedEl.value = STATE.me.average_speed_kmh ?? DEFAULT_TRAVEL_SPEED_KMH[transportEl?.value] ?? 25;
   const distanceEl = document.getElementById("st-travel-distance");
   const distance = UNIVERSITY_TRAVEL_DISTANCE_KM[STATE.me.university];
   if (distanceEl) {
