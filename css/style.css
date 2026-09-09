@@ -907,6 +907,11 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
 /* ---------------- Cài đặt ---------------- */
 .settings-block { margin-bottom: 26px; }
 .settings-block h3 { font-size: 15px; margin-bottom: 12px; }
+.theme-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; }
+.theme-setting-row > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.theme-setting-row strong { font-size: 13.5px; }
+.theme-setting-row span { color: var(--ink-soft); font-size: 12px; }
+.theme-setting-row .theme-switch { flex: 0 0 auto; }
 .color-picker { display: flex; gap: 8px; }
 .color-dot {
   width: 30px; height: 30px; border-radius: 50%;
