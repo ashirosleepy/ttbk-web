@@ -2,15 +2,6 @@
 // SETTINGS.JS — trang "Cài đặt" (hồ sơ cá nhân)
 // ============================================================
 
-// Toạ độ mặc định cho các trường đã biết — dùng làm gợi ý điền nhanh khi
-// người dùng chưa tự nhập toạ độ trường chính xác của mình. Có thể sửa lại
-// tay nếu cơ sở/campus khác với mặc định.
-const UNIVERSITY_DEFAULT_COORDS = {
-  PTIT: { lat: 20.9701, lng: 105.7940 }, // Học viện CNBCVT, Hà Đông
-  HUCE: { lat: 21.0035, lng: 105.8438 }, // ĐH Xây dựng Hà Nội, Giải Phóng
-  HUST: { lat: 21.0064, lng: 105.8433 }, // ĐH Bách Khoa Hà Nội
-};
-
 // ---- Cắt ảnh đại diện thành hình vuông theo ý người dùng ----
 // Trước đây ảnh tải lên bị CSS (object-fit: cover) tự động cắt theo tâm ảnh,
 // nên với ảnh không vuông người dùng không tự chọn được phần muốn giữ lại.
@@ -398,59 +389,14 @@ function bindSettingsEvents() {
     });
   }
 
-  // ---------- Vị trí & di chuyển (cho tính thời gian đi lại thật) ----------
-  const useMyLocationBtn = document.getElementById("st-use-my-location");
-  if (useMyLocationBtn && !useMyLocationBtn.dataset.bound) {
-    useMyLocationBtn.dataset.bound = "1";
-    useMyLocationBtn.addEventListener("click", () => {
-      const statusEl = document.getElementById("st-location-status");
-      if (!navigator.geolocation) {
-        if (statusEl) statusEl.textContent = "Trình duyệt không hỗ trợ lấy vị trí.";
-        return;
-      }
-      if (statusEl) statusEl.textContent = "Đang lấy vị trí hiện tại...";
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          document.getElementById("st-home-lat").value = pos.coords.latitude.toFixed(6);
-          document.getElementById("st-home-lng").value = pos.coords.longitude.toFixed(6);
-          if (statusEl) statusEl.textContent = "Đã điền vị trí hiện tại — nhớ bấm Lưu.";
-        },
-        () => {
-          if (statusEl) statusEl.textContent = "Không lấy được vị trí — hãy nhập tay hoặc kiểm tra quyền truy cập vị trí.";
-        }
-      );
-    });
-  }
-
-  const useSchoolDefaultBtn = document.getElementById("st-use-school-default");
-  if (useSchoolDefaultBtn && !useSchoolDefaultBtn.dataset.bound) {
-    useSchoolDefaultBtn.dataset.bound = "1";
-    useSchoolDefaultBtn.addEventListener("click", () => {
-      const statusEl = document.getElementById("st-location-status");
-      const uni = document.getElementById("st-university")?.value;
-      const coords = UNIVERSITY_DEFAULT_COORDS[uni];
-      if (!coords) {
-        if (statusEl) statusEl.textContent = "Chưa có toạ độ mặc định cho trường này — nhập tay giúp mình nhé.";
-        return;
-      }
-      document.getElementById("st-school-lat").value = coords.lat;
-      document.getElementById("st-school-lng").value = coords.lng;
-      if (statusEl) statusEl.textContent = "Đã điền toạ độ mặc định của trường — nhớ bấm Lưu.";
-    });
-  }
-
+  // ---------- Phương tiện & tốc độ di chuyển ----------
   const saveLocationBtn = document.getElementById("save-location");
   if (saveLocationBtn && !saveLocationBtn.dataset.bound) {
     saveLocationBtn.dataset.bound = "1";
     saveLocationBtn.addEventListener("click", async () => {
-      const toNumberOrNull = (v) => (v === "" || v == null ? null : Number(v));
       const payload = {
         transport_type: document.getElementById("st-transport").value,
         average_speed_kmh: Number(document.getElementById("st-speed").value) || 25,
-        home_lat: toNumberOrNull(document.getElementById("st-home-lat").value),
-        home_lng: toNumberOrNull(document.getElementById("st-home-lng").value),
-        school_lat: toNumberOrNull(document.getElementById("st-school-lat").value),
-        school_lng: toNumberOrNull(document.getElementById("st-school-lng").value),
       };
 
       const { error } = await supabaseClient.from("profiles").update(payload).eq("id", STATE.me.id);
@@ -459,7 +405,7 @@ function bindSettingsEvents() {
       Object.assign(STATE.me, payload);
       STATE.profiles = await getAllProfiles();
       const statusEl = document.getElementById("st-location-status");
-      if (statusEl) statusEl.textContent = "Đã lưu vị trí & di chuyển.";
+      if (statusEl) statusEl.textContent = "Đã lưu phương tiện & tốc độ di chuyển.";
     });
   }
 
@@ -613,14 +559,13 @@ async function loadSettingsSection() {
   if (transportEl) transportEl.value = STATE.me.transport_type || "motorbike";
   const speedEl = document.getElementById("st-speed");
   if (speedEl) speedEl.value = STATE.me.average_speed_kmh ?? 25;
-  const homeLatEl = document.getElementById("st-home-lat");
-  if (homeLatEl) homeLatEl.value = STATE.me.home_lat ?? "";
-  const homeLngEl = document.getElementById("st-home-lng");
-  if (homeLngEl) homeLngEl.value = STATE.me.home_lng ?? "";
-  const schoolLatEl = document.getElementById("st-school-lat");
-  if (schoolLatEl) schoolLatEl.value = STATE.me.school_lat ?? "";
-  const schoolLngEl = document.getElementById("st-school-lng");
-  if (schoolLngEl) schoolLngEl.value = STATE.me.school_lng ?? "";
+  const distanceEl = document.getElementById("st-travel-distance");
+  const distance = UNIVERSITY_TRAVEL_DISTANCE_KM[STATE.me.university];
+  if (distanceEl) {
+    distanceEl.textContent = distance == null
+      ? "Chưa chọn trường nên hệ thống dùng thời gian đệm mặc định."
+      : `Khoảng cách áp dụng: ${String(distance).replace(".", ",")} km từ nhà đến ${STATE.me.university}.`;
+  }
 
   bindSettingsEvents();
   await checkSickRecoveryPrompt();

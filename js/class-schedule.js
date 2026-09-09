@@ -12,18 +12,21 @@
 // "Lịch" (xem phần renderClassScheduleCard trong schedule.js).
 //
 // BỔ SUNG (v2):
-// - Đệm trước/sau giờ học giờ được TÍNH THẬT từ khoảng cách nhà-trường +
-//   tốc độ di chuyển + hệ số tắc đường theo khung giờ, thay vì số cố định.
-//   Nếu chưa có toạ độ nhà/trường (profiles.home_lat/school_lat...) thì tự
-//   rơi về đệm cố định CLASS_BUFFER_BEFORE_MIN / CLASS_BUFFER_AFTER_MIN.
+// - Đệm trước/sau giờ học được tính từ khoảng cách cố định theo trường,
+//   tốc độ di chuyển và hệ số tắc đường theo khung giờ.
 // - getEffectiveStatus(): điểm chốt DUY NHẤT cho "trạng thái thật ngay lúc
 //   này" của 1 người — gộp Ốm > Đi xa > Đang học (tính cả đệm di chuyển) >
 //   trạng thái bận tự khai trong Cài đặt > Rảnh. auto-assign.js và giao diện
 //   (members.js/dashboard.js) nên dùng hàm này thay vì tự suy luận riêng lẻ.
 // ============================================================
 
-const CLASS_BUFFER_BEFORE_MIN = 20; // fallback khi chưa có toạ độ: chuẩn bị + di chuyển tới trường
-const CLASS_BUFFER_AFTER_MIN = 30;  // fallback khi chưa có toạ độ: di chuyển về nhà + nghỉ sau khi tan học
+const CLASS_BUFFER_BEFORE_MIN = 20; // fallback khi chưa chọn trường
+const CLASS_BUFFER_AFTER_MIN = 30;  // fallback khi chưa chọn trường
+const UNIVERSITY_TRAVEL_DISTANCE_KM = {
+  PTIT: 4.5,
+  HUST: 5,
+  HUCE: 4.8,
+};
 
 const CLASS_WEEKDAY_SHORT = { 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 0: "CN" };
 
@@ -116,30 +119,13 @@ function getRushFactor(minutesOfDay) {
   return hit ? hit.factor : 1.0;
 }
 
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
-
 // Thời gian di chuyển (phút, đã nhân hệ số tắc đường tại thời điểm atMinutes).
-// Trả về null nếu thiếu toạ độ nhà/trường hoặc tốc độ -> nơi gọi tự fallback
+// Trả về null nếu chưa chọn trường hoặc thiếu tốc độ -> nơi gọi tự fallback
 // về đệm cố định.
 function computeTravelMinutes(profile, atMinutes) {
-  if (
-    profile?.home_lat == null ||
-    profile?.home_lng == null ||
-    profile?.school_lat == null ||
-    profile?.school_lng == null
-  ) {
-    return null;
-  }
+  const distanceKm = UNIVERSITY_TRAVEL_DISTANCE_KM[profile?.university];
+  if (distanceKm == null) return null;
   const speed = Number(profile.average_speed_kmh) || 25;
-  const distanceKm = haversineKm(profile.home_lat, profile.home_lng, profile.school_lat, profile.school_lng);
   const baseMinutes = (distanceKm / speed) * 60;
   const factor = getRushFactor(atMinutes);
   return Math.max(5, Math.round(baseMinutes * factor));

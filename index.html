@@ -345,7 +345,8 @@
           <div class="settings-block">
             <h3>Vị trí &amp; di chuyển</h3>
             <p style="font-size:13px;color:var(--ink-soft);margin:0 0 14px;">
-              Dùng để tính thời gian di chuyển thật (có tính tắc đường) thay vì đệm cố định khi tính giờ bận do học.
+              Khoảng cách được hệ thống đặt theo trường đã chọn: PTIT 4,5 km, HUST 5 km, HUCE 4,8 km.
+              Chọn phương tiện và tốc độ để tính thời gian di chuyển có tính tắc đường.
             </p>
             <div class="form-row">
               <div class="field">
@@ -363,25 +364,9 @@
               </div>
             </div>
 
-            <div class="field">
-              <label>Vị trí nhà</label>
-              <div class="form-row">
-                <input type="number" id="st-home-lat" placeholder="Vĩ độ (lat)" step="0.000001" />
-                <input type="number" id="st-home-lng" placeholder="Kinh độ (lng)" step="0.000001" />
-              </div>
-              <button type="button" class="btn btn-ghost btn-sm" id="st-use-my-location" style="margin-top:8px;">📍 Dùng vị trí hiện tại</button>
-            </div>
-
-            <div class="field">
-              <label>Vị trí trường</label>
-              <div class="form-row">
-                <input type="number" id="st-school-lat" placeholder="Vĩ độ (lat)" step="0.000001" />
-                <input type="number" id="st-school-lng" placeholder="Kinh độ (lng)" step="0.000001" />
-              </div>
-              <button type="button" class="btn btn-ghost btn-sm" id="st-use-school-default" style="margin-top:8px;">🏫 Điền toạ độ mặc định theo trường đã chọn</button>
-            </div>
+            <p id="st-travel-distance" style="font-size:13px;color:var(--ink-soft);margin:0;">Khoảng cách hiện tại sẽ theo trường bạn chọn.</p>
             <p id="st-location-status" style="font-size:12px;color:var(--ink-faint);margin:6px 0 0;"></p>
-            <button class="btn btn-primary btn-sm" id="save-location" style="margin-top:10px;">Lưu vị trí &amp; di chuyển</button>
+            <button class="btn btn-primary btn-sm" id="save-location" style="margin-top:10px;">Lưu phương tiện &amp; di chuyển</button>
           </div>
 
           <div class="settings-block">
