@@ -308,7 +308,7 @@ function rotationTaskTicketHTML(task, queue) {
 function renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinnedTasks, queueMap) {
   const myVirtualTurns = rotations.filter((r) => {
     if (!r.member_order || r.member_order.length === 0) return false;
-    const currentTurnUserId = r.member_order[r.current_index];
+    const currentTurnUserId = typeof currentHolder === "function" ? currentHolder(r)?.id : r.member_order[r.current_index];
     if (currentTurnUserId !== selectedUserId) return false;
     return !queueHasTaskToday.has(r.id);
   });
@@ -388,17 +388,26 @@ async function renderTasksView() {
 
   // Những hàng đợi đã có 1 việc thật cho hôm nay (vd vừa "xin chuyển việc")
   // thì không hiện thẻ ảo "Đang tới lượt" nữa, tránh hiện trùng.
-  const queueHasTaskToday = new Set(
+  const activeRotationQueues = new Set(
     tasks
-      .filter((t) => t.rotation_queue_id && t.due_date === today && t.status !== "hoan_thanh")
+      .filter((t) => t.rotation_queue_id && t.status !== "hoan_thanh" && t.status !== "bo_lo")
       .map((t) => t.rotation_queue_id)
   );
 
   // Việc gắn với hàng đợi luân phiên, chưa xong / chưa bị đánh dấu bỏ -> không có hạn,
   // luôn nằm trong nhóm "Đang tới lượt" (không chôn theo ngày như việc thường).
-  const rotationPinned = filteredTasks.filter(
-    (t) => t.rotation_queue_id && t.status !== "hoan_thanh" && t.status !== "bo_lo"
-  );
+  // Một hàng đợi chỉ được hiển thị một task đang mở. Nếu dữ liệu cũ có nhiều
+  // task trùng queue, giữ task mới nhất để không hiện hai việc giống nhau.
+  const rotationPinned = [];
+  const pinnedQueueIds = new Set();
+  [...filteredTasks]
+    .filter((t) => t.rotation_queue_id && t.status !== "hoan_thanh" && t.status !== "bo_lo")
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .forEach((task) => {
+      if (pinnedQueueIds.has(task.rotation_queue_id)) return;
+      pinnedQueueIds.add(task.rotation_queue_id);
+      rotationPinned.push(task);
+    });
   const rest = filteredTasks.filter((t) => !rotationPinned.includes(t));
 
   const todayTasks = rest.filter((t) => t.status !== "hoan_thanh" && t.due_date === today);
@@ -413,7 +422,7 @@ async function renderTasksView() {
     .filter((t) => t.status === "hoan_thanh" && t.completed_at && new Date(t.completed_at).getTime() >= doneCutoffMs)
     .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
 
-  const rotationSectionHTML = renderRotationSectionHTML(rotations, queueHasTaskToday, rotationPinned, queueMap);
+  const rotationSectionHTML = renderRotationSectionHTML(rotations, activeRotationQueues, rotationPinned, queueMap);
   const hasRotationTurn = rotationSectionHTML !== "";
 
   const sections = [];
