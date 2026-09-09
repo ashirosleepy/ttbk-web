@@ -949,6 +949,7 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
 .member-card .member-identity { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
 .member-card .m-name-text { font-weight: 700; font-size: 15.5px; line-height: 1.3; }
 .member-card .member-details { min-width: 0; padding-left: 56px; }
+.member-card .member-details .status-badge { display: inline-flex !important; max-width: 100%; margin: 0 0 2px !important; }
 .member-card .m-sub { font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; }
 .member-card .m-availability { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .member-card .availability-bar { display: inline-block; width: 60px; height: 6px; border-radius: 999px; background: var(--track, #eee); overflow: hidden; vertical-align: middle; flex-shrink: 0; }
@@ -956,8 +957,7 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
 .member-card .m-points { margin-left: auto; text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; min-width: 62px; }
 .member-card .m-points .n { font-weight: 800; font-size: 18px; line-height: 1.1; }
 .member-card .m-points .l { font-size: 11px; color: var(--ink-faint); }
-.member-card .status-badge { max-width: 100%; margin: 0 !important; }
-.member-card .status-badge > span:last-child { white-space: nowrap; }
+.member-card .status-badge > span:last-child { white-space: normal; }
 
 /* ---------------- Cài đặt ---------------- */
 .settings-block { margin-bottom: 26px; }

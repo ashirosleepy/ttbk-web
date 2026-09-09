@@ -93,11 +93,11 @@ async function renderMembers() {
           ${avatarHTML(p)}
           <div class="member-identity">
             <div class="m-name-text">${escapeHTML(p.name)}</div>
-            ${statusBadgeHTML(status)}
           </div>
           <div class="m-points"><div class="n">${points}</div><div class="l">điểm</div></div>
         </div>
         <div class="member-details">
+          ${statusBadgeHTML(status)}
           ${universityLine}
           <div class="m-sub">${assigned.length} việc • ${done.length} hoàn thành${missed.length ? ` • ${missed.length} bỏ việc` : ""}</div>
           <div class="m-sub m-availability">
