@@ -146,20 +146,21 @@ async function renderRotationAdmin() {
 
   if (!listEl) return;
 
-  // Nếu task hôm nay đã được tạo, task.assigned_to là nguồn chính xác hơn
-  // current_index vì lượt có thể đã được chuyển sau khi task được tạo.
-  const { data: todayTasks, error: taskErr } = await supabaseClient
+  // Task đang mở là nguồn chính xác hơn current_index, kể cả khi due_date
+  // là ngày cũ do task đã được tạo trước khi xin đổi việc.
+  const { data: activeTasks, error: taskErr } = await supabaseClient
     .from("tasks")
     .select("rotation_queue_id, assigned_to, status")
-    .eq("due_date", todayStr())
-    .neq("status", "hoan_thanh");
+    .in("status", ["cho_nhan", "chua_lam", "dang_cho"])
+    .order("created_at", { ascending: false });
   const activeTaskByQueue = taskErr
     ? {}
-    : Object.fromEntries(
-        (todayTasks || [])
-          .filter((task) => task.rotation_queue_id && task.assigned_to)
-          .map((task) => [task.rotation_queue_id, task])
-      );
+    : (activeTasks || []).reduce((map, task) => {
+        if (task.rotation_queue_id && task.assigned_to && !map[task.rotation_queue_id]) {
+          map[task.rotation_queue_id] = task;
+        }
+        return map;
+      }, {});
 
   const safeQueues = Array.isArray(queues) ? queues : [];
   if (safeQueues.length === 0) {

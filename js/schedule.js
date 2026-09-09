@@ -136,18 +136,19 @@ async function renderScheduleView() {
   const schedules = await fetchSchedules();
   const queues = await fetchRotationQueues();
   const queueMap = Object.fromEntries(queues.map((q) => [q.id, q]));
-  const { data: todayTasks, error: taskErr } = await supabaseClient
+  const { data: activeTasks, error: taskErr } = await supabaseClient
     .from("tasks")
     .select("rotation_queue_id, assigned_to, status")
-    .eq("due_date", todayStr())
-    .neq("status", "hoan_thanh");
+    .in("status", ["cho_nhan", "chua_lam", "dang_cho"])
+    .order("created_at", { ascending: false });
   const activeTaskByQueue = taskErr
     ? {}
-    : Object.fromEntries(
-        (todayTasks || [])
-          .filter((task) => task.rotation_queue_id && task.assigned_to)
-          .map((task) => [task.rotation_queue_id, task])
-      );
+    : (activeTasks || []).reduce((map, task) => {
+        if (task.rotation_queue_id && task.assigned_to && !map[task.rotation_queue_id]) {
+          map[task.rotation_queue_id] = task;
+        }
+        return map;
+      }, {});
 
   const displayHolder = (queueId) => {
     const activeTask = activeTaskByQueue[queueId];
