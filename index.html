@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>TTBK</title>
 <link rel="stylesheet" href="./css/style.css" />
 <link rel="manifest" href="./manifest.json" />
@@ -113,7 +113,7 @@
             <label for="nt-points">Điểm thưởng</label>
             <input type="number" id="nt-points" value="10" min="0" />
           </div>
-          <div style="display:flex; gap:8px;">
+          <div class="btn-row">
             <button class="btn btn-primary btn-sm" id="save-new-task">Lưu việc</button>
             <button class="btn btn-ghost btn-sm" id="cancel-new-task">Huỷ</button>
           </div>
@@ -147,7 +147,7 @@
             </div>
           </div>
 
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div class="btn-row">
             <button class="btn btn-primary btn-sm" id="aa-fair-btn">⚖️ Chia công bằng ngay</button>
             <button class="btn btn-ghost btn-sm" id="aa-ai-btn">🤖 Hỏi AI gợi ý cách chia</button>
             <button class="btn btn-ghost btn-sm" id="aa-cancel-btn">Huỷ</button>
@@ -156,7 +156,7 @@
           <div id="aa-preview" style="display:none; margin-top:18px;">
             <h3 style="font-size:14px; margin-bottom:10px;">Xem trước — sửa người làm nếu cần</h3>
             <div id="aa-preview-list" class="task-list"></div>
-            <div style="display:flex; gap:8px; margin-top:14px;">
+            <div class="btn-row" style="margin-top:14px;">
               <button class="btn btn-primary btn-sm" id="aa-confirm-btn">✅ Tạo tất cả việc</button>
               <button class="btn btn-ghost btn-sm" id="aa-redo-btn">↺ Chia lại</button>
             </div>

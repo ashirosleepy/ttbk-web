@@ -141,6 +141,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .btn-danger { background: transparent; color: #A24E4E; }
 .btn-danger:hover { text-decoration: underline; }
 
+/* Hàng nhiều nút cạnh nhau (Lưu/Huỷ, Chia công bằng/Hỏi AI...) — tự co giãn đều,
+   xuống dòng khi hẹp thay vì bóp méo hoặc tràn ngang. */
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-row .btn { flex: 1 1 auto; }
+
 .auth-error {
   background: var(--todo-soft);
   color: var(--todo);
@@ -473,6 +478,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 .day-toggle.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+.tabs-container { -webkit-overflow-scrolling: touch; }
+.btn-tab { flex-shrink: 0; }
+
 .chore-chip {
   border: 1.5px solid var(--border);
   background: var(--surface);
@@ -684,7 +692,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     width: 100%;
     flex-direction: row;
     align-items: center;
-    padding: 8px 10px;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
     position: fixed;
     bottom: 0;
     left: 0;
@@ -692,15 +700,80 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
     border-right: none;
     border-top: 1px solid var(--border);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 -4px 14px rgba(35, 43, 38, 0.06);
   }
   .sidebar-mark, .sidebar-foot { display: none; }
-  .nav-item { flex-direction: column; gap: 3px; font-size: 10.5px; padding: 6px 10px; white-space: nowrap; position: relative; }
-  .nav-item .icon { font-size: 18px; }
-  .nav-badge { position: absolute; top: 2px; right: 6px; margin-left: 0; }
-  .main { padding-bottom: 64px; }
-  .content { padding: 18px 16px 90px; }
+  .nav-item {
+    flex-direction: column;
+    flex-shrink: 0;
+    gap: 3px;
+    font-size: 10.5px;
+    padding: 7px 12px;
+    min-width: 58px;
+    min-height: 48px;
+    justify-content: center;
+    white-space: nowrap;
+    position: relative;
+  }
+  .nav-item .icon { font-size: 19px; }
+  .nav-badge { position: absolute; top: 2px; right: 4px; margin-left: 0; }
+
+  .main { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+  .content { padding: 16px 14px calc(30px + env(safe-area-inset-bottom)); }
+
+  /* Thanh trên cùng: tên nhà/người dùng dài không được đẩy vỡ layout */
+  .topbar { padding: 12px 14px; gap: 10px; }
+  .topbar-title { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-chip { gap: 6px; flex-shrink: 0; }
+  #topbar-user { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  #topbar-user span { max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-chip .btn-sm { padding: 8px 10px; font-size: 12.5px; white-space: nowrap; }
+
   .form-row { grid-template-columns: 1fr; }
-  .topbar { padding: 14px 16px; }
+  .view-head { flex-direction: column; align-items: flex-start; }
+  .card { padding: 16px; }
+
+  /* Vùng chạm to hơn cho các nút nhỏ và ô nhập nhỏ trên phiếu việc */
+  .btn-sm { padding: 9px 14px; font-size: 13.5px; }
+  .icon-btn { width: 38px; height: 38px; font-size: 15px; }
+  .task-check { width: 26px; height: 26px; }
+  .btn-tab { padding: 9px 16px !important; font-size: 13px; }
+
+  /* select/ngày trong phiếu việc: 16px để iOS không tự zoom khi chạm vào */
+  .task-mini-select, .task-mini-date {
+    font-size: 16px;
+    padding: 6px 8px;
+    min-height: 34px;
+  }
+
+  /* Phiếu việc: tách hàng nút hành động xuống dòng riêng, dễ bấm hơn là
+     nhồi chung 1 hàng với tiêu đề/nhãn trạng thái */
+  .task-ticket { flex-wrap: wrap; padding: 12px 14px; }
+  .task-actions {
+    flex-basis: 100%;
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .chore-chip, .filter-chip { padding: 9px 14px; }
+  .day-toggle { min-width: 44px; padding: 10px 0; }
+
+  .member-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------------- Màn hình rất hẹp (điện thoại nhỏ, ~360px trở xuống) ---------------- */
+@media (max-width: 380px) {
+  .nav-item { min-width: 50px; padding: 6px 8px; font-size: 10px; }
+  .nav-item .icon { font-size: 17px; }
+  .content { padding: 14px 10px calc(30px + env(safe-area-inset-bottom)); }
+  .card { padding: 13px; }
+  .topbar-title { max-width: 40vw; }
+  #topbar-user span { max-width: 56px; }
+  .stat .num { font-size: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
