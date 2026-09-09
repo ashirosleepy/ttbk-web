@@ -286,7 +286,18 @@ function classWeekLabel(weekDates) {
   const fmt = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
   const first = weekDates[0];
   const last = weekDates[6];
-  return `${fmt(first)} - ${fmt(last)}/${last.getFullYear()}`;
+  const todayWeekStart = getWeekDates(new Date())[0];
+  const weekDifference = Math.round((first - todayWeekStart) / (7 * 24 * 60 * 60 * 1000));
+  let relativeLabel = "tuần này";
+
+  if (weekDifference < 0) {
+    const weeksAgo = Math.abs(weekDifference);
+    relativeLabel = weeksAgo === 1 ? "tuần trước" : `${weeksAgo} tuần trước`;
+  } else if (weekDifference > 0) {
+    relativeLabel = weekDifference === 1 ? "tuần sau" : `${weekDifference} tuần sau`;
+  }
+
+  return `${fmt(first)} - ${fmt(last)}/${last.getFullYear()} (${relativeLabel})`;
 }
 
 async function renderClassScheduleCard() {
