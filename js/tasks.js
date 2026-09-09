@@ -521,13 +521,9 @@ async function toggleTaskDone(id) {
         excludeUserIds: [data.assigned_to],
       });
       if (nextAssignee) {
-        const completedBy = assignedProfile ? assignedProfile.name : STATE.me.name;
-        const completionNote = assignedProfile && assignedProfile.id !== STATE.me.id
-          ? ` (do ${STATE.me.name} tích hộ)`
-          : "";
         await createNotification(
           nextAssignee.id,
-          `📌 ${completedBy} đã hoàn thành việc "${data.title}"${completionNote}. Lần sau việc này nên ưu tiên giao cho bạn vì bạn làm ít hơn.`,
+          `📌 ${STATE.me.name} đánh dấu hoàn thành${actingFor} việc "${data.title}". Lần sau việc này nên ưu tiên giao cho bạn vì bạn làm ít hơn.`,
           { type: "thong_bao", taskId: id }
         );
       }

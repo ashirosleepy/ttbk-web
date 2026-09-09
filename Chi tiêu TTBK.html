@@ -99,6 +99,24 @@
 
     html[data-theme="dark"] .chart-box { background: var(--surface); border-color: var(--border); }
     html[data-theme="dark"] th, html[data-theme="dark"] td { color: var(--ink); border-color: var(--border); }
+    html[data-theme="dark"] .member-badge { background: var(--surface-soft); color: var(--ink); }
+    html[data-theme="dark"] .modal-content { background-color: var(--surface); border-color: var(--border-strong); color: var(--ink); }
+    html[data-theme="dark"] .close { color: var(--ink-faint); }
+    html[data-theme="dark"] .close:hover { color: var(--ink); }
+    html[data-theme="dark"] .fund-summary { background: var(--pending-soft) !important; border-color: var(--border-strong) !important; }
+    html[data-theme="dark"] .fund-summary h3 { color: var(--pending) !important; }
+    html[data-theme="dark"] .fund-summary div { color: var(--ink-soft); }
+    html[data-theme="dark"] .fund-summary strong { color: var(--ink) !important; }
+    html[data-theme="dark"] #yearly-settlement-plan { background: var(--missed-soft) !important; border-color: var(--missed) !important; }
+    html[data-theme="dark"] .settlement-list li[style*="#fff3cd"] { background: var(--wait-soft) !important; border-left-color: var(--wait) !important; color: var(--ink) !important; }
+    html[data-theme="dark"] .settlement-list li[style*="#fff3cd"] span { color: var(--ink-soft) !important; }
+    html[data-theme="dark"] #yearly-summary-body tr[style],
+    html[data-theme="dark"] #yearly-summary-body + tfoot tr[style] { background-color: var(--surface-soft) !important; }
+    html[data-theme="dark"] #yearly-balance-body tr[style] { background-color: var(--accent-soft) !important; }
+    html[data-theme="dark"] #current-month-title,
+    html[data-theme="dark"] #yearly-grand-total { color: var(--accent) !important; }
+    html[data-theme="dark"] .top-controls button[style],
+    html[data-theme="dark"] button[style*="background-color"] { color: #fff; }
 
     /* Hide on print/pdf */
     @media print {
