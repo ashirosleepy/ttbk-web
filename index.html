@@ -19,6 +19,37 @@
 </script>
 <meta name="color-scheme" content="light dark" />
 <link rel="stylesheet" href="./css/style.css" />
+<style>
+  /* ---- Bổ sung riêng cho module "Nhà cần gì?" — dùng chung biến màu của theme hiện có ---- */
+  .shop-tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; border-bottom:1px solid var(--ink-faint,#0002); padding-bottom:10px; }
+  .shop-tab-btn{ border:none; background:transparent; padding:7px 14px; border-radius:999px; font-size:13px; font-weight:600; color:var(--ink-soft,#666); cursor:pointer; }
+  .shop-tab-btn.active{ background:var(--theme-color,#A13F52); color:#fff; }
+  .shop-filter-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .shop-chip{ border:1px solid var(--ink-faint,#0002); background:transparent; padding:5px 12px; border-radius:999px; font-size:12.5px; color:var(--ink-soft,#666); cursor:pointer; }
+  .shop-chip.active{ background:var(--theme-color,#A13F52); border-color:var(--theme-color,#A13F52); color:#fff; }
+  .shop-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px; }
+  .shop-item-card{ border:1px solid var(--ink-faint,#0002); border-radius:14px; padding:14px; }
+  .shop-item-card .shop-item-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .shop-item-card h4{ margin:0; font-size:14.5px; }
+  .shop-badge{ font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+  .shop-badge-on{ background:#1ea34c22; color:#1ea34c; }
+  .shop-badge-sap_het{ background:#e0a30022; color:#b07e00; }
+  .shop-badge-het{ background:#e0333322; color:#c22; }
+  .shop-badge-unknown{ background:#8884; color:#888; }
+  .shop-meta{ font-size:12.5px; color:var(--ink-soft,#666); margin:8px 0; line-height:1.6; }
+  .shop-quickrow{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .shop-quickrow button{ font-size:11.5px; padding:4px 9px; border-radius:8px; border:1px solid var(--ink-faint,#0002); background:transparent; cursor:pointer; color:var(--ink-soft,#666); }
+  .shop-quickrow button.qty-btn{ font-weight:700; }
+  .shop-actrow{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .shop-note{ font-size:11.5px; color:var(--ink-faint,#999); margin-top:6px; font-style:italic; }
+  .shop-overview-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+  .shop-overview-cell{ text-align:center; padding:10px 4px; border-radius:12px; background:var(--ink-faint,#0001); }
+  .shop-overview-cell b{ display:block; font-size:20px; }
+  .shop-overview-cell span{ font-size:11.5px; color:var(--ink-soft,#666); }
+  .shop-cart-group-title{ font-size:12.5px; font-weight:700; color:var(--ink-soft,#666); margin:14px 0 8px; text-transform:uppercase; letter-spacing:.03em; }
+  .shop-cart-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .shop-reporter{ font-size:11px; color:var(--ink-faint,#999); }
+</style>
 <link rel="manifest" href="./manifest.json" />
 <link rel="apple-touch-icon" href="./css/ttbk.png" />
 <meta name="theme-color" content="#A13F52" />
@@ -41,6 +72,7 @@
     <button class="nav-item active" data-section="tasks"><span class="icon">📝</span> Công việc</button>
     <button class="nav-item" data-section="schedule"><span class="icon">📅</span> Lịch</button>
     <button class="nav-item" data-section="members"><span class="icon">👥</span> Thành viên</button>
+    <button class="nav-item" data-section="shopping"><span class="icon">🛒</span> Nhà cần gì? <span class="nav-badge" id="shop-nav-badge" style="display:none">0</span></button>
     <button class="nav-item" onclick="(window.ttbkNavigate||function(u){window.location.href=u;})('Chi tiêu TTBK.html')">
       <span class="icon">💰</span> Chi tiêu
     </button>
@@ -271,6 +303,146 @@
         <div id="members-grid" class="member-grid"><p class="empty-state">Đang tải...</p></div>
       </section>
 
+      <!-- ---------- NHÀ CẦN GÌ? (ĐỒ DÙNG / MUA SẮM) ---------- -->
+      <section id="section-shopping" class="view">
+        <div class="view-head">
+          <div><h2>🛒 Nhà cần gì?</h2><p>Theo dõi đồ dùng, đồ dự phòng, đồ cần thay — tự tạo danh sách mua</p></div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" id="shop-btn-adhoc">＋ Phát sinh</button>
+            <button class="btn btn-primary btn-sm" id="shop-btn-additem">+ Thêm đồ dùng</button>
+          </div>
+        </div>
+
+        <div class="card" id="shop-overview" style="margin-bottom:22px;">
+          <p class="empty-state">Đang tải...</p>
+        </div>
+
+        <div class="shop-tabs" id="shop-tabs">
+          <button class="shop-tab-btn active" data-shoptab="items">Đồ dùng</button>
+          <button class="shop-tab-btn" data-shoptab="cart">Danh sách mua</button>
+          <button class="shop-tab-btn" data-shoptab="replace">Lịch thay</button>
+          <button class="shop-tab-btn" data-shoptab="history">Lịch sử</button>
+        </div>
+
+        <!-- Form: thêm / sửa đồ dùng -->
+        <div class="card" id="shop-item-form" style="display:none; margin-bottom:22px;">
+          <h3 style="font-size:15px; margin-bottom:4px;" id="shop-item-form-title">Thêm đồ dùng</h3>
+          <input type="hidden" id="si-id" />
+          <div class="form-row">
+            <div class="field">
+              <label for="si-name">Tên món</label>
+              <input type="text" id="si-name" placeholder="VD: Giấy vệ sinh" />
+            </div>
+            <div class="field">
+              <label for="si-category">Loại</label>
+              <select id="si-category">
+                <option value="tieu_hao">🧻 Tiêu hao</option>
+                <option value="du_phong">🔋 Dự phòng</option>
+                <option value="dinh_ky">🔧 Định kỳ thay</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="si-qty">Số lượng hiện có</label>
+              <input type="number" id="si-qty" step="0.1" min="0" value="1" />
+            </div>
+            <div class="field">
+              <label for="si-unit">Đơn vị</label>
+              <input type="text" id="si-unit" placeholder="cuộn, chai, bình..." />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="si-min">Ngưỡng cảnh báo (mức tối thiểu)</label>
+              <input type="number" id="si-min" step="0.1" min="0" value="1" />
+            </div>
+            <div class="field">
+              <label for="si-ideal">Mức nên có (dự phòng đủ)</label>
+              <input type="number" id="si-ideal" step="0.1" min="0" value="" placeholder="Không bắt buộc" />
+            </div>
+          </div>
+          <div class="field" style="max-width:220px;">
+            <label for="si-cycle">Chu kỳ mua / thay (ngày, ước tính)</label>
+            <input type="number" id="si-cycle" min="1" placeholder="VD: 30" />
+          </div>
+          <div class="field">
+            <label for="si-note">Ghi chú (không bắt buộc)</label>
+            <textarea id="si-note" placeholder="VD: mua ở tạp hoá đầu ngõ"></textarea>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary btn-sm" id="shop-item-save">Lưu</button>
+            <button class="btn btn-ghost btn-sm" id="shop-item-cancel">Huỷ</button>
+          </div>
+        </div>
+
+        <!-- Form: phát sinh nhanh -->
+        <div class="card" id="shop-adhoc-form" style="display:none; margin-bottom:22px;">
+          <h3 style="font-size:15px; margin-bottom:4px;">＋ Thêm đồ cần mua phát sinh</h3>
+          <p style="font-size:13px;color:var(--ink-soft);margin:0 0 14px;">
+            Dùng cho đồ hỏng / đồ mất / nhu cầu mới — không cần quản lý tồn kho lâu dài.
+          </p>
+          <div class="form-row">
+            <div class="field">
+              <label for="sa-name">Tên món</label>
+              <input type="text" id="sa-name" placeholder="VD: Bóng đèn hỏng" />
+            </div>
+            <div class="field">
+              <label for="sa-qty">Số lượng cần</label>
+              <input type="number" id="sa-qty" min="1" value="1" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="sa-priority">Mức ưu tiên</label>
+              <select id="sa-priority">
+                <option value="cao">🔴 Cao</option>
+                <option value="binh_thuong" selected>🟡 Bình thường</option>
+                <option value="thap">🟢 Thấp</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sa-note">Ghi chú (không bắt buộc)</label>
+              <input type="text" id="sa-note" placeholder="VD: bóng đèn phòng khách" />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary btn-sm" id="shop-adhoc-save">Thêm vào danh sách mua</button>
+            <button class="btn btn-ghost btn-sm" id="shop-adhoc-cancel">Huỷ</button>
+          </div>
+        </div>
+
+        <!-- Panel: Đồ dùng -->
+        <div id="shop-panel-items" class="shop-panel">
+          <div class="shop-filter-row" id="shop-cat-filter">
+            <button class="shop-chip active" data-cat="all">Tất cả</button>
+            <button class="shop-chip" data-cat="tieu_hao">🧻 Tiêu hao</button>
+            <button class="shop-chip" data-cat="du_phong">🔋 Dự phòng</button>
+            <button class="shop-chip" data-cat="dinh_ky">🔧 Định kỳ thay</button>
+            <button class="shop-chip" data-cat="phat_sinh">⚡ Phát sinh</button>
+          </div>
+          <div id="shop-items-grid" class="shop-grid"><p class="empty-state">Đang tải...</p></div>
+        </div>
+
+        <!-- Panel: Danh sách mua -->
+        <div id="shop-panel-cart" class="shop-panel" style="display:none;">
+          <div class="btn-row" style="margin-bottom:14px;">
+            <button class="btn btn-primary btn-sm" id="shop-btn-addall">🛒 Đưa tất cả gợi ý vào danh sách mua</button>
+          </div>
+          <div id="shop-cart-list" class="task-list"><p class="empty-state">Chưa có gì cần mua.</p></div>
+        </div>
+
+        <!-- Panel: Lịch thay -->
+        <div id="shop-panel-replace" class="shop-panel" style="display:none;">
+          <div id="shop-replace-list" class="task-list"><p class="empty-state">Chưa có đồ định kỳ thay.</p></div>
+        </div>
+
+        <!-- Panel: Lịch sử -->
+        <div id="shop-panel-history" class="shop-panel" style="display:none;">
+          <div id="shop-history-list" class="task-list"><p class="empty-state">Chưa có lịch sử mua.</p></div>
+        </div>
+      </section>
+
       <!-- ---------- CÀI ĐẶT ---------- -->
       <section id="section-settings" class="view">
         <div class="view-head">
@@ -458,6 +630,7 @@
 <script src="js/calendar.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/members.js"></script>
+<script src="js/shopping.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/app.js"></script>
 <script src="js/push-notifications.js"></script>
