@@ -173,6 +173,23 @@ async function markAllNotificationsRead() {
 }
 
 // Người đầu tiên bấm "Nhận đổi việc" thì được — người sau sẽ thấy báo "đã có người nhận"
+async function syncRotationQueueForAssignedUser(queueId, userId) {
+  if (!queueId || !userId) return;
+
+  const { data: queue, error } = await supabaseClient
+    .from("rotation_queues")
+    .select("member_order")
+    .eq("id", queueId)
+    .single();
+
+  if (error || !queue || !Array.isArray(queue.member_order)) return;
+
+  const idx = queue.member_order.indexOf(userId);
+  if (idx === -1) return;
+
+  await supabaseClient.from("rotation_queues").update({ current_index: idx }).eq("id", queueId);
+}
+
 async function acceptExchangeFromNotif(exchangeId, taskId, notifId) {
   let resolvedExchangeId = exchangeId;
   if (!resolvedExchangeId && taskId) {
@@ -184,6 +201,12 @@ async function acceptExchangeFromNotif(exchangeId, taskId, notifId) {
     alert("Không tìm thấy lời mời đổi việc phù hợp.");
     return;
   }
+
+  const { data: taskInfo } = await supabaseClient
+    .from("tasks")
+    .select("rotation_queue_id")
+    .eq("id", taskId)
+    .maybeSingle();
 
   const { data, error } = await supabaseClient
     .from("task_exchanges")
@@ -203,6 +226,9 @@ async function acceptExchangeFromNotif(exchangeId, taskId, notifId) {
 
   await supabaseClient.from("task_exchanges").update({ status: "cancelled" }).eq("task_id", taskId).eq("from_user", data.from_user).neq("id", resolvedExchangeId).eq("status", "open");
   await supabaseClient.from("tasks").update({ assigned_to: STATE.me.id }).eq("id", taskId);
+  if (taskInfo?.rotation_queue_id) {
+    await syncRotationQueueForAssignedUser(taskInfo.rotation_queue_id, STATE.me.id);
+  }
 
   // Xin đổi việc thành công (có người nhận) -> trừ điểm người xin đổi, chấm điểm công bằng hơn.
   if (typeof addPointAdjustment === "function") {
@@ -229,6 +255,12 @@ async function rejectExchangeFromNotif(exchangeId, taskId, notifId) {
     alert("Không tìm thấy lời mời đổi việc phù hợp.");
     return;
   }
+
+  const { data: taskInfo } = await supabaseClient
+    .from("tasks")
+    .select("rotation_queue_id")
+    .eq("id", taskId)
+    .maybeSingle();
 
   const { data, error } = await supabaseClient
     .from("task_exchanges")
@@ -258,6 +290,9 @@ async function rejectExchangeFromNotif(exchangeId, taskId, notifId) {
     if (!hasOpen && !hasAccepted) {
       const profile = findProfile(STATE.profiles, data.from_user);
       await supabaseClient.from("tasks").update({ assigned_to: data.from_user }).eq("id", taskId);
+      if (taskInfo?.rotation_queue_id) {
+        await syncRotationQueueForAssignedUser(taskInfo.rotation_queue_id, data.from_user);
+      }
       await logHistory(taskId, data.from_user, "bat_buoc_lam", `${profile ? profile.name : "Người yêu cầu"} phải làm việc vì cả 3 người còn lại đều từ chối.`);
       await createNotification(data.from_user, `⚠️ Cả 3 người còn lại đều từ chối, nên bạn phải làm việc này.`, { type: "thong_bao", taskId });
     }
