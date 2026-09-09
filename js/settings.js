@@ -2,6 +2,192 @@
 // SETTINGS.JS — trang "Cài đặt" (hồ sơ cá nhân)
 // ============================================================
 
+// ---- Cắt ảnh đại diện thành hình vuông theo ý người dùng ----
+// Trước đây ảnh tải lên bị CSS (object-fit: cover) tự động cắt theo tâm ảnh,
+// nên với ảnh không vuông người dùng không tự chọn được phần muốn giữ lại.
+// Cách xử lý: khi chọn ảnh, mở 1 khung cắt hình vuông (kéo để di chuyển,
+// thanh trượt để phóng to/thu nhỏ), rồi xuất ra 1 ảnh vuông thật sự trước khi upload.
+const AVATAR_CROP_OUTPUT_SIZE = 512; // kích thước (px) ảnh vuông xuất ra để upload
+
+function ensureAvatarCropModal() {
+  if (document.getElementById("avatar-crop-modal")) return;
+  const modal = document.createElement("div");
+  modal.className = "calendar-detail-modal avatar-crop-modal";
+  modal.id = "avatar-crop-modal";
+  modal.innerHTML = `
+    <div class="calendar-detail-backdrop" id="avatar-crop-backdrop"></div>
+    <div class="calendar-detail-panel avatar-crop-panel">
+      <div class="calendar-detail-head">
+        <div>
+          <span class="calendar-detail-kicker">Ảnh đại diện</span>
+          <h3>Chọn vùng ảnh</h3>
+        </div>
+        <button type="button" class="calendar-detail-close" id="avatar-crop-close">×</button>
+      </div>
+      <div class="avatar-crop-stage-wrap">
+        <div class="avatar-crop-stage" id="avatar-crop-stage">
+          <img id="avatar-crop-img" draggable="false" alt="" />
+        </div>
+      </div>
+      <div class="avatar-crop-zoom-row">
+        <span>−</span>
+        <input type="range" id="avatar-crop-zoom" min="1" max="3" step="0.01" value="1" />
+        <span>+</span>
+      </div>
+      <p class="avatar-crop-hint">Kéo ảnh để di chuyển, dùng thanh trượt để phóng to / thu nhỏ vùng chọn.</p>
+      <div class="avatar-crop-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="avatar-crop-cancel">Huỷ</button>
+        <button type="button" class="btn btn-primary btn-sm" id="avatar-crop-confirm">Dùng ảnh này</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// Mở khung cắt ảnh cho 1 file đã chọn, trả về Promise<Blob|null>
+// (null nếu người dùng bấm Huỷ/đóng mà không xác nhận).
+function openAvatarCropper(file) {
+  return new Promise((resolve) => {
+    ensureAvatarCropModal();
+    const modal = document.getElementById("avatar-crop-modal");
+    const stage = document.getElementById("avatar-crop-stage");
+    const img = document.getElementById("avatar-crop-img");
+    let zoomInput = document.getElementById("avatar-crop-zoom");
+    let closeBtn = document.getElementById("avatar-crop-close");
+    let cancelBtn = document.getElementById("avatar-crop-cancel");
+    let confirmBtn = document.getElementById("avatar-crop-confirm");
+    let backdrop = document.getElementById("avatar-crop-backdrop");
+
+    const objectUrl = URL.createObjectURL(file);
+    let baseScale = 1;
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let naturalW = 0;
+    let naturalH = 0;
+    let stageSize = 0;
+    let dragging = false;
+    let dragStart = null;
+    let settled = false;
+
+    function applyTransform() {
+      img.style.width = `${naturalW * scale}px`;
+      img.style.height = `${naturalH * scale}px`;
+      img.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+    }
+
+    // Không cho kéo/zoom làm lộ viền trắng ngoài ảnh
+    function clampOffset() {
+      const w = naturalW * scale;
+      const h = naturalH * scale;
+      offsetX = Math.min(0, Math.max(stageSize - w, offsetX));
+      offsetY = Math.min(0, Math.max(stageSize - h, offsetY));
+    }
+
+    function onLoad() {
+      naturalW = img.naturalWidth;
+      naturalH = img.naturalHeight;
+      stageSize = stage.clientWidth;
+      // baseScale = mức zoom nhỏ nhất để ảnh luôn phủ kín khung vuông
+      baseScale = Math.max(stageSize / naturalW, stageSize / naturalH);
+      scale = baseScale;
+      offsetX = (stageSize - naturalW * scale) / 2;
+      offsetY = (stageSize - naturalH * scale) / 2;
+      zoomInput.value = "1";
+      clampOffset();
+      applyTransform();
+    }
+    img.addEventListener("load", onLoad, { once: true });
+    img.src = objectUrl;
+
+    function onZoom() {
+      const factor = parseFloat(zoomInput.value); // 1 = baseScale, tối đa 3x
+      const prevScale = scale;
+      scale = baseScale * factor;
+      // Giữ nguyên tâm khung khi phóng to/thu nhỏ để không bị "nhảy" ảnh
+      const cx = stageSize / 2;
+      const cy = stageSize / 2;
+      offsetX = cx - ((cx - offsetX) / prevScale) * scale;
+      offsetY = cy - ((cy - offsetY) / prevScale) * scale;
+      clampOffset();
+      applyTransform();
+    }
+    zoomInput.addEventListener("input", onZoom);
+
+    function pointerDown(e) {
+      dragging = true;
+      const p = e.touches ? e.touches[0] : e;
+      dragStart = { x: p.clientX - offsetX, y: p.clientY - offsetY };
+      stage.classList.add("dragging");
+    }
+    function pointerMove(e) {
+      if (!dragging) return;
+      const p = e.touches ? e.touches[0] : e;
+      offsetX = p.clientX - dragStart.x;
+      offsetY = p.clientY - dragStart.y;
+      clampOffset();
+      applyTransform();
+      if (e.cancelable) e.preventDefault();
+    }
+    function pointerUp() {
+      dragging = false;
+      stage.classList.remove("dragging");
+    }
+    stage.addEventListener("mousedown", pointerDown);
+    window.addEventListener("mousemove", pointerMove);
+    window.addEventListener("mouseup", pointerUp);
+    stage.addEventListener("touchstart", pointerDown, { passive: true });
+    window.addEventListener("touchmove", pointerMove, { passive: false });
+    window.addEventListener("touchend", pointerUp);
+
+    function cleanup() {
+      modal.classList.remove("show");
+      img.removeEventListener("load", onLoad);
+      stage.removeEventListener("mousedown", pointerDown);
+      window.removeEventListener("mousemove", pointerMove);
+      window.removeEventListener("mouseup", pointerUp);
+      stage.removeEventListener("touchstart", pointerDown);
+      window.removeEventListener("touchmove", pointerMove);
+      window.removeEventListener("touchend", pointerUp);
+      // Thay các nút bằng bản sao "sạch" để gỡ hết listener,
+      // tránh cộng dồn listener nếu người dùng mở khung cắt nhiều lần.
+      zoomInput.replaceWith(zoomInput.cloneNode(true));
+      closeBtn.replaceWith(closeBtn.cloneNode(true));
+      cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+      confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+      backdrop.replaceWith(backdrop.cloneNode(true));
+      URL.revokeObjectURL(objectUrl);
+    }
+
+    function finish(result) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(result);
+    }
+
+    closeBtn.addEventListener("click", () => finish(null));
+    cancelBtn.addEventListener("click", () => finish(null));
+    backdrop.addEventListener("click", () => finish(null));
+
+    confirmBtn.addEventListener("click", () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = AVATAR_CROP_OUTPUT_SIZE;
+      canvas.height = AVATAR_CROP_OUTPUT_SIZE;
+      const ctx = canvas.getContext("2d");
+      const ratio = AVATAR_CROP_OUTPUT_SIZE / stageSize;
+      ctx.drawImage(
+        img,
+        0, 0, naturalW, naturalH,
+        offsetX * ratio, offsetY * ratio, naturalW * scale * ratio, naturalH * scale * ratio
+      );
+      canvas.toBlob((blob) => finish(blob), "image/jpeg", 0.92);
+    });
+
+    requestAnimationFrame(() => modal.classList.add("show"));
+  });
+}
+
 function renderColorPicker() {
   const wrap = document.getElementById("st-colors");
   wrap.innerHTML = AVATAR_COLORS.map(
@@ -45,15 +231,19 @@ function bindSettingsEvents() {
         return;
       }
 
+      // Cho người dùng tự chọn vùng ảnh (kéo/zoom) thay vì để CSS tự cắt theo tâm.
+      const croppedBlob = await openAvatarCropper(file);
+      if (!croppedBlob) return; // người dùng bấm Huỷ
+
       if (avatarPickBtn) avatarPickBtn.disabled = true;
       if (avatarStatus) avatarStatus.textContent = "Đang tải ảnh lên...";
 
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${STATE.me.id}/avatar_${Date.now()}.${ext}`;
+      // Ảnh cắt luôn xuất ra dạng jpg (xem openAvatarCropper / canvas.toBlob).
+      const path = `${STATE.me.id}/avatar_${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabaseClient.storage
         .from("avatars")
-        .upload(path, file, { upsert: true, cacheControl: "3600" });
+        .upload(path, croppedBlob, { upsert: true, cacheControl: "3600", contentType: "image/jpeg" });
       if (uploadError) {
         if (avatarPickBtn) avatarPickBtn.disabled = false;
         if (avatarStatus) avatarStatus.textContent = "";

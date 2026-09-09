@@ -888,6 +888,43 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
 .calendar-detail-meta small { color: var(--wait); font-weight: 700; }
 .calendar-detail-empty { margin: 0; padding: 22px 8px 8px; color: var(--ink-faint); text-align: center; font-size: 13px; }
 
+/* Khung cắt ảnh đại diện (kéo để chọn vùng, thanh trượt để zoom) */
+.avatar-crop-panel { width: min(100%, 380px); }
+.avatar-crop-stage-wrap { display: flex; justify-content: center; padding-top: 4px; }
+.avatar-crop-stage {
+  position: relative;
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #1a1a1a;
+  cursor: grab;
+  touch-action: none;
+}
+.avatar-crop-stage.dragging { cursor: grabbing; }
+.avatar-crop-stage img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+/* Viền tối bên ngoài vòng tròn để người dùng thấy trước phần avatar sẽ hiển thị */
+.avatar-crop-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+.avatar-crop-zoom-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; color: var(--ink-faint); font-size: 15px; }
+.avatar-crop-zoom-row input[type="range"] { flex: 1; }
+.avatar-crop-hint { font-size: 12px; color: var(--ink-faint); margin: 10px 0 0; text-align: center; }
+.avatar-crop-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+
 @media (max-width: 760px) {
   .cal-nav { align-items: stretch; }
   .cal-nav > button { flex: 1; }
