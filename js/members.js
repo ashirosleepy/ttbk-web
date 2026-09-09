@@ -62,8 +62,9 @@ function estimateAvailability(p, pendingCount) {
 function statusBadgeHTML(status) {
   const untilTxt = status.until ? ` đến ${formatDateShort(status.until)}` : "";
   const reasonTxt = status.reason ? ` · ${escapeHTML(status.reason)}` : "";
-  return `<span class="status-badge" style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:10px;background:${status.bg};color:${status.fg};font-size:12px;font-weight:600;">
-    ${status.emoji} ${status.label}${reasonTxt}${untilTxt}
+  return `<span class="status-badge" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:${status.bg};color:${status.fg};font-size:11.5px;font-weight:600;line-height:1.3;">
+    <span>${status.emoji}</span>
+    <span>${status.label}${reasonTxt}${untilTxt}</span>
   </span>`;
 }
 
@@ -89,15 +90,18 @@ async function renderMembers() {
       return `
       <div class="card member-card">
         ${avatarHTML(p)}
-        <div style="flex:1;">
-          <div class="m-name">${escapeHTML(p.name)}${statusBadgeHTML(status)}</div>
+        <div class="member-main">
+          <div class="m-name-row">
+            <div class="m-name-text">${escapeHTML(p.name)}</div>
+            ${statusBadgeHTML(status)}
+          </div>
           ${universityLine}
           <div class="m-sub">${assigned.length} việc • ${done.length} hoàn thành${missed.length ? ` • ${missed.length} bỏ việc` : ""}</div>
-          <div class="m-sub" style="margin-top:4px;">
-            <span style="display:inline-block;width:60px;height:6px;border-radius:3px;background:var(--track,#eee);overflow:hidden;vertical-align:middle;">
-              <span style="display:block;height:100%;width:${availability}%;background:${availability >= 60 ? "#1e8a4c" : availability >= 25 ? "#a86b16" : "#b3261e"};"></span>
+          <div class="m-sub m-availability">
+            <span class="availability-bar">
+              <span class="availability-fill" style="width:${availability}%;background:${availability >= 60 ? "#1e8a4c" : availability >= 25 ? "#a86b16" : "#b3261e"};"></span>
             </span>
-            <span style="margin-left:6px;">Độ sẵn sàng: ${availability}%</span>
+            <span>Độ sẵn sàng: ${availability}%</span>
           </div>
         </div>
         <div class="m-points"><div class="n">${points}</div><div class="l">điểm</div></div>
