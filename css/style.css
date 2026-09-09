@@ -242,23 +242,27 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
-
-.topbar-title { font-size: 18px; font-weight: 700; }
-
 .btn-hamburger {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-s);
-  background: var(--surface);
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
   color: var(--ink);
-  font-size: 18px;
+  font-size: 23px;
+  line-height: 1;
   cursor: pointer;
-  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
+.btn-hamburger:active { background: var(--accent-soft); transform: scale(.97); }
+.topbar-title { min-width: 0; flex: 1; }
+
+.topbar-title { font-size: 18px; font-weight: 700; }
 .btn-hamburger:hover { border-color: var(--accent); color: var(--accent); }
 
 .user-chip { display: flex; align-items: center; gap: 10px; }
@@ -773,6 +777,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
   /* Thanh trên cùng: tên nhà/người dùng dài không được đẩy vỡ layout */
   .topbar { padding: 12px 14px; gap: 10px; }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding-top: calc(8px + env(safe-area-inset-top));
+  }
+  .btn-hamburger { display: inline-flex; }
   .topbar-title { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .user-chip { gap: 6px; flex-shrink: 0; }
   #topbar-user { display: flex; align-items: center; gap: 6px; min-width: 0; }
