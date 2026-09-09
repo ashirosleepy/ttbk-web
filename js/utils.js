@@ -22,6 +22,9 @@ function avatarHTML(profile, size = "") {
   const cls = size ? `avatar ${size}` : "avatar";
   const awayStyle = profile.is_away ? "opacity:0.4;filter:grayscale(70%);" : "";
   const title = profile.is_away ? ' title="Đang tạm vắng"' : "";
+  if (profile.avatar_url) {
+    return `<img class="${cls} avatar-img" src="${profile.avatar_url}" style="${awayStyle}"${title} alt="${escapeHTML(profile.name || "")}" />`;
+  }
   return `<div class="${cls}" style="background:${profile.avatar_color || "#3B6E8F"};${awayStyle}"${title}>${initials(profile.name)}</div>`;
 }
 

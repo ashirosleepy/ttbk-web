@@ -390,6 +390,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   flex-shrink: 0;
 }
 .avatar-sm { width: 24px; height: 24px; font-size: 11px; }
+.avatar-img { object-fit: cover; display: block; }
+
+.avatar-upload-row { display: flex; align-items: center; gap: 16px; }
+.avatar-upload-preview { width: 64px; height: 64px; flex-shrink: 0; }
+.avatar-upload-preview .avatar { width: 64px; height: 64px; font-size: 22px; }
+.avatar-upload-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 
 /* Công tắc sáng / tối */
 .theme-switch { background: none; border: none; padding: 0; cursor: pointer; flex-shrink: 0; }

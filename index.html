@@ -280,6 +280,18 @@
           </div>
             <h3>Hồ sơ</h3>
             <div class="field">
+              <label>Ảnh đại diện</label>
+              <div class="avatar-upload-row">
+                <div class="avatar-upload-preview" id="st-avatar-preview"></div>
+                <div class="avatar-upload-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" id="st-avatar-pick">Chọn ảnh</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="st-avatar-remove" style="display:none;">Xoá ảnh</button>
+                  <input type="file" id="st-avatar-input" accept="image/*" style="display:none;" />
+                </div>
+              </div>
+              <p id="st-avatar-status" style="font-size:12px;color:var(--ink-faint);margin:6px 0 0;"></p>
+            </div>
+            <div class="field">
               <label for="st-name">Tên hiển thị</label>
               <input type="text" id="st-name" />
             </div>

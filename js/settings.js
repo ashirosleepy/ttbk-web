@@ -9,7 +9,100 @@ function renderColorPicker() {
   ).join("");
 }
 
+function renderAvatarPreview() {
+  const wrap = document.getElementById("st-avatar-preview");
+  if (!wrap) return;
+  wrap.innerHTML = avatarHTML(STATE.me);
+  const removeBtn = document.getElementById("st-avatar-remove");
+  if (removeBtn) removeBtn.style.display = STATE.me.avatar_url ? "inline-flex" : "none";
+}
+
 function bindSettingsEvents() {
+  const avatarInput = document.getElementById("st-avatar-input");
+  const avatarPickBtn = document.getElementById("st-avatar-pick");
+  const avatarRemoveBtn = document.getElementById("st-avatar-remove");
+  const avatarStatus = document.getElementById("st-avatar-status");
+
+  if (avatarPickBtn && !avatarPickBtn.dataset.bound) {
+    avatarPickBtn.dataset.bound = "1";
+    avatarPickBtn.addEventListener("click", () => avatarInput.click());
+  }
+
+  if (avatarInput && !avatarInput.dataset.bound) {
+    avatarInput.dataset.bound = "1";
+    avatarInput.addEventListener("change", async () => {
+      const file = avatarInput.files[0];
+      avatarInput.value = ""; // cho phép chọn lại đúng file này lần sau nếu cần
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+        alert("Vui lòng chọn một tệp hình ảnh (jpg, png, ...).");
+        return;
+      }
+      const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+      if (file.size > MAX_SIZE) {
+        alert("Ảnh quá lớn, vui lòng chọn ảnh dưới 5MB.");
+        return;
+      }
+
+      if (avatarPickBtn) avatarPickBtn.disabled = true;
+      if (avatarStatus) avatarStatus.textContent = "Đang tải ảnh lên...";
+
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${STATE.me.id}/avatar_${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabaseClient.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true, cacheControl: "3600" });
+      if (uploadError) {
+        if (avatarPickBtn) avatarPickBtn.disabled = false;
+        if (avatarStatus) avatarStatus.textContent = "";
+        return alert("Lỗi tải ảnh lên: " + uploadError.message);
+      }
+
+      const { data: publicUrlData } = supabaseClient.storage.from("avatars").getPublicUrl(path);
+      const avatarUrl = publicUrlData.publicUrl;
+
+      const { error: updateError } = await supabaseClient
+        .from("profiles")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", STATE.me.id);
+
+      if (avatarPickBtn) avatarPickBtn.disabled = false;
+
+      if (updateError) {
+        if (avatarStatus) avatarStatus.textContent = "";
+        return alert("Lỗi lưu ảnh đại diện: " + updateError.message);
+      }
+
+      STATE.me.avatar_url = avatarUrl;
+      STATE.profiles = await getAllProfiles();
+      renderAvatarPreview();
+      updateTopbar();
+      if (avatarStatus) avatarStatus.textContent = "Đã cập nhật ảnh đại diện.";
+    });
+  }
+
+  if (avatarRemoveBtn && !avatarRemoveBtn.dataset.bound) {
+    avatarRemoveBtn.dataset.bound = "1";
+    avatarRemoveBtn.addEventListener("click", async () => {
+      if (!STATE.me.avatar_url) return;
+      if (!confirm("Xoá ảnh đại diện và quay lại avatar màu mặc định?")) return;
+
+      const { error } = await supabaseClient
+        .from("profiles")
+        .update({ avatar_url: null })
+        .eq("id", STATE.me.id);
+      if (error) return alert("Lỗi: " + error.message);
+
+      STATE.me.avatar_url = null;
+      STATE.profiles = await getAllProfiles();
+      renderAvatarPreview();
+      updateTopbar();
+      if (avatarStatus) avatarStatus.textContent = "Đã xoá ảnh đại diện.";
+    });
+  }
+
   const wrap = document.getElementById("st-colors");
   if (!wrap.dataset.bound) {
     wrap.dataset.bound = "1";
@@ -101,6 +194,7 @@ async function loadSettingsSection() {
   document.getElementById("st-name").value = STATE.me.name;
   document.getElementById("st-household").value = STATE.me.household || "Nhà TTBK";
   renderColorPicker();
+  renderAvatarPreview();
 
   const awayToggle = document.getElementById("st-away-toggle");
   if (awayToggle) {
