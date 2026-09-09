@@ -19,6 +19,7 @@
 
 let calViewYear;
 let calViewMonth; // 0 = Tháng 1 ... 11 = Tháng 12
+let calItemsByDate = {};
 
 const CAL_MONTH_LABEL = [
   "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
@@ -208,6 +209,68 @@ function calChipHTML(item) {
   return `<div class="cal-chip ${cls}" title="${escapeHTML(titleAttr)}">${label}</div>`;
 }
 
+function calEnsureDetailModal() {
+  if (document.getElementById("calendar-detail-modal")) return;
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="calendar-detail-modal" id="calendar-detail-modal" aria-hidden="true">
+      <div class="calendar-detail-backdrop" data-calendar-close></div>
+      <section class="calendar-detail-panel" role="dialog" aria-modal="true" aria-labelledby="calendar-detail-title">
+        <div class="calendar-detail-head">
+          <div>
+            <span class="calendar-detail-kicker">Lịch trong ngày</span>
+            <h3 id="calendar-detail-title">Chi tiết</h3>
+          </div>
+          <button class="calendar-detail-close" type="button" data-calendar-close aria-label="Đóng">×</button>
+        </div>
+        <div class="calendar-detail-list" id="calendar-detail-list"></div>
+      </section>
+    </div>`);
+
+  const modal = document.getElementById("calendar-detail-modal");
+  modal.addEventListener("click", (event) => {
+    if (event.target.closest("[data-calendar-close]")) calCloseDetailModal();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") calCloseDetailModal();
+  });
+}
+
+function calOpenDetailModal(dateStr) {
+  calEnsureDetailModal();
+  const modal = document.getElementById("calendar-detail-modal");
+  const title = document.getElementById("calendar-detail-title");
+  const list = document.getElementById("calendar-detail-list");
+  const date = new Date(`${dateStr}T00:00:00`);
+  const dateLabel = date.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+  const items = calItemsByDate[dateStr] || [];
+  title.textContent = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
+  list.innerHTML = items.length
+    ? items.map((item) => {
+        const assignee = findProfile(STATE.profiles || [], item.assigneeId);
+        const status = item.projected ? "Dự kiến" : item.status === "hoan_thanh" ? "Đã hoàn thành" : item.status === "bo_lo" ? "Đã bỏ việc" : "Chưa hoàn thành";
+        const statusClass = item.projected ? "future" : item.status === "hoan_thanh" ? "done" : item.status === "bo_lo" ? "missed" : "todo";
+        return `
+          <div class="calendar-detail-item">
+            <div class="calendar-detail-icon ${statusClass}">${item.projected ? "◷" : item.status === "hoan_thanh" ? "✓" : item.status === "bo_lo" ? "×" : "•"}</div>
+            <div class="calendar-detail-body">
+              <strong>${escapeHTML(item.title)}</strong>
+              <span>${assignee ? `Người làm: ${escapeHTML(assignee.name)}` : "Chưa có người làm"}</span>
+            </div>
+            <div class="calendar-detail-meta"><span>${status}</span>${item.points ? `<small>+${item.points}đ</small>` : ""}</div>
+          </div>`;
+      }).join("")
+    : `<p class="calendar-detail-empty">Ngày này chưa có công việc.</p>`;
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function calCloseDetailModal() {
+  const modal = document.getElementById("calendar-detail-modal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+}
+
 async function renderMonthCalendar() {
   const grid = document.getElementById("cal-grid");
   const label = document.getElementById("cal-month-label");
@@ -243,6 +306,19 @@ async function renderMonthCalendar() {
   });
 
   const futureByDate = projectFutureOccurrences(schedules, queues, rangeStart, rangeEnd, today, tasks);
+  calItemsByDate = {};
+  Object.entries(tasksByDate).forEach(([date, dayTasks]) => {
+    calItemsByDate[date] = dayTasks.map((task) => ({
+      title: task.title,
+      status: task.status,
+      assigneeId: task.assigned_to,
+      points: task.points,
+      projected: false,
+    }));
+  });
+  Object.entries(futureByDate).forEach(([date, items]) => {
+    calItemsByDate[date] = [...(calItemsByDate[date] || []), ...items];
+  });
 
   const weekdayHeader = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
     .map((d) => `<div class="cal-weekday">${d}</div>`)
@@ -276,13 +352,28 @@ async function renderMonthCalendar() {
 
     const cls = ["cal-day", isOutside ? "outside" : "", isToday ? "today" : ""].filter(Boolean).join(" ");
     cellsHTML += `
-      <div class="${cls}">
+      <div class="${cls}" data-calendar-date="${dStr}" role="button" tabindex="0" aria-label="Xem chi tiết ngày ${dStr}">
         <div class="cal-day-num">${cellDate.getDate()}</div>
         <div class="cal-day-chips">${chipsHTML}</div>
       </div>`;
   }
 
   grid.innerHTML = weekdayHeader + cellsHTML;
+  if (!grid.dataset.detailBound) {
+    grid.dataset.detailBound = "1";
+    grid.addEventListener("click", (event) => {
+      const day = event.target.closest("[data-calendar-date]");
+      if (day) calOpenDetailModal(day.dataset.calendarDate);
+    });
+    grid.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const day = event.target.closest("[data-calendar-date]");
+      if (day) {
+        event.preventDefault();
+        calOpenDetailModal(day.dataset.calendarDate);
+      }
+    });
+  }
 }
 
 function calGoPrevMonth() {

@@ -609,6 +609,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   box-shadow: 0 5px 14px rgba(35,43,38,.07);
   transform: translateY(-1px);
 }
+.cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cal-day.outside {
   background: var(--surface-soft);
   opacity: 0.55;
@@ -666,6 +667,52 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: 500;
 }
 
+.calendar-detail-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .18s ease, visibility .18s ease;
+}
+.calendar-detail-modal.show { opacity: 1; visibility: visible; }
+.calendar-detail-backdrop { position: absolute; inset: 0; background: rgba(20,24,20,.42); }
+.calendar-detail-panel {
+  position: relative;
+  width: min(100%, 520px);
+  max-height: min(78vh, 680px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 18px 55px rgba(35,43,38,.22);
+  transform: translateY(8px);
+  transition: transform .18s ease;
+}
+.calendar-detail-modal.show .calendar-detail-panel { transform: translateY(0); }
+.calendar-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.calendar-detail-kicker { display: block; margin-bottom: 3px; color: var(--ink-faint); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.calendar-detail-head h3 { font-size: 18px; }
+.calendar-detail-close { width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); color: var(--ink); font-size: 25px; line-height: 1; cursor: pointer; }
+.calendar-detail-list { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; }
+.calendar-detail-item { display: flex; align-items: center; gap: 10px; padding: 11px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); }
+.calendar-detail-icon { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%; font-weight: 800; }
+.calendar-detail-icon.done { background: var(--ok-soft); color: var(--ok); }
+.calendar-detail-icon.missed { background: #fdecea; color: #c0392b; }
+.calendar-detail-icon.todo { background: var(--wait-soft); color: var(--wait); }
+.calendar-detail-icon.future { background: #edf0eb; color: var(--ink-soft); }
+.calendar-detail-body { display: flex; flex-direction: column; min-width: 0; gap: 2px; flex: 1; }
+.calendar-detail-body strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.calendar-detail-body span, .calendar-detail-meta { color: var(--ink-soft); font-size: 12px; }
+.calendar-detail-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; text-align: right; }
+.calendar-detail-meta small { color: var(--wait); font-weight: 700; }
+.calendar-detail-empty { margin: 0; padding: 22px 8px 8px; color: var(--ink-faint); text-align: center; font-size: 13px; }
+
 @media (max-width: 760px) {
   .cal-nav { align-items: stretch; }
   .cal-nav > button { flex: 1; }
@@ -676,6 +723,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .cal-chip::before { left: 3px; width: 2px; height: 2px; }
   .cal-month-label { min-width: auto; font-size: 16px; }
   .cal-legend { font-size: 11px; gap: 10px; }
+  .calendar-detail-modal { align-items: flex-end; padding: 0; }
+  .calendar-detail-panel { width: 100%; max-height: 82vh; padding: 18px 14px calc(18px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; }
+  .calendar-detail-close { width: 44px; height: 44px; }
 }
 
 /* ---------------- Thành viên ---------------- */
