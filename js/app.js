@@ -97,7 +97,8 @@ async function init() {
   setupNav();
   setupMobileMenu();
   await generateTodayTasks(); // tự tạo việc của hôm nay từ các lịch lặp lại đang bật
-  await loadSection("dashboard");
+  selectedUserId = STATE.me.id;
+  await loadSection("tasks");
   refreshNotifBadge(); // hiện số thông báo chưa đọc ngay trên thanh menu
   subscribeRealtime(); // tự cập nhật khi có ai đó thay đổi việc/thông báo
 }
