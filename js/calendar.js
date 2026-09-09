@@ -110,16 +110,29 @@ function projectFutureOccurrences(schedules, queues, startStr, endStr, todayStr_
     .forEach((task) => {
       if (scheduledQueueIds.has(task.rotation_queue_id)) return;
       const date = new Date(task.due_date + "T00:00:00");
-      if (!inferredByQueue[task.rotation_queue_id]) inferredByQueue[task.rotation_queue_id] = new Set();
-      inferredByQueue[task.rotation_queue_id].add(date.getDay());
+      if (!inferredByQueue[task.rotation_queue_id]) {
+        inferredByQueue[task.rotation_queue_id] = { weekdays: new Set(), dates: new Set() };
+      }
+      inferredByQueue[task.rotation_queue_id].weekdays.add(date.getDay());
+      inferredByQueue[task.rotation_queue_id].dates.add(task.due_date);
     });
+
+  Object.values(inferredByQueue).forEach((pattern) => {
+    const dates = [...pattern.dates].sort();
+    pattern.daily = dates.some((date, index) => {
+      if (index === 0) return false;
+      const previous = new Date(dates[index - 1] + "T00:00:00");
+      const current = new Date(date + "T00:00:00");
+      return current - previous === 86400000;
+    });
+  });
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dStr = calDateStrFromDate(d);
     if (dStr <= todayStr_) continue;
 
-    Object.entries(inferredByQueue).forEach(([queueId, weekdays]) => {
-      if (!weekdays.has(d.getDay())) return;
+    Object.entries(inferredByQueue).forEach(([queueId, pattern]) => {
+      if (!pattern.daily && !pattern.weekdays.has(d.getDay())) return;
       const queue = queueMap[queueId];
       if (!queue || !Array.isArray(queue.member_order) || queue.member_order.length === 0) return;
       const n = queue.member_order.length;
