@@ -395,7 +395,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .theme-switch { background: none; border: none; padding: 0; cursor: pointer; flex-shrink: 0; }
 .theme-switch-track {
   position: relative;
-  width: 50px; height: 27px;
+  display: block;
+  width: 27px; height: 50px;
+  box-sizing: border-box;
   border-radius: 999px;
   padding: 3px;
   background: linear-gradient(135deg, #BFE0EE 0%, #F0C878 100%);
@@ -409,7 +411,7 @@ html[data-theme="dark"] .theme-switch-track { background: linear-gradient(135deg
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 2px 5px rgba(0,0,0,.28);
-  transform: translateX(0);
+  transform: translateY(0);
   transition: transform .38s var(--ease), background .35s var(--ease);
   position: relative;
 }
@@ -420,7 +422,7 @@ html[data-theme="dark"] .theme-switch-track { background: linear-gradient(135deg
   font-size: 11px;
   transition: opacity .2s var(--ease);
 }
-html[data-theme="dark"] .theme-switch-thumb { transform: translateX(23px); background: var(--accent-strong); }
+html[data-theme="dark"] .theme-switch-thumb { transform: translateY(23px); background: var(--accent-strong); }
 html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
 
 .content { padding: 26px 28px 60px; max-width: 980px; }
@@ -1028,9 +1030,9 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
   #topbar-user .avatar { flex: 0 0 24px; }
   #topbar-user span { display: block; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .user-chip .btn-sm { flex: 0 0 auto; padding: 8px 10px; font-size: 12.5px; white-space: nowrap; }
-  .theme-switch-track { width: 42px; height: 25px; }
+  .theme-switch-track { width: 25px; height: 42px; }
   .theme-switch-thumb { width: 19px; height: 19px; }
-  html[data-theme="dark"] .theme-switch-thumb { transform: translateX(17px); }
+  html[data-theme="dark"] .theme-switch-thumb { transform: translateY(17px); }
 
   .form-row { grid-template-columns: 1fr; }
   .view-head { flex-direction: column; align-items: flex-start; }
@@ -1075,9 +1077,9 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
   #topbar-user span { max-width: 54px; }
   .user-chip { gap: 5px; }
   .user-chip .btn-sm { padding-left: 8px; padding-right: 8px; font-size: 11.5px; }
-  .theme-switch-track { width: 36px; }
+  .theme-switch-track { width: 23px; height: 36px; }
   .theme-switch-thumb { width: 17px; height: 17px; }
-  html[data-theme="dark"] .theme-switch-thumb { transform: translateX(15px); }
+  html[data-theme="dark"] .theme-switch-thumb { transform: translateY(15px); }
   .stat .num { font-size: 22px; }
 }
 
