@@ -19,37 +19,7 @@
 </script>
 <meta name="color-scheme" content="light dark" />
 <link rel="stylesheet" href="./css/style.css" />
-<style>
-  /* ---- Bổ sung riêng cho module "Nhà cần gì?" — dùng chung biến màu của theme hiện có ---- */
-  .shop-tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; border-bottom:1px solid var(--ink-faint,#0002); padding-bottom:10px; }
-  .shop-tab-btn{ border:none; background:transparent; padding:7px 14px; border-radius:999px; font-size:13px; font-weight:600; color:var(--ink-soft,#666); cursor:pointer; }
-  .shop-tab-btn.active{ background:var(--theme-color,#A13F52); color:#fff; }
-  .shop-filter-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
-  .shop-chip{ border:1px solid var(--ink-faint,#0002); background:transparent; padding:5px 12px; border-radius:999px; font-size:12.5px; color:var(--ink-soft,#666); cursor:pointer; }
-  .shop-chip.active{ background:var(--theme-color,#A13F52); border-color:var(--theme-color,#A13F52); color:#fff; }
-  .shop-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px; }
-  .shop-item-card{ border:1px solid var(--ink-faint,#0002); border-radius:14px; padding:14px; }
-  .shop-item-card .shop-item-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
-  .shop-item-card h4{ margin:0; font-size:14.5px; }
-  .shop-badge{ font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; }
-  .shop-badge-on{ background:#1ea34c22; color:#1ea34c; }
-  .shop-badge-sap_het{ background:#e0a30022; color:#b07e00; }
-  .shop-badge-het{ background:#e0333322; color:#c22; }
-  .shop-badge-unknown{ background:#8884; color:#888; }
-  .shop-meta{ font-size:12.5px; color:var(--ink-soft,#666); margin:8px 0; line-height:1.6; }
-  .shop-quickrow{ display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
-  .shop-quickrow button{ font-size:11.5px; padding:4px 9px; border-radius:8px; border:1px solid var(--ink-faint,#0002); background:transparent; cursor:pointer; color:var(--ink-soft,#666); }
-  .shop-quickrow button.qty-btn{ font-weight:700; }
-  .shop-actrow{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
-  .shop-note{ font-size:11.5px; color:var(--ink-faint,#999); margin-top:6px; font-style:italic; }
-  .shop-overview-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
-  .shop-overview-cell{ text-align:center; padding:10px 4px; border-radius:12px; background:var(--ink-faint,#0001); }
-  .shop-overview-cell b{ display:block; font-size:20px; }
-  .shop-overview-cell span{ font-size:11.5px; color:var(--ink-soft,#666); }
-  .shop-cart-group-title{ font-size:12.5px; font-weight:700; color:var(--ink-soft,#666); margin:14px 0 8px; text-transform:uppercase; letter-spacing:.03em; }
-  .shop-cart-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
-  .shop-reporter{ font-size:11px; color:var(--ink-faint,#999); }
-</style>
+<link rel="stylesheet" href="./css/shopping.css" />
 <link rel="manifest" href="./manifest.json" />
 <link rel="apple-touch-icon" href="./css/ttbk.png" />
 <meta name="theme-color" content="#A13F52" />
@@ -313,15 +283,41 @@
           </div>
         </div>
 
-        <div class="card" id="shop-overview" style="margin-bottom:22px;">
-          <p class="empty-state">Đang tải...</p>
+        <div class="shop-hero">
+          <!-- Tổng quan — #shop-overview là mount point gốc của shopping.js (giữ nguyên id
+               để JS set innerHTML như cũ); tiêu đề đặt ở ngoài để không bị JS ghi đè. -->
+          <div class="card">
+            <p class="shop-card-kicker"><span class="dot"></span> Tình trạng đồ dùng</p>
+            <div id="shop-overview">
+              <p class="empty-state">Đang tải...</p>
+            </div>
+          </div>
+
+          <!-- Liên kết Chi tiêu — mới, giúp thấy ngay chi phí mua sắm liên quan -->
+          <div class="card shop-link-expense" id="shop-expense-link">
+            <div class="shop-link-top">
+              <span class="ic">💰</span>
+              <h3>Liên kết Chi tiêu</h3>
+            </div>
+            <p class="sub">Mỗi lần đánh dấu "Đã mua", khoản chi được tự động ghi vào mục <strong>Chi tiêu nhà → Đồ dùng sinh hoạt</strong> — không cần nhập lại.</p>
+
+            <div class="shop-link-figure" id="shop-expense-month-amount">
+              <b>—</b><span>đ tháng này</span>
+            </div>
+            <p class="shop-link-sub" id="shop-expense-avg-note">Đang chờ dữ liệu chi tiêu để tính trung bình mỗi tháng.</p>
+
+            <button class="btn btn-ghost btn-sm" onclick="(window.ttbkNavigate||function(u){window.location.href=u;})('Chi tiêu TTBK.html')">
+              Xem trang Chi tiêu →
+            </button>
+          </div>
         </div>
 
         <div class="shop-tabs" id="shop-tabs">
-          <button class="shop-tab-btn active" data-shoptab="items">Đồ dùng</button>
-          <button class="shop-tab-btn" data-shoptab="cart">Danh sách mua</button>
-          <button class="shop-tab-btn" data-shoptab="replace">Lịch thay</button>
-          <button class="shop-tab-btn" data-shoptab="history">Lịch sử</button>
+          <button class="shop-tab-btn active" data-shoptab="items">🧻 Đồ dùng</button>
+          <button class="shop-tab-btn" data-shoptab="cart">🛒 Danh sách mua</button>
+          <button class="shop-tab-btn tab-ai" data-shoptab="ai">🧠 AI gợi ý</button>
+          <button class="shop-tab-btn" data-shoptab="replace">🔧 Lịch thay</button>
+          <button class="shop-tab-btn" data-shoptab="history">📜 Lịch sử</button>
         </div>
 
         <!-- Form: thêm / sửa đồ dùng -->
@@ -430,6 +426,40 @@
             <button class="btn btn-primary btn-sm" id="shop-btn-addall">🛒 Đưa tất cả gợi ý vào danh sách mua</button>
           </div>
           <div id="shop-cart-list" class="task-list"><p class="empty-state">Chưa có gì cần mua.</p></div>
+        </div>
+
+        <!-- Panel: Trợ lý AI (mới) -->
+        <div id="shop-panel-ai" class="shop-panel" style="display:none;">
+          <div class="shop-ai-banner">
+            <span class="ic">🧪</span>
+            <span>Đây là <strong>gợi ý mẫu</strong> minh hoạ hướng phát triển AI. Khi nhà bạn có đủ lịch sử mua ＋ chi tiêu (khoảng 2–3 chu kỳ mua), các thẻ này sẽ tự tính từ dữ liệu thật thay vì số mẫu.</span>
+          </div>
+
+          <div class="shop-ai-grid" id="shop-ai-grid">
+            <div class="ai-card predict">
+              <div class="ai-card-head"><span class="ic">⏳</span><h4>Sắp hết trong tuần</h4></div>
+              <p>Nước giặt thường được mua sau khoảng <strong>32 ngày</strong>. Lần gần nhất đã mua cách đây <strong>28 ngày</strong> → có thể hết trong <strong>5–7 ngày tới</strong>.</p>
+              <button class="btn btn-ghost btn-sm">Thêm vào danh sách mua</button>
+            </div>
+
+            <div class="ai-card pair">
+              <div class="ai-card-head"><span class="ic">🔗</span><h4>Thường mua cùng nhau</h4></div>
+              <p>Giấy vệ sinh thường được mua cùng đợt với nước giặt trong <strong>4/5 lần gần nhất</strong>. Gộp vào cùng chuyến mua tuần này?</p>
+              <button class="btn btn-ghost btn-sm">Gộp vào chuyến mua tuần này</button>
+            </div>
+
+            <div class="ai-card warn">
+              <div class="ai-card-head"><span class="ic">⚠️</span><h4>Thiếu đồ dự phòng</h4></div>
+              <p>Nhà hiện <strong>không còn bóng đèn dự phòng</strong>. Nếu bóng phòng khách hỏng đột xuất sẽ phải mua gấp.</p>
+              <button class="btn btn-ghost btn-sm">Đề xuất mua 2 bóng dự phòng</button>
+            </div>
+
+            <div class="ai-card budget">
+              <div class="ai-card-head"><span class="ic">📊</span><h4>Ngân sách mua sắm tháng này</h4></div>
+              <p>Dựa trên Chi tiêu 3 tháng gần nhất, mục <strong>Đồ dùng sinh hoạt</strong> thường tốn khoảng <strong>320.000–380.000đ/tháng</strong>.</p>
+              <button class="btn btn-ghost btn-sm" onclick="(window.ttbkNavigate||function(u){window.location.href=u;})('Chi tiêu TTBK.html')">Xem chi tiết trong Chi tiêu</button>
+            </div>
+          </div>
         </div>
 
         <!-- Panel: Lịch thay -->
@@ -631,6 +661,25 @@
 <script src="js/dashboard.js"></script>
 <script src="js/members.js"></script>
 <script src="js/shopping.js"></script>
+<script>
+/* Lưới an toàn cho tab "🧠 AI gợi ý": nếu js/shopping.js đã tự xử lý mọi nút
+   .shop-tab-btn theo quy ước id="shop-panel-"+data-shoptab thì đoạn này chỉ
+   lặp lại thao tác y hệt (vô hại). Đoạn này đảm bảo tab AI vẫn hoạt động
+   ngay cả khi shopping.js có danh sách tab cố định chưa biết tới "ai". */
+(function(){
+  var tabsWrap = document.getElementById('shop-tabs');
+  if (!tabsWrap) return;
+  tabsWrap.addEventListener('click', function(e){
+    var btn = e.target.closest('.shop-tab-btn');
+    if (!btn || !tabsWrap.contains(btn)) return;
+    var key = btn.getAttribute('data-shoptab');
+    var panel = document.getElementById('shop-panel-' + key);
+    if (!panel) return;
+    document.querySelectorAll('#shop-tabs .shop-tab-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
+    document.querySelectorAll('.shop-panel').forEach(function(p){ p.style.display = (p === panel) ? '' : 'none'; });
+  });
+})();
+</script>
 <script src="js/settings.js"></script>
 <script src="js/app.js"></script>
 <script src="js/push-notifications.js"></script>

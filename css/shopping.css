@@ -1,0 +1,228 @@
+/* ==========================================================
+   Module "🛒 Nhà cần gì?" — bản làm lại giao diện
+   - Dùng chung biến màu / bán kính / đổ bóng của style.css
+   - GIỮ NGUYÊN mọi class/id mà js/shopping.js đang render ra
+     (.shop-overview-cell, .shop-item-card, .shop-badge-*,
+      .shop-cart-row, .shop-tab-btn, .shop-chip ...) để không
+      cần sửa lại logic JS hiện có — chỉhuyển hoá phần nhìn.
+   - Phần mới hoàn toàn (không phụ thuộc JS cũ): thẻ liên kết
+     Chi tiêu (.shop-link-*) và tab Trợ lý AI (.shop-ai-*).
+   ========================================================== */
+
+/* ---------- Khối đầu trang: tổng quan + liên kết Chi tiêu ---------- */
+.shop-hero{
+  display:grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap:14px;
+  margin-bottom:20px;
+  align-items:stretch;
+}
+@media (max-width: 860px){ .shop-hero{ grid-template-columns: 1fr; } }
+
+.shop-hero > .card{ margin-bottom:0; }
+
+/* #shop-overview vẫn do JS render nội dung, chỉ style lại khung + tiêu đề tĩnh */
+#shop-overview{ display:flex; flex-direction:column; gap:2px; }
+.shop-card-kicker{
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; font-weight:700; color:var(--ink-soft);
+  text-transform:uppercase; letter-spacing:.04em;
+  margin:0 0 14px;
+}
+.shop-card-kicker .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+
+.shop-overview-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:10px;
+}
+.shop-overview-cell{
+  text-align:center;
+  padding:14px 6px 12px;
+  border-radius:var(--radius-m);
+  background:var(--surface-soft);
+  border:1px solid var(--border);
+  transition:transform .18s var(--ease), box-shadow .18s var(--ease);
+}
+.shop-overview-cell:hover{ transform:translateY(-2px); box-shadow:var(--shadow-hover); }
+.shop-overview-cell b{ display:block; font-size:22px; font-weight:800; line-height:1.1; color:var(--ink); }
+.shop-overview-cell span{ display:block; font-size:11.5px; color:var(--ink-soft); margin-top:4px; }
+
+/* ---------- Thẻ liên kết Chi tiêu (mới) ---------- */
+.shop-link-expense{
+  display:flex;
+  flex-direction:column;
+  background:linear-gradient(160deg, var(--accent-soft), var(--surface) 65%);
+  border:1px solid var(--border);
+}
+.shop-link-top{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.shop-link-top .ic{
+  width:34px; height:34px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--accent); color:var(--accent-ink); font-size:16px; flex-shrink:0;
+}
+.shop-link-top h3{ margin:0; font-size:14.5px; }
+.shop-link-expense p.sub{ margin:0 0 14px; font-size:12.5px; color:var(--ink-soft); line-height:1.55; }
+
+.shop-link-figure{ display:flex; align-items:baseline; gap:6px; margin:2px 0 4px; }
+.shop-link-figure b{ font-size:24px; font-weight:800; color:var(--accent-strong); }
+.shop-link-figure span{ font-size:12px; color:var(--ink-soft); }
+.shop-link-sub{ font-size:11.5px; color:var(--ink-faint); margin:0 0 16px; }
+
+.shop-link-expense .btn{ margin-top:auto; width:100%; justify-content:center; display:flex; align-items:center; gap:6px; }
+
+/* ---------- Thanh tab ---------- */
+.shop-tabs{
+  display:flex; gap:6px; flex-wrap:wrap;
+  margin-bottom:18px; padding-bottom:12px;
+  border-bottom:1px solid var(--border);
+}
+.shop-tab-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  border:1px solid transparent; background:transparent;
+  padding:8px 15px; border-radius:999px;
+  font-family:var(--font); font-size:13px; font-weight:600;
+  color:var(--ink-soft); cursor:pointer;
+  transition:background .18s var(--ease), color .18s var(--ease), border-color .18s var(--ease);
+}
+.shop-tab-btn:hover{ background:var(--surface-soft); color:var(--ink); }
+.shop-tab-btn.active{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+.shop-tab-btn.tab-ai{ border-color:var(--accent-soft); }
+.shop-tab-btn.tab-ai:not(.active){ color:var(--accent); }
+
+/* ---------- Bộ lọc theo loại ---------- */
+.shop-filter-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.shop-chip{
+  border:1.5px solid var(--border); background:transparent;
+  padding:6px 13px; border-radius:999px; font-family:var(--font);
+  font-size:12.5px; font-weight:600; color:var(--ink-soft); cursor:pointer;
+  transition:background .18s var(--ease), color .18s var(--ease), border-color .18s var(--ease);
+}
+.shop-chip:hover{ border-color:var(--accent); color:var(--accent); }
+.shop-chip.active{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+
+/* ---------- Lưới đồ dùng ---------- */
+.shop-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(258px,1fr));
+  gap:14px;
+}
+.shop-item-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-m);
+  padding:15px 16px 14px;
+  box-shadow:var(--shadow-1);
+  transition:transform .18s var(--ease), box-shadow .18s var(--ease);
+}
+.shop-item-card:hover{ transform:translateY(-2px); box-shadow:var(--shadow-hover); }
+.shop-item-card .shop-item-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.shop-item-card h4{ margin:0; font-size:14.5px; font-weight:700; color:var(--ink); line-height:1.35; }
+
+.shop-badge{
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:11px; font-weight:700; padding:3px 10px;
+  border-radius:999px; white-space:nowrap; flex-shrink:0;
+}
+.shop-badge-on{ background:var(--ok-soft); color:var(--ok); }
+.shop-badge-sap_het{ background:var(--wait-soft); color:var(--wait); }
+.shop-badge-het{ background:var(--missed-soft); color:var(--missed); }
+.shop-badge-unknown{ background:var(--pending-soft); color:var(--pending); }
+
+.shop-meta{
+  font-size:12.5px; color:var(--ink-soft);
+  margin:10px 0 0; line-height:1.75;
+  padding-top:9px; border-top:1px dashed var(--border);
+}
+
+.shop-quickrow{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:11px; }
+.shop-quickrow button{
+  font-family:var(--font); font-size:12px; font-weight:600;
+  padding:5px 10px; border-radius:8px;
+  border:1px solid var(--border); background:var(--surface-soft);
+  cursor:pointer; color:var(--ink-soft);
+  transition:background .16s var(--ease), border-color .16s var(--ease), color .16s var(--ease);
+}
+.shop-quickrow button:hover{ border-color:var(--accent); color:var(--accent); }
+.shop-quickrow button.qty-btn{ font-weight:800; min-width:30px; text-align:center; }
+
+.shop-actrow{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+.shop-actrow button, .shop-actrow .btn{ flex:1; min-width:90px; }
+
+.shop-note{
+  font-size:11.5px; color:var(--ink-faint); margin-top:8px;
+  font-style:italic; line-height:1.5;
+}
+
+/* ---------- Danh sách mua (nhóm theo ưu tiên) ---------- */
+.shop-cart-group-title{
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; font-weight:700; color:var(--ink-soft);
+  margin:18px 0 10px; text-transform:uppercase; letter-spacing:.04em;
+}
+.shop-cart-group-title:first-child{ margin-top:0; }
+.shop-cart-group-title::before{ content:""; width:16px; height:2px; background:var(--border-strong); border-radius:2px; }
+
+.shop-cart-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; }
+.shop-reporter{
+  font-size:11px; color:var(--ink-faint);
+  display:inline-flex; align-items:center; gap:4px;
+}
+
+/* ---------- Panel chung ---------- */
+.shop-panel{ animation:shopFadeIn .25s var(--ease); }
+@keyframes shopFadeIn{ from{ opacity:0; transform:translateY(4px); } to{ opacity:1; transform:none; } }
+
+/* ==========================================================
+   🧠 Trợ lý AI — tab mới (Phase 3–4 theo lộ trình)
+   ========================================================== */
+.shop-ai-banner{
+  display:flex; align-items:center; gap:10px;
+  background:var(--surface-soft); border:1px dashed var(--border-strong);
+  border-radius:var(--radius-s); padding:10px 14px;
+  font-size:12px; color:var(--ink-soft); margin-bottom:18px; line-height:1.5;
+}
+.shop-ai-banner .ic{ font-size:16px; flex-shrink:0; }
+
+.shop-ai-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(280px,1fr));
+  gap:14px;
+}
+.ai-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left-width:4px;
+  border-radius:var(--radius-m);
+  padding:15px 16px;
+  box-shadow:var(--shadow-1);
+  transition:transform .18s var(--ease), box-shadow .18s var(--ease);
+}
+.ai-card:hover{ transform:translateY(-2px); box-shadow:var(--shadow-hover); }
+.ai-card.predict{ border-left-color:var(--wait); }
+.ai-card.pair{ border-left-color:var(--pending); }
+.ai-card.warn{ border-left-color:var(--missed); }
+.ai-card.budget{ border-left-color:var(--ok); }
+
+.ai-card-head{ display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+.ai-card-head .ic{
+  width:30px; height:30px; border-radius:9px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:15px;
+}
+.ai-card.predict .ic{ background:var(--wait-soft); }
+.ai-card.pair .ic{ background:var(--pending-soft); }
+.ai-card.warn .ic{ background:var(--missed-soft); }
+.ai-card.budget .ic{ background:var(--ok-soft); }
+.ai-card-head h4{ margin:0; font-size:13.5px; font-weight:700; }
+
+.ai-card p{ margin:0 0 10px; font-size:12.5px; color:var(--ink-soft); line-height:1.6; }
+.ai-card p strong{ color:var(--ink); }
+.ai-card .btn{ width:100%; justify-content:center; display:flex; }
+
+/* ---------- Màn hình hẹp ---------- */
+@media (max-width: 560px){
+  .shop-grid, .shop-ai-grid{ grid-template-columns:1fr; }
+  .shop-overview-grid{ grid-template-columns:repeat(2,1fr); }
+  .shop-tabs{ gap:5px; }
+  .shop-tab-btn{ padding:7px 12px; font-size:12.5px; }
+}
