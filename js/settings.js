@@ -310,19 +310,22 @@ function bindSettingsEvents() {
     saveBtn.addEventListener("click", async () => {
       const name = document.getElementById("st-name").value.trim();
       const household = document.getElementById("st-household").value.trim();
+      const universityEl = document.getElementById("st-university");
+      const university = universityEl ? universityEl.value : STATE.me.university || "";
       const activeDot = document.querySelector("#st-colors .color-dot.on");
       const color = activeDot ? activeDot.dataset.color : STATE.me.avatar_color;
       if (!name) return alert("Tên không được để trống.");
 
       const { error } = await supabaseClient
         .from("profiles")
-        .update({ name, household, avatar_color: color })
+        .update({ name, household, avatar_color: color, university: university || null })
         .eq("id", STATE.me.id);
       if (error) return alert("Lỗi: " + error.message);
 
       STATE.me.name = name;
       STATE.me.household = household;
       STATE.me.avatar_color = color;
+      STATE.me.university = university || null;
       STATE.profiles = await getAllProfiles();
       updateTopbar();
       alert("Đã lưu thay đổi.");
@@ -383,6 +386,8 @@ function bindSettingsEvents() {
 async function loadSettingsSection() {
   document.getElementById("st-name").value = STATE.me.name;
   document.getElementById("st-household").value = STATE.me.household || "Nhà TTBK";
+  const universityEl = document.getElementById("st-university");
+  if (universityEl) universityEl.value = STATE.me.university || "";
   renderColorPicker();
   renderAvatarPreview();
 
