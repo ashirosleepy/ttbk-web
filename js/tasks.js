@@ -5,6 +5,36 @@
 // Biến lưu trữ ID người dùng đang được chọn xem (Mặc định sẽ gán là người đang đăng nhập)
 let selectedUserId = null;
 
+// Một người được coi là "không khả dụng cho việc mới" nếu đang đi vắng HOẶC
+// đang ốm (Status Engine) — dùng để lọc ứng viên ở nhiều nơi trong file này.
+function isUnavailableForTasks(p) {
+  if (!p) return false;
+  return !!p.is_away || p.status === "AWAY" || p.status === "SICK";
+}
+
+// Đưa toàn bộ việc CHƯA XONG (không phải luân phiên) của 1 người sang trạng
+// thái "vo_chu" (vô chủ) để bất kỳ ai khác cũng thấy và có thể bấm "Nhận thay".
+// Dùng chung cho cả "Đi vắng" và "Sick Mode" — chỉ khác icon/lý do hiển thị.
+// Việc luân phiên không xử lý ở đây vì đã có cơ chế riêng (restoreQueueToUser/
+// chuyển lượt cho người kế tiếp trong rotations.js).
+async function reassignTasksForUnavailableUser(userId) {
+  const { data: myTasks, error } = await supabaseClient
+    .from("tasks")
+    .select("*")
+    .eq("assigned_to", userId)
+    .is("rotation_queue_id", null)
+    .not("status", "in", "(hoan_thanh,bo_lo,vo_chu)");
+
+  if (error || !myTasks || myTasks.length === 0) return;
+
+  for (const t of myTasks) {
+    const { error: updErr } = await supabaseClient.from("tasks").update({ status: "vo_chu" }).eq("id", t.id);
+    if (!updErr && typeof logHistory === "function") {
+      await logHistory(t.id, userId, "vo_chu", `Việc "${t.title}" được đưa vào hàng chờ chia lại vì người phụ trách tạm thời không nhận việc được.`);
+    }
+  }
+}
+
 async function fetchTasks() {
   const { data, error } = await supabaseClient
     .from("tasks")
@@ -64,10 +94,10 @@ async function buildTaskFrequencyMap({ title, rotation_queue_id, excludeUserIds 
 }
 
 async function pickLeastFrequentAssignee({ title, rotation_queue_id, excludeUserIds = [] }) {
-  // Người đang đi vắng không được coi là ứng cử viên nhận việc mới.
-  let eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id) && !p.is_away);
+  // Người đang đi vắng/ốm không được coi là ứng cử viên nhận việc mới.
+  let eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id) && !isUnavailableForTasks(p));
   if (eligible.length === 0) {
-    // Nếu chỉ vì loại người đi vắng mà hết ứng viên thì đành bỏ ràng buộc đó để không bị kẹt.
+    // Nếu chỉ vì loại người đi vắng/ốm mà hết ứng viên thì đành bỏ ràng buộc đó để không bị kẹt.
     eligible = (STATE.profiles || []).filter((p) => !excludeUserIds.includes(p.id));
   }
   if (eligible.length === 0) return null;
@@ -98,14 +128,17 @@ function taskTicketHTML(task) {
   // Việc cố định rơi vào ngày người phụ trách đang đi vắng: không có ai làm, hiện cho
   // TẤT CẢ mọi người thấy để ai đó bấm "Nhận thay" (được cộng thêm điểm thưởng).
   if (task.status === "vo_chu") {
+    const isSickOwner = assignee?.status === "SICK";
+    const vcIcon = isSickOwner ? "🤒" : "✈️";
+    const vcReason = isSickOwner ? "đang bị ốm" : "đang đi vắng";
     return `
       <div class="task-ticket" style="border-left-color:#c9932e; border-left-style:dashed;" data-id="${task.id}">
-        <div class="task-check" style="border-style:dashed;">✈️</div>
+        <div class="task-check" style="border-style:dashed;">${vcIcon}</div>
         <div class="task-body">
           <div class="task-title">${escapeHTML(task.title)}</div>
           <div class="task-meta">
             ${statusBadgeHTML(task.status)}
-            <span>Người phụ trách đang đi vắng — chưa có ai làm việc này</span>
+            <span>Người phụ trách ${vcReason} — chưa có ai làm việc này</span>
           </div>
         </div>
         <div class="task-actions">
@@ -599,8 +632,14 @@ async function handleMissRotation(queueId) {
   const holder = currentHolder(queue);
   if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
 
-  const penalty = -Math.round((queue.points || 0) * MISS_PENALTY_RATIO);
-  if (!confirm(`Đánh dấu "${queue.label}" là KHÔNG hoàn thành? ${holder.name} sẽ bị trừ ${Math.abs(penalty)} điểm và lượt sẽ chuyển cho người kế tiếp.`)) return;
+  // Không phạt điểm nếu người đang tới lượt đang ở chế độ Ốm (Sick Mode) — theo đúng
+  // quy tắc "reason = sick => penalty = 0" trong đề xuất thiết kế.
+  const holderIsSick = holder.status === "SICK";
+  const penalty = holderIsSick ? 0 : -Math.round((queue.points || 0) * MISS_PENALTY_RATIO);
+  const confirmMsg = holderIsSick
+    ? `Đánh dấu "${queue.label}" là KHÔNG hoàn thành? ${holder.name} đang ốm nên sẽ KHÔNG bị trừ điểm, lượt sẽ chuyển cho người kế tiếp.`
+    : `Đánh dấu "${queue.label}" là KHÔNG hoàn thành? ${holder.name} sẽ bị trừ ${Math.abs(penalty)} điểm và lượt sẽ chuyển cho người kế tiếp.`;
+  if (!confirm(confirmMsg)) return;
 
   const payload = {
     title: queue.label,
@@ -632,8 +671,13 @@ async function markTaskMissed(id) {
   if (error || !task) return alert("Không tìm thấy việc.");
   const assignee = findProfile(STATE.profiles, task.assigned_to);
 
-  const penalty = -Math.round((task.points || 0) * MISS_PENALTY_RATIO);
-  if (!confirm(`Đánh dấu "${task.title}" là KHÔNG hoàn thành? ${assignee ? assignee.name : "Người phụ trách"} sẽ bị trừ ${Math.abs(penalty)} điểm.`)) return;
+  // Không phạt điểm nếu người phụ trách đang ốm (Sick Mode).
+  const assigneeIsSick = assignee?.status === "SICK";
+  const penalty = assigneeIsSick ? 0 : -Math.round((task.points || 0) * MISS_PENALTY_RATIO);
+  const confirmMsg = assigneeIsSick
+    ? `Đánh dấu "${task.title}" là KHÔNG hoàn thành? ${assignee ? assignee.name : "Người phụ trách"} đang ốm nên sẽ KHÔNG bị trừ điểm.`
+    : `Đánh dấu "${task.title}" là KHÔNG hoàn thành? ${assignee ? assignee.name : "Người phụ trách"} sẽ bị trừ ${Math.abs(penalty)} điểm.`;
+  if (!confirm(confirmMsg)) return;
 
   const { error: updErr } = await supabaseClient.from("tasks").update({ status: "bo_lo" }).eq("id", id);
   if (updErr) return alert("Lỗi: " + updErr.message);
@@ -811,9 +855,9 @@ async function handoffTaskInternal(id) {
   }
 
   const reason = prompt("Lý do (không bắt buộc):", "Bận việc khác") || "";
-  let others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to && !p.is_away);
+  let others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to && !isUnavailableForTasks(p));
   if (others.length === 0) {
-    // Nếu ai cũng đang đi vắng thì đành bỏ ràng buộc đó, còn hơn không gửi được cho ai.
+    // Nếu ai cũng đang đi vắng/ốm thì đành bỏ ràng buộc đó, còn hơn không gửi được cho ai.
     others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to);
   }
   const othersIds = others.map((p) => p.id);

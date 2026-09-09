@@ -343,7 +343,87 @@
           </div>
 
           <div class="settings-block">
+            <h3>Vị trí &amp; di chuyển</h3>
+            <p style="font-size:13px;color:var(--ink-soft);margin:0 0 14px;">
+              Dùng để tính thời gian di chuyển thật (có tính tắc đường) thay vì đệm cố định khi tính giờ bận do học.
+            </p>
+            <div class="form-row">
+              <div class="field">
+                <label for="st-transport">Phương tiện</label>
+                <select id="st-transport">
+                  <option value="motorbike">🏍️ Xe máy</option>
+                  <option value="bike">🚲 Xe đạp</option>
+                  <option value="walk">🚶 Đi bộ</option>
+                  <option value="car">🚗 Ô tô</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="st-speed">Tốc độ trung bình (km/h)</label>
+                <input type="number" id="st-speed" min="1" step="1" value="25" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Vị trí nhà</label>
+              <div class="form-row">
+                <input type="number" id="st-home-lat" placeholder="Vĩ độ (lat)" step="0.000001" />
+                <input type="number" id="st-home-lng" placeholder="Kinh độ (lng)" step="0.000001" />
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" id="st-use-my-location" style="margin-top:8px;">📍 Dùng vị trí hiện tại</button>
+            </div>
+
+            <div class="field">
+              <label>Vị trí trường</label>
+              <div class="form-row">
+                <input type="number" id="st-school-lat" placeholder="Vĩ độ (lat)" step="0.000001" />
+                <input type="number" id="st-school-lng" placeholder="Kinh độ (lng)" step="0.000001" />
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" id="st-use-school-default" style="margin-top:8px;">🏫 Điền toạ độ mặc định theo trường đã chọn</button>
+            </div>
+            <p id="st-location-status" style="font-size:12px;color:var(--ink-faint);margin:6px 0 0;"></p>
+            <button class="btn btn-primary btn-sm" id="save-location" style="margin-top:10px;">Lưu vị trí &amp; di chuyển</button>
+          </div>
+
+          <div class="settings-block">
             <h3>Trạng thái</h3>
+
+            <div class="field">
+              <label for="st-busy-level">Mức độ bận hiện tại (khi không ốm/đi vắng)</label>
+              <select id="st-busy-level">
+                <option value="0">🟢 Rảnh — nhận mọi việc</option>
+                <option value="1">🟡 Bận nhẹ — chỉ nhận việc nhỏ</option>
+                <option value="2">🟠 Bận — chưa nhận việc mới</option>
+                <option value="3">🔴 Không khả dụng</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="st-busy-reason">Lý do bận (không bắt buộc)</label>
+              <input type="text" id="st-busy-reason" placeholder="VD: đang học trên trường" />
+            </div>
+            <button class="btn btn-primary btn-sm" id="save-busy-level" style="margin-bottom:18px;">Lưu mức độ bận</button>
+
+            <div class="field" style="display:flex; align-items:center; gap:10px;">
+              <input type="checkbox" id="st-sick-toggle" style="width:18px; height:18px;" />
+              <label for="st-sick-toggle" style="margin:0;">🤒 Đang bị ốm</label>
+            </div>
+            <div id="st-sick-dates" style="display:none;">
+              <div class="form-row">
+                <div class="field">
+                  <label for="st-sick-from">Ốm từ ngày</label>
+                  <input type="date" id="st-sick-from" />
+                </div>
+                <div class="field">
+                  <label for="st-sick-until">Dự kiến khỏi (không bắt buộc)</label>
+                  <input type="date" id="st-sick-until" />
+                </div>
+              </div>
+              <p style="font-size:12px;color:var(--ink-faint);margin:0 0 14px;">
+                Khi bật, việc chưa bắt đầu của bạn sẽ được đưa vào hàng chờ chia lại và bạn sẽ không bị trừ điểm.
+                Sau ngày dự kiến khỏi, hệ thống sẽ hỏi lại bạn đã khoẻ chưa trước khi tự tắt.
+              </p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="save-sick-status" style="margin-bottom:18px;">Lưu trạng thái ốm</button>
+
             <div class="field" style="display:flex; align-items:center; gap:10px;">
               <input type="checkbox" id="st-away-toggle" style="width:18px; height:18px;" />
               <label for="st-away-toggle" style="margin:0;">✈️ Đang đi vắng</label>
@@ -363,6 +443,7 @@
                 Nếu điền "Đến ngày", hệ thống sẽ tự khôi phục trạng thái có mặt cho bạn khi bạn mở app sau ngày đó.
               </p>
             </div>
+
             <button class="btn btn-primary btn-sm" id="save-away-status">Lưu trạng thái</button>
           </div>
 

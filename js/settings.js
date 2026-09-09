@@ -2,6 +2,15 @@
 // SETTINGS.JS — trang "Cài đặt" (hồ sơ cá nhân)
 // ============================================================
 
+// Toạ độ mặc định cho các trường đã biết — dùng làm gợi ý điền nhanh khi
+// người dùng chưa tự nhập toạ độ trường chính xác của mình. Có thể sửa lại
+// tay nếu cơ sở/campus khác với mặc định.
+const UNIVERSITY_DEFAULT_COORDS = {
+  PTIT: { lat: 20.9701, lng: 105.7940 }, // Học viện CNBCVT, Hà Đông
+  HUCE: { lat: 21.0035, lng: 105.8438 }, // ĐH Xây dựng Hà Nội, Giải Phóng
+  HUST: { lat: 21.0064, lng: 105.8433 }, // ĐH Bách Khoa Hà Nội
+};
+
 // ---- Cắt ảnh đại diện thành hình vuông theo ý người dùng ----
 // Trước đây ảnh tải lên bị CSS (object-fit: cover) tự động cắt theo tâm ảnh,
 // nên với ảnh không vuông người dùng không tự chọn được phần muốn giữ lại.
@@ -352,15 +361,22 @@ function bindSettingsEvents() {
       const awayFrom = isAway ? (document.getElementById("st-away-from").value || todayStr()) : null;
       const awayUntil = isAway ? (document.getElementById("st-away-until").value || null) : null;
 
+      if (isAway && STATE.me.status === "SICK") {
+        alert("Bạn đang ở trạng thái Ốm — hãy tắt trạng thái ốm trước nếu muốn bật Đi vắng.");
+        return;
+      }
+      const newStatus = isAway ? "AWAY" : (STATE.me.busy_level > 0 ? "BUSY" : "AVAILABLE");
+
       const { error } = await supabaseClient
         .from("profiles")
-        .update({ is_away: isAway, away_from: awayFrom, away_until: awayUntil })
+        .update({ is_away: isAway, away_from: awayFrom, away_until: awayUntil, status: newStatus })
         .eq("id", STATE.me.id);
       if (error) return alert("Lỗi: " + error.message);
 
       STATE.me.is_away = isAway;
       STATE.me.away_from = awayFrom;
       STATE.me.away_until = awayUntil;
+      STATE.me.status = newStatus;
       STATE.profiles = await getAllProfiles();
 
       await logHistory(
@@ -372,7 +388,158 @@ function bindSettingsEvents() {
           : `${STATE.me.name} đã tắt chế độ đi vắng (quay lại).`
       );
 
+      // Khi bật đi vắng: đưa việc chưa xong vào hàng chờ để người khác "Nhận thay"
+      // (giữ đúng hành vi cũ, chỉ tách ra thành hàm dùng chung với Sick Mode).
+      if (isAway && typeof reassignTasksForUnavailableUser === "function") {
+        await reassignTasksForUnavailableUser(STATE.me.id);
+      }
+
       alert(isAway ? "Đã bật chế độ đi vắng." : "Đã tắt chế độ đi vắng.");
+    });
+  }
+
+  // ---------- Vị trí & di chuyển (cho tính thời gian đi lại thật) ----------
+  const useMyLocationBtn = document.getElementById("st-use-my-location");
+  if (useMyLocationBtn && !useMyLocationBtn.dataset.bound) {
+    useMyLocationBtn.dataset.bound = "1";
+    useMyLocationBtn.addEventListener("click", () => {
+      const statusEl = document.getElementById("st-location-status");
+      if (!navigator.geolocation) {
+        if (statusEl) statusEl.textContent = "Trình duyệt không hỗ trợ lấy vị trí.";
+        return;
+      }
+      if (statusEl) statusEl.textContent = "Đang lấy vị trí hiện tại...";
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          document.getElementById("st-home-lat").value = pos.coords.latitude.toFixed(6);
+          document.getElementById("st-home-lng").value = pos.coords.longitude.toFixed(6);
+          if (statusEl) statusEl.textContent = "Đã điền vị trí hiện tại — nhớ bấm Lưu.";
+        },
+        () => {
+          if (statusEl) statusEl.textContent = "Không lấy được vị trí — hãy nhập tay hoặc kiểm tra quyền truy cập vị trí.";
+        }
+      );
+    });
+  }
+
+  const useSchoolDefaultBtn = document.getElementById("st-use-school-default");
+  if (useSchoolDefaultBtn && !useSchoolDefaultBtn.dataset.bound) {
+    useSchoolDefaultBtn.dataset.bound = "1";
+    useSchoolDefaultBtn.addEventListener("click", () => {
+      const statusEl = document.getElementById("st-location-status");
+      const uni = document.getElementById("st-university")?.value;
+      const coords = UNIVERSITY_DEFAULT_COORDS[uni];
+      if (!coords) {
+        if (statusEl) statusEl.textContent = "Chưa có toạ độ mặc định cho trường này — nhập tay giúp mình nhé.";
+        return;
+      }
+      document.getElementById("st-school-lat").value = coords.lat;
+      document.getElementById("st-school-lng").value = coords.lng;
+      if (statusEl) statusEl.textContent = "Đã điền toạ độ mặc định của trường — nhớ bấm Lưu.";
+    });
+  }
+
+  const saveLocationBtn = document.getElementById("save-location");
+  if (saveLocationBtn && !saveLocationBtn.dataset.bound) {
+    saveLocationBtn.dataset.bound = "1";
+    saveLocationBtn.addEventListener("click", async () => {
+      const toNumberOrNull = (v) => (v === "" || v == null ? null : Number(v));
+      const payload = {
+        transport_type: document.getElementById("st-transport").value,
+        average_speed_kmh: Number(document.getElementById("st-speed").value) || 25,
+        home_lat: toNumberOrNull(document.getElementById("st-home-lat").value),
+        home_lng: toNumberOrNull(document.getElementById("st-home-lng").value),
+        school_lat: toNumberOrNull(document.getElementById("st-school-lat").value),
+        school_lng: toNumberOrNull(document.getElementById("st-school-lng").value),
+      };
+
+      const { error } = await supabaseClient.from("profiles").update(payload).eq("id", STATE.me.id);
+      if (error) return alert("Lỗi: " + error.message);
+
+      Object.assign(STATE.me, payload);
+      STATE.profiles = await getAllProfiles();
+      const statusEl = document.getElementById("st-location-status");
+      if (statusEl) statusEl.textContent = "Đã lưu vị trí & di chuyển.";
+    });
+  }
+
+  // ---------- Mức độ bận (Status Engine) ----------
+  const saveBusyBtn = document.getElementById("save-busy-level");
+  if (saveBusyBtn && !saveBusyBtn.dataset.bound) {
+    saveBusyBtn.dataset.bound = "1";
+    saveBusyBtn.addEventListener("click", async () => {
+      const level = Number(document.getElementById("st-busy-level").value) || 0;
+      const reason = document.getElementById("st-busy-reason").value.trim() || null;
+
+      // Không ghi đè trạng thái nếu đang Ốm/Đi vắng — 2 trạng thái đó ưu tiên cao hơn.
+      if (STATE.me.status === "SICK" || STATE.me.status === "AWAY" || STATE.me.is_away) {
+        alert("Bạn đang ở trạng thái Ốm/Đi vắng — hãy tắt trạng thái đó trước nếu muốn đổi mức độ bận.");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("profiles")
+        .update({ status: level > 0 ? "BUSY" : "AVAILABLE", busy_level: level, busy_reason: reason })
+        .eq("id", STATE.me.id);
+      if (error) return alert("Lỗi: " + error.message);
+
+      STATE.me.status = level > 0 ? "BUSY" : "AVAILABLE";
+      STATE.me.busy_level = level;
+      STATE.me.busy_reason = reason;
+      STATE.profiles = await getAllProfiles();
+      alert("Đã lưu mức độ bận.");
+    });
+  }
+
+  // ---------- Sick Mode ----------
+  const sickToggle = document.getElementById("st-sick-toggle");
+  const sickDatesWrap = document.getElementById("st-sick-dates");
+  if (sickToggle && !sickToggle.dataset.bound) {
+    sickToggle.dataset.bound = "1";
+    sickToggle.addEventListener("change", () => {
+      sickDatesWrap.style.display = sickToggle.checked ? "block" : "none";
+      if (sickToggle.checked && !document.getElementById("st-sick-from").value) {
+        document.getElementById("st-sick-from").value = todayStr();
+      }
+    });
+  }
+
+  const saveSickBtn = document.getElementById("save-sick-status");
+  if (saveSickBtn && !saveSickBtn.dataset.bound) {
+    saveSickBtn.dataset.bound = "1";
+    saveSickBtn.addEventListener("click", async () => {
+      const isSick = document.getElementById("st-sick-toggle").checked;
+      const sickFrom = isSick ? (document.getElementById("st-sick-from").value || todayStr()) : null;
+      const sickUntil = isSick ? (document.getElementById("st-sick-until").value || null) : null;
+      const newStatus = isSick ? "SICK" : (STATE.me.busy_level > 0 ? "BUSY" : "AVAILABLE");
+
+      const { error } = await supabaseClient
+        .from("profiles")
+        .update({ status: newStatus, sick_from: sickFrom, sick_until: sickUntil })
+        .eq("id", STATE.me.id);
+      if (error) return alert("Lỗi: " + error.message);
+
+      STATE.me.status = newStatus;
+      STATE.me.sick_from = sickFrom;
+      STATE.me.sick_until = sickUntil;
+      STATE.profiles = await getAllProfiles();
+
+      await logHistory(
+        null,
+        STATE.me.id,
+        isSick ? "bat_dau_om" : "khoi_om",
+        isSick
+          ? `${STATE.me.name} báo ốm${sickUntil ? ", dự kiến khỏi " + formatDateShort(sickUntil) : ""}.`
+          : `${STATE.me.name} đã tắt trạng thái ốm (quay lại làm việc).`
+      );
+
+      // Khi báo ốm: đưa việc chưa xong (không tính việc luân phiên) vào hàng chờ
+      // để người khác nhận thay, đúng như đề xuất "Không phạt điểm khi ốm".
+      if (isSick && typeof reassignTasksForUnavailableUser === "function") {
+        await reassignTasksForUnavailableUser(STATE.me.id);
+      }
+
+      alert(isSick ? "Đã bật chế độ ốm — việc chưa xong của bạn sẽ không bị phạt và được đưa vào hàng chờ chia lại." : "Đã tắt chế độ ốm, chúc mừng bạn khoẻ lại!");
     });
   }
 
@@ -380,6 +547,36 @@ function bindSettingsEvents() {
   if (!logoutBtn.dataset.bound) {
     logoutBtn.dataset.bound = "1";
     logoutBtn.addEventListener("click", logout);
+  }
+}
+
+// Nếu ngày dự kiến khỏi đã qua mà vẫn đang để chế độ Ốm, hỏi lại xem đã khoẻ
+// chưa trước khi tự tắt — đúng đề xuất "Sau ngày khỏi hệ thống hỏi bạn đã khoẻ chưa".
+async function checkSickRecoveryPrompt() {
+  if (STATE.me.status !== "SICK" || !STATE.me.sick_until) return;
+  if (STATE.me.sick_until >= todayStr()) return; // chưa tới/qua ngày dự kiến khỏi
+
+  const recovered = confirm(`Đã quá ngày bạn dự kiến khỏi ốm (${formatDateShort(STATE.me.sick_until)}). Bạn đã khoẻ chưa?`);
+  if (!recovered) return; // vẫn còn ốm -> giữ nguyên, hỏi lại lần load sau
+
+  const newStatus = STATE.me.busy_level > 0 ? "BUSY" : "AVAILABLE";
+  const { error } = await supabaseClient
+    .from("profiles")
+    .update({ status: newStatus, sick_from: null, sick_until: null })
+    .eq("id", STATE.me.id);
+  if (error) return alert("Lỗi: " + error.message);
+
+  STATE.me.status = newStatus;
+  STATE.me.sick_from = null;
+  STATE.me.sick_until = null;
+  STATE.profiles = await getAllProfiles();
+
+  await logHistory(null, STATE.me.id, "khoi_om", `${STATE.me.name} xác nhận đã khoẻ, quay lại làm việc.`);
+
+  const sickToggle = document.getElementById("st-sick-toggle");
+  if (sickToggle) {
+    sickToggle.checked = false;
+    document.getElementById("st-sick-dates").style.display = "none";
   }
 }
 
@@ -399,5 +596,32 @@ async function loadSettingsSection() {
     document.getElementById("st-away-until").value = STATE.me.away_until || "";
   }
 
+  const sickToggle = document.getElementById("st-sick-toggle");
+  if (sickToggle) {
+    sickToggle.checked = STATE.me.status === "SICK";
+    document.getElementById("st-sick-dates").style.display = STATE.me.status === "SICK" ? "block" : "none";
+    document.getElementById("st-sick-from").value = STATE.me.sick_from || "";
+    document.getElementById("st-sick-until").value = STATE.me.sick_until || "";
+  }
+
+  const busyLevelEl = document.getElementById("st-busy-level");
+  if (busyLevelEl) busyLevelEl.value = String(STATE.me.busy_level ?? 0);
+  const busyReasonEl = document.getElementById("st-busy-reason");
+  if (busyReasonEl) busyReasonEl.value = STATE.me.busy_reason || "";
+
+  const transportEl = document.getElementById("st-transport");
+  if (transportEl) transportEl.value = STATE.me.transport_type || "motorbike";
+  const speedEl = document.getElementById("st-speed");
+  if (speedEl) speedEl.value = STATE.me.average_speed_kmh ?? 25;
+  const homeLatEl = document.getElementById("st-home-lat");
+  if (homeLatEl) homeLatEl.value = STATE.me.home_lat ?? "";
+  const homeLngEl = document.getElementById("st-home-lng");
+  if (homeLngEl) homeLngEl.value = STATE.me.home_lng ?? "";
+  const schoolLatEl = document.getElementById("st-school-lat");
+  if (schoolLatEl) schoolLatEl.value = STATE.me.school_lat ?? "";
+  const schoolLngEl = document.getElementById("st-school-lng");
+  if (schoolLngEl) schoolLngEl.value = STATE.me.school_lng ?? "";
+
   bindSettingsEvents();
+  await checkSickRecoveryPrompt();
 }

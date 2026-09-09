@@ -17,6 +17,14 @@
 // LƯU Ý TRIỂN KHAI AI (bước 3): xem file
 // supabase/functions/ai-assign-tasks/index.ts để biết cách triển khai Edge
 // Function. Không gọi thẳng api.anthropic.com từ trình duyệt vì sẽ lộ API key.
+//
+// BỔ SUNG (v2) — dùng chung Status Engine với class-schedule.js:
+// - Điều kiện nhận việc giờ dựa trên getEffectiveStatus() (Ốm / Đi xa / Đang
+//   học / bận tự khai) thay vì chỉ is_away + đang trong giờ học.
+// - Mức "Bận nhẹ" (busy_level 1) vẫn được nhận, nhưng CHỈ với việc nhỏ
+//   (<= SMALL_TASK_POINT_THRESHOLD điểm) — đúng quy tắc Level 1 trong đề xuất.
+// - "Bận" (busy_level 2) trở lên: không tự động giao, chỉ giao được nếu ép tay
+//   qua preset (đổi người làm trong bảng xem trước).
 // ============================================================
 
 const PRESET_CHORES = [
@@ -26,6 +34,10 @@ const PRESET_CHORES = [
   { title: "Nấu ăn tối", points: 30 },
   { title: "Lấy quần áo", points: 10 },
 ];
+
+// Việc có điểm <= ngưỡng này được coi là "việc nhỏ" (đổ rác, rửa bát...) —
+// người đang bận nhẹ (busy_level 1) vẫn có thể nhận được.
+const SMALL_TASK_POINT_THRESHOLD = 15;
 
 // Kết quả chia việc đang xem trước (chưa lưu vào Supabase)
 let aaPreviewItems = [];
@@ -84,31 +96,51 @@ async function computeCurrentLoad() {
   return load;
 }
 
-// Thành viên đủ điều kiện nhận việc tự động = không đang đi vắng VÀ không đang
-// trong "vùng bận do học" ngay lúc chia việc (xem class-schedule.js).
-// Nếu vô tình không còn ai thì lần lượt nới lỏng điều kiện để không bị kẹt hẳn:
-// bỏ qua kiểm tra giờ học trước, rồi mới tới bỏ qua trạng thái đi vắng.
-async function getEligibleAssignees() {
-  const present = (STATE.profiles || []).filter((p) => !p.is_away);
-  const base = present.length > 0 ? present : STATE.profiles || [];
-
-  if (typeof isUserInClassRightNow !== "function") return base;
-
-  const free = [];
-  for (const p of base) {
-    const inClass = await isUserInClassRightNow(p.id);
-    if (!inClass) free.push(p);
+// Trạng thái thật (Ốm/Đi xa/Đang học/bận tự khai) của TẤT CẢ thành viên,
+// lấy 1 lần cho cả lượt chia việc. Nếu getEffectiveStatus chưa tồn tại (chưa
+// nạp class-schedule.js bản mới) thì fallback về is_away như bản cũ.
+async function computeStatusMap() {
+  const map = {};
+  for (const p of STATE.profiles || []) {
+    if (typeof getEffectiveStatus === "function") {
+      map[p.id] = await getEffectiveStatus(p.id);
+    } else {
+      map[p.id] = p.is_away
+        ? { status: "AWAY", busy_level: 3, reason: "Đi vắng" }
+        : { status: "AVAILABLE", busy_level: 0, reason: null };
+    }
   }
-  return free.length > 0 ? free : base;
+  return map;
 }
 
-// Chia items cho người đang có mức độ bận thấp nhất, việc điểm cao chia trước
-// để cân bằng tốt hơn (giống bin-packing kiểu "largest first").
-// Người đang đi vắng bị loại khỏi danh sách ứng cử viên (trừ khi được ép gán qua presetAssignments).
-function fairDistribute(items, load, presetAssignments = {}, eligibleProfiles = []) {
+// 1 người có nhận được ĐÚNG việc "item" cụ thể này không, theo busy_level:
+// level 3 (ốm/đi xa/đang học/không khả dụng) -> không bao giờ tự động giao
+// level 2 (bận) -> không tự động giao
+// level 1 (bận nhẹ) -> chỉ nhận việc nhỏ (<= SMALL_TASK_POINT_THRESHOLD điểm)
+// level 0 (rảnh) -> nhận mọi việc
+function isEligibleForItem(status, item) {
+  if (!status) return true;
+  if (status.busy_level >= 2) return false;
+  if (status.busy_level === 1) return (item.points || 0) <= SMALL_TASK_POINT_THRESHOLD;
+  return true;
+}
+
+// Danh sách người CÓ THỂ nhận ít nhất 1 việc nào đó ngay bây giờ (dùng để báo
+// cho người dùng biết ai đang bị tạm né và vì sao).
+function summarizeExcluded(statusMap) {
+  return (STATE.profiles || [])
+    .filter((p) => statusMap[p.id] && statusMap[p.id].busy_level >= 2)
+    .map((p) => `${p.name} (${statusMap[p.id].reason || statusMap[p.id].status})`);
+}
+
+// Chia items cho người đang có mức độ bận thấp nhất trong số những người ĐỦ
+// ĐIỀU KIỆN cho đúng việc đó, việc điểm cao chia trước để cân bằng tốt hơn
+// (giống bin-packing kiểu "largest first"). Nếu 1 việc không còn ai đủ điều
+// kiện, nới lỏng dần: bỏ level 2, rồi mới tới bỏ hẳn kiểm tra (để không kẹt).
+function fairDistribute(items, load, statusMap, presetAssignments = {}) {
   const runningLoad = { ...load };
   const sorted = [...items].sort((a, b) => b.points - a.points);
-  const candidates = eligibleProfiles.length > 0 ? eligibleProfiles : STATE.profiles;
+  const allProfiles = STATE.profiles || [];
 
   return sorted.map((item) => {
     const preset = presetAssignments[item.title];
@@ -116,6 +148,14 @@ function fairDistribute(items, load, presetAssignments = {}, eligibleProfiles = 
       runningLoad[preset] += item.points;
       return { ...item, assigned_to: preset, reason: presetAssignments.__reason?.[item.title] || "" };
     }
+
+    let candidates = allProfiles.filter((p) => isEligibleForItem(statusMap[p.id], item));
+    if (candidates.length === 0) {
+      // nới lỏng: cho phép cả busy_level 2 (nhưng vẫn né ốm/đi xa/đang học/level 3)
+      candidates = allProfiles.filter((p) => (statusMap[p.id]?.busy_level ?? 0) < 3);
+    }
+    if (candidates.length === 0) candidates = allProfiles; // vẫn không có ai -> chia hết cho tất cả để không kẹt
+
     let best = candidates[0];
     candidates.forEach((p) => {
       if (runningLoad[p.id] < runningLoad[best.id]) best = p;
@@ -125,9 +165,17 @@ function fairDistribute(items, load, presetAssignments = {}, eligibleProfiles = 
   });
 }
 
+// Giữ lại tên hàm cũ để tương thích nếu file khác (vd tasks.js) có gọi tới —
+// trả về danh sách người không ở mức "không khả dụng" (busy_level 3).
+async function getEligibleAssignees() {
+  const statusMap = await computeStatusMap();
+  const free = (STATE.profiles || []).filter((p) => (statusMap[p.id]?.busy_level ?? 0) < 3);
+  return free.length > 0 ? free : STATE.profiles || [];
+}
+
 // ---------------- Gợi ý từ AI (qua Edge Function proxy) ----------------
 
-async function askAIForAssignment(items, load, eligibleProfiles) {
+async function askAIForAssignment(items, load, eligibleProfiles, statusMap) {
   if (typeof SUPABASE_URL !== "string" || !SUPABASE_URL) return null;
   const endpoint = `${SUPABASE_URL}/functions/v1/ai-assign-tasks`;
 
@@ -146,7 +194,12 @@ async function askAIForAssignment(items, load, eligibleProfiles) {
       },
       body: JSON.stringify({
         tasks: items,
-        members: eligibleProfiles.map((p) => ({ id: p.id, name: p.name })),
+        members: eligibleProfiles.map((p) => ({
+          id: p.id,
+          name: p.name,
+          busy_level: statusMap[p.id]?.busy_level ?? 0,
+          status_reason: statusMap[p.id]?.reason || null,
+        })),
         current_load: load,
       }),
     });
@@ -219,10 +272,9 @@ async function runDistribution(mode) {
   }
 
   const load = await computeCurrentLoad();
-  const eligible = await getEligibleAssignees();
-  const excludedByClass = (STATE.profiles || []).filter(
-    (p) => !p.is_away && !eligible.some((e) => e.id === p.id)
-  );
+  const statusMap = await computeStatusMap();
+  const eligible = (STATE.profiles || []).filter((p) => (statusMap[p.id]?.busy_level ?? 0) < 3);
+  const eligibleForAI = eligible.length > 0 ? eligible : STATE.profiles || [];
 
   if (mode === "ai") {
     const aiBtn = document.getElementById("aa-ai-btn");
@@ -230,7 +282,7 @@ async function runDistribution(mode) {
     aiBtn.textContent = "Đang hỏi AI...";
     aiBtn.disabled = true;
 
-    const aiMap = await askAIForAssignment(items, load, eligible);
+    const aiMap = await askAIForAssignment(items, load, eligibleForAI, statusMap);
     aiBtn.textContent = oldLabel;
     aiBtn.disabled = false;
 
@@ -238,22 +290,20 @@ async function runDistribution(mode) {
       alert(
         "Chưa gọi được AI (có thể Edge Function chưa được triển khai). Đã tự động dùng thuật toán chia công bằng thay thế."
       );
-      aaPreviewItems = fairDistribute(items, load, {}, eligible);
+      aaPreviewItems = fairDistribute(items, load, statusMap, {});
     } else {
-      aaPreviewItems = fairDistribute(items, load, aiMap, eligible);
+      aaPreviewItems = fairDistribute(items, load, statusMap, aiMap);
     }
   } else {
-    aaPreviewItems = fairDistribute(items, load, {}, eligible);
+    aaPreviewItems = fairDistribute(items, load, statusMap, {});
   }
 
   const noteEl = document.getElementById("aa-class-note");
   if (noteEl) {
-    if (excludedByClass.length > 0) {
+    const excluded = summarizeExcluded(statusMap);
+    if (excluded.length > 0) {
       noteEl.style.display = "block";
-      noteEl.textContent =
-        "📚 Đã tạm né giao việc cho: " +
-        excludedByClass.map((p) => p.name).join(", ") +
-        " (đang trong giờ học).";
+      noteEl.textContent = "📚🤒✈️ Đã tạm né giao việc lớn cho: " + excluded.join(", ") + ".";
     } else {
       noteEl.style.display = "none";
       noteEl.textContent = "";
