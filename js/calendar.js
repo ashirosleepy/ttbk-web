@@ -130,6 +130,28 @@ function projectFutureOccurrences(schedules, queues, startStr, endStr, todayStr_
     pattern.cursor = 0;
   });
 
+  // Các việc thuộc hàng đợi luân phiên vẫn phải dự báo theo current_index,
+  // ngay cả khi lịch gốc trong bảng schedules không còn tồn tại.
+  const scheduledQueueIds = new Set(schedules.filter((s) => s.rotation_queue_id).map((s) => s.rotation_queue_id));
+  const inferredQueues = {};
+  existingTasks
+    .filter((task) => task.rotation_queue_id && task.due_date <= todayStr_ && !scheduledQueueIds.has(task.rotation_queue_id))
+    .forEach((task) => {
+      if (!inferredQueues[task.rotation_queue_id]) inferredQueues[task.rotation_queue_id] = { dates: new Set(), weekdays: new Set() };
+      inferredQueues[task.rotation_queue_id].dates.add(task.due_date);
+      inferredQueues[task.rotation_queue_id].weekdays.add(new Date(task.due_date + "T00:00:00").getDay());
+    });
+
+  Object.values(inferredQueues).forEach((pattern) => {
+    const dates = [...pattern.dates].sort();
+    pattern.daily = dates.some((date, index) => {
+      if (index === 0) return false;
+      const previous = new Date(dates[index - 1] + "T00:00:00");
+      const current = new Date(date + "T00:00:00");
+      return current - previous === 86400000;
+    });
+  });
+
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dStr = calDateStrFromDate(d);
     if (dStr <= todayStr_) continue;
@@ -147,6 +169,22 @@ function projectFutureOccurrences(schedules, queues, startStr, endStr, todayStr_
           projected: true,
         });
       }
+    });
+
+    Object.entries(inferredQueues).forEach(([queueId, pattern]) => {
+      if (!pattern.daily && !pattern.weekdays.has(d.getDay())) return;
+      const queue = queueMap[queueId];
+      if (!queue || !Array.isArray(queue.member_order) || queue.member_order.length === 0) return;
+      const step = queueStep[queueId] || 0;
+      const assigneeId = queue.member_order[(queue.current_index + step) % queue.member_order.length];
+      queueStep[queueId] = step + 1;
+      if (!occurrencesByDate[dStr]) occurrencesByDate[dStr] = [];
+      occurrencesByDate[dStr].push({
+        title: queue.label,
+        assigneeId,
+        points: queue.points,
+        projected: true,
+      });
     });
   }
 
