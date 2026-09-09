@@ -48,6 +48,21 @@ async function fetchTasks() {
   return data;
 }
 
+function keepOneOpenRotationTask(tasks) {
+  const latestByQueue = new Map();
+  const openTasks = (tasks || [])
+    .filter((task) => task.rotation_queue_id && task.status !== "hoan_thanh" && task.status !== "bo_lo")
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+  openTasks.forEach((task) => {
+    if (!latestByQueue.has(task.rotation_queue_id)) latestByQueue.set(task.rotation_queue_id, task.id);
+  });
+
+  return (tasks || []).filter(
+    (task) => !task.rotation_queue_id || task.status === "hoan_thanh" || task.status === "bo_lo" || latestByQueue.get(task.rotation_queue_id) === task.id
+  );
+}
+
 // Lấy danh sách các việc luân phiên đang active
 async function fetchRotations() {
   const { data, error } = await supabaseClient
@@ -378,7 +393,8 @@ async function renderTasksView() {
   }
 
   // Tải song song cả danh sách task truyền thống và danh sách luân phiên
-  const [tasks, rotations] = await Promise.all([fetchTasks(), fetchRotations()]);
+  const [loadedTasks, rotations] = await Promise.all([fetchTasks(), fetchRotations()]);
+  const tasks = keepOneOpenRotationTask(loadedTasks);
   const queueMap = Object.fromEntries(rotations.map((queue) => [queue.id, queue]));
 
   // Lọc task theo người đang được chọn ở Tab
@@ -742,7 +758,9 @@ async function requestRotationHandoff(queueId) {
     .select("*")
     .eq("rotation_queue_id", queueId)
     .eq("due_date", today)
-    .neq("status", "hoan_thanh")
+    .in("status", ["cho_nhan", "chua_lam", "dang_cho"])
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   let taskId = !findErr && existing ? existing.id : null;

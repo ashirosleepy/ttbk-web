@@ -136,6 +136,7 @@
 }
 
 .shop-quickrow{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:11px; }
+.shop-quickrow + .shop-quickrow{ margin-top:5px; }
 .shop-quickrow button{
   font-family:var(--font); font-size:12px; font-weight:600;
   padding:5px 10px; border-radius:8px;
@@ -148,6 +149,7 @@
 
 .shop-actrow{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
 .shop-actrow button, .shop-actrow .btn{ flex:1; min-width:90px; }
+.shop-actrow .btn-danger{ flex:0 0 auto; width:38px; padding:0; }
 
 .shop-note{
   font-size:11.5px; color:var(--ink-faint); margin-top:8px;
@@ -163,7 +165,21 @@
 .shop-cart-group-title:first-child{ margin-top:0; }
 .shop-cart-group-title::before{ content:""; width:16px; height:2px; background:var(--border-strong); border-radius:2px; }
 
-.shop-cart-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; }
+/* .task-card: dùng bởi shopping.js cho từng dòng trong Danh sách mua / Lịch
+   thay / Lịch sử (class này KHÔNG có trong style.css gốc — bổ sung ở đây
+   để các dòng đó thực sự có khung thẻ thay vì trôi nổi không viền). */
+.task-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius-s);
+  padding:13px 16px;
+  box-shadow:var(--shadow-1);
+  transition:transform .18s var(--ease), box-shadow .18s var(--ease);
+}
+.task-card:hover{ transform:translateY(-1px); box-shadow:var(--shadow-hover); }
+.task-card b{ color:var(--ink); }
+
+.shop-cart-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; flex-wrap:wrap; }
 .shop-reporter{
   font-size:11px; color:var(--ink-faint);
   display:inline-flex; align-items:center; gap:4px;

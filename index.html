@@ -299,7 +299,7 @@
               <span class="ic">💰</span>
               <h3>Liên kết Chi tiêu</h3>
             </div>
-            <p class="sub">Mỗi lần đánh dấu "Đã mua", khoản chi được tự động ghi vào mục <strong>Chi tiêu nhà → Đồ dùng sinh hoạt</strong> — không cần nhập lại.</p>
+            <p class="sub">Khi đánh dấu "✅ Đã mua" và nhập giá tiền, khoản chi được lưu lại ngay tại đây — bấm sang <strong>Chi tiêu</strong> bất cứ lúc nào để ghi vào sổ chung của nhà.</p>
 
             <div class="shop-link-figure" id="shop-expense-month-amount">
               <b>—</b><span>đ tháng này</span>
@@ -428,38 +428,14 @@
           <div id="shop-cart-list" class="task-list"><p class="empty-state">Chưa có gì cần mua.</p></div>
         </div>
 
-        <!-- Panel: Trợ lý AI (mới) -->
+        <!-- Panel: Trợ lý AI (mới) — nội dung do js/shopping-ai.js tính từ dữ liệu thật -->
         <div id="shop-panel-ai" class="shop-panel" style="display:none;">
           <div class="shop-ai-banner">
-            <span class="ic">🧪</span>
-            <span>Đây là <strong>gợi ý mẫu</strong> minh hoạ hướng phát triển AI. Khi nhà bạn có đủ lịch sử mua ＋ chi tiêu (khoảng 2–3 chu kỳ mua), các thẻ này sẽ tự tính từ dữ liệu thật thay vì số mẫu.</span>
+            <span class="ic">🧠</span>
+            <span>Gợi ý dưới đây tính từ chính lịch sử mua và giá bạn đã nhập trong "Danh sách mua". Dùng càng nhiều, gợi ý càng chuẩn.</span>
           </div>
 
-          <div class="shop-ai-grid" id="shop-ai-grid">
-            <div class="ai-card predict">
-              <div class="ai-card-head"><span class="ic">⏳</span><h4>Sắp hết trong tuần</h4></div>
-              <p>Nước giặt thường được mua sau khoảng <strong>32 ngày</strong>. Lần gần nhất đã mua cách đây <strong>28 ngày</strong> → có thể hết trong <strong>5–7 ngày tới</strong>.</p>
-              <button class="btn btn-ghost btn-sm">Thêm vào danh sách mua</button>
-            </div>
-
-            <div class="ai-card pair">
-              <div class="ai-card-head"><span class="ic">🔗</span><h4>Thường mua cùng nhau</h4></div>
-              <p>Giấy vệ sinh thường được mua cùng đợt với nước giặt trong <strong>4/5 lần gần nhất</strong>. Gộp vào cùng chuyến mua tuần này?</p>
-              <button class="btn btn-ghost btn-sm">Gộp vào chuyến mua tuần này</button>
-            </div>
-
-            <div class="ai-card warn">
-              <div class="ai-card-head"><span class="ic">⚠️</span><h4>Thiếu đồ dự phòng</h4></div>
-              <p>Nhà hiện <strong>không còn bóng đèn dự phòng</strong>. Nếu bóng phòng khách hỏng đột xuất sẽ phải mua gấp.</p>
-              <button class="btn btn-ghost btn-sm">Đề xuất mua 2 bóng dự phòng</button>
-            </div>
-
-            <div class="ai-card budget">
-              <div class="ai-card-head"><span class="ic">📊</span><h4>Ngân sách mua sắm tháng này</h4></div>
-              <p>Dựa trên Chi tiêu 3 tháng gần nhất, mục <strong>Đồ dùng sinh hoạt</strong> thường tốn khoảng <strong>320.000–380.000đ/tháng</strong>.</p>
-              <button class="btn btn-ghost btn-sm" onclick="(window.ttbkNavigate||function(u){window.location.href=u;})('Chi tiêu TTBK.html')">Xem chi tiết trong Chi tiêu</button>
-            </div>
-          </div>
+          <div class="shop-ai-grid" id="shop-ai-grid"><p class="empty-state">Đang tải...</p></div>
         </div>
 
         <!-- Panel: Lịch thay -->
@@ -661,6 +637,7 @@
 <script src="js/dashboard.js"></script>
 <script src="js/members.js"></script>
 <script src="js/shopping.js"></script>
+<script src="js/shopping-ai.js"></script>
 <script>
 /* Lưới an toàn cho tab "🧠 AI gợi ý": nếu js/shopping.js đã tự xử lý mọi nút
    .shop-tab-btn theo quy ước id="shop-panel-"+data-shoptab thì đoạn này chỉ

@@ -101,7 +101,9 @@ async function reportAdhocTask(queueId) {
     .select("assigned_to")
     .eq("rotation_queue_id", queueId)
     .eq("due_date", todayStr())
-    .neq("status", "hoan_thanh")
+    .in("status", ["cho_nhan", "chua_lam", "dang_cho"])
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   const holder = activeTask?.assigned_to
     ? findProfile(STATE.profiles, activeTask.assigned_to)

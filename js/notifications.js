@@ -204,7 +204,7 @@ async function acceptExchangeFromNotif(exchangeId, taskId, notifId) {
 
   const { data: taskInfo } = await supabaseClient
     .from("tasks")
-    .select("rotation_queue_id")
+    .select("rotation_queue_id, assigned_to")
     .eq("id", taskId)
     .maybeSingle();
 
@@ -224,8 +224,24 @@ async function acceptExchangeFromNotif(exchangeId, taskId, notifId) {
     return;
   }
 
+  const { data: reassignedTask, error: reassignError } = await supabaseClient
+    .from("tasks")
+    .update({ assigned_to: STATE.me.id })
+    .eq("id", taskId)
+    .eq("assigned_to", data.from_user)
+    .select("id")
+    .maybeSingle();
+
+  if (reassignError || !reassignedTask) {
+    await supabaseClient.from("task_exchanges").update({ status: "cancelled" }).eq("id", resolvedExchangeId).eq("status", "accepted");
+    alert("Việc này vừa được người khác nhận trước bạn.");
+    await markNotificationRead(notifId);
+    renderNotifSection();
+    refreshNotifBadge();
+    return;
+  }
+
   await supabaseClient.from("task_exchanges").update({ status: "cancelled" }).eq("task_id", taskId).eq("from_user", data.from_user).neq("id", resolvedExchangeId).eq("status", "open");
-  await supabaseClient.from("tasks").update({ assigned_to: STATE.me.id }).eq("id", taskId);
   if (taskInfo?.rotation_queue_id) {
     await syncRotationQueueForAssignedUser(taskInfo.rotation_queue_id, STATE.me.id);
   }
