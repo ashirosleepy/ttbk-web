@@ -30,6 +30,30 @@ function setupNav() {
   document.getElementById("btn-logout").addEventListener("click", logout);
 }
 
+// Menu ☰ trên di động: thay cho việc lướt ngang, bấm ☰ để hiện danh sách đầy đủ,
+// bấm vào 1 mục hoặc chạm ra ngoài (nền mờ) để tự đóng lại.
+function setupMobileMenu() {
+  const toggleBtn = document.getElementById("btn-menu-toggle");
+  const sidebar = document.getElementById("sidebar");
+  const backdrop = document.getElementById("nav-backdrop");
+  if (!toggleBtn || !sidebar || !backdrop) return;
+
+  const openMenu = () => {
+    sidebar.classList.add("open");
+    backdrop.classList.add("show");
+  };
+  const closeMenu = () => {
+    sidebar.classList.remove("open");
+    backdrop.classList.remove("show");
+  };
+
+  toggleBtn.addEventListener("click", () => {
+    sidebar.classList.contains("open") ? closeMenu() : openMenu();
+  });
+  backdrop.addEventListener("click", closeMenu);
+  sidebar.querySelectorAll(".nav-item").forEach((btn) => btn.addEventListener("click", closeMenu));
+}
+
 async function loadSection(name) {
   document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.section === name));
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === `section-${name}`));
@@ -71,6 +95,7 @@ async function init() {
 
   updateTopbar();
   setupNav();
+  setupMobileMenu();
   await generateTodayTasks(); // tự tạo việc của hôm nay từ các lịch lặp lại đang bật
   await loadSection("dashboard");
   refreshNotifBadge(); // hiện số thông báo chưa đọc ngay trên thanh menu

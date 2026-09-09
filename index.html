@@ -15,8 +15,10 @@
 
 <div class="app">
 
+  <div class="nav-backdrop" id="nav-backdrop"></div>
+
   <!-- ================= MENU BÊN TRÁI ================= -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar-mark">TT<span>BK</span></div>
 
     <button class="nav-item active" data-section="dashboard"><span class="icon">🏠</span> Tổng quan</button>
@@ -36,6 +38,7 @@
   <!-- ================= NỘI DUNG CHÍNH ================= -->
   <div class="main">
     <header class="topbar">
+      <button class="btn-hamburger" id="btn-menu-toggle" aria-label="Mở menu">☰</button>
       <div class="topbar-title" id="topbar-title">Nhiệm vụ hệ thống</div>
       <div class="user-chip">
         <span id="topbar-user"></span>
