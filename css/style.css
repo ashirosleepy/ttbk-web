@@ -942,12 +942,13 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
 
 /* ---------------- Thành viên ---------------- */
 .member-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
-.member-card { display: flex; align-items: flex-start; gap: 12px; transition: transform .18s var(--ease), box-shadow .18s var(--ease); }
+.member-card { display: flex; flex-direction: column; gap: 10px; transition: transform .18s var(--ease), box-shadow .18s var(--ease); }
 .member-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.member-card .member-head { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
 .member-card .avatar { width: 46px; height: 46px; font-size: 16px; flex-shrink: 0; }
-.member-card .member-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.member-card .m-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.member-card .member-identity { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
 .member-card .m-name-text { font-weight: 700; font-size: 15.5px; line-height: 1.3; }
+.member-card .member-details { min-width: 0; padding-left: 56px; }
 .member-card .m-sub { font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; }
 .member-card .m-availability { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .member-card .availability-bar { display: inline-block; width: 60px; height: 6px; border-radius: 999px; background: var(--track, #eee); overflow: hidden; vertical-align: middle; flex-shrink: 0; }
@@ -955,8 +956,8 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
 .member-card .m-points { margin-left: auto; text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; min-width: 62px; }
 .member-card .m-points .n { font-weight: 800; font-size: 18px; line-height: 1.1; }
 .member-card .m-points .l { font-size: 11px; color: var(--ink-faint); }
-.member-card .status-badge { max-width: 100%; }
-.member-card .status-badge > span:last-child { white-space: normal; }
+.member-card .status-badge { max-width: 100%; margin: 0 !important; }
+.member-card .status-badge > span:last-child { white-space: nowrap; }
 
 /* ---------------- Cài đặt ---------------- */
 .settings-block { margin-bottom: 26px; }

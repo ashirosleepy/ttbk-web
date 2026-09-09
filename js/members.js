@@ -89,12 +89,15 @@ async function renderMembers() {
 
       return `
       <div class="card member-card">
-        ${avatarHTML(p)}
-        <div class="member-main">
-          <div class="m-name-row">
+        <div class="member-head">
+          ${avatarHTML(p)}
+          <div class="member-identity">
             <div class="m-name-text">${escapeHTML(p.name)}</div>
             ${statusBadgeHTML(status)}
           </div>
+          <div class="m-points"><div class="n">${points}</div><div class="l">điểm</div></div>
+        </div>
+        <div class="member-details">
           ${universityLine}
           <div class="m-sub">${assigned.length} việc • ${done.length} hoàn thành${missed.length ? ` • ${missed.length} bỏ việc` : ""}</div>
           <div class="m-sub m-availability">
@@ -104,7 +107,6 @@ async function renderMembers() {
             <span>Độ sẵn sàng: ${availability}%</span>
           </div>
         </div>
-        <div class="m-points"><div class="n">${points}</div><div class="l">điểm</div></div>
       </div>`;
     })
     .join("");
