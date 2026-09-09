@@ -84,17 +84,28 @@ async function computeCurrentLoad() {
   return load;
 }
 
-// Thành viên đủ điều kiện nhận việc tự động = không đang đi vắng.
-// Nếu vô tình cả nhà đều đi vắng thì đành rơi về danh sách đầy đủ để không bị kẹt.
-function getEligibleAssignees() {
-  const eligible = (STATE.profiles || []).filter((p) => !p.is_away);
-  return eligible.length > 0 ? eligible : STATE.profiles || [];
+// Thành viên đủ điều kiện nhận việc tự động = không đang đi vắng VÀ không đang
+// trong "vùng bận do học" ngay lúc chia việc (xem class-schedule.js).
+// Nếu vô tình không còn ai thì lần lượt nới lỏng điều kiện để không bị kẹt hẳn:
+// bỏ qua kiểm tra giờ học trước, rồi mới tới bỏ qua trạng thái đi vắng.
+async function getEligibleAssignees() {
+  const present = (STATE.profiles || []).filter((p) => !p.is_away);
+  const base = present.length > 0 ? present : STATE.profiles || [];
+
+  if (typeof isUserInClassRightNow !== "function") return base;
+
+  const free = [];
+  for (const p of base) {
+    const inClass = await isUserInClassRightNow(p.id);
+    if (!inClass) free.push(p);
+  }
+  return free.length > 0 ? free : base;
 }
 
 // Chia items cho người đang có mức độ bận thấp nhất, việc điểm cao chia trước
 // để cân bằng tốt hơn (giống bin-packing kiểu "largest first").
 // Người đang đi vắng bị loại khỏi danh sách ứng cử viên (trừ khi được ép gán qua presetAssignments).
-function fairDistribute(items, load, presetAssignments = {}, eligibleProfiles = getEligibleAssignees()) {
+function fairDistribute(items, load, presetAssignments = {}, eligibleProfiles = []) {
   const runningLoad = { ...load };
   const sorted = [...items].sort((a, b) => b.points - a.points);
   const candidates = eligibleProfiles.length > 0 ? eligibleProfiles : STATE.profiles;
@@ -116,7 +127,7 @@ function fairDistribute(items, load, presetAssignments = {}, eligibleProfiles = 
 
 // ---------------- Gợi ý từ AI (qua Edge Function proxy) ----------------
 
-async function askAIForAssignment(items, load) {
+async function askAIForAssignment(items, load, eligibleProfiles) {
   if (typeof SUPABASE_URL !== "string" || !SUPABASE_URL) return null;
   const endpoint = `${SUPABASE_URL}/functions/v1/ai-assign-tasks`;
 
@@ -135,7 +146,7 @@ async function askAIForAssignment(items, load) {
       },
       body: JSON.stringify({
         tasks: items,
-        members: getEligibleAssignees().map((p) => ({ id: p.id, name: p.name })),
+        members: eligibleProfiles.map((p) => ({ id: p.id, name: p.name })),
         current_load: load,
       }),
     });
@@ -146,7 +157,7 @@ async function askAIForAssignment(items, load) {
 
     const byTitle = {};
     const reasons = {};
-    const eligibleIds = new Set(getEligibleAssignees().map((p) => p.id));
+    const eligibleIds = new Set(eligibleProfiles.map((p) => p.id));
     result.assignments.forEach((a) => {
       if (!a || !a.title) return;
       const validMember = eligibleIds.has(a.assigned_to);
@@ -208,6 +219,10 @@ async function runDistribution(mode) {
   }
 
   const load = await computeCurrentLoad();
+  const eligible = await getEligibleAssignees();
+  const excludedByClass = (STATE.profiles || []).filter(
+    (p) => !p.is_away && !eligible.some((e) => e.id === p.id)
+  );
 
   if (mode === "ai") {
     const aiBtn = document.getElementById("aa-ai-btn");
@@ -215,7 +230,7 @@ async function runDistribution(mode) {
     aiBtn.textContent = "Đang hỏi AI...";
     aiBtn.disabled = true;
 
-    const aiMap = await askAIForAssignment(items, load);
+    const aiMap = await askAIForAssignment(items, load, eligible);
     aiBtn.textContent = oldLabel;
     aiBtn.disabled = false;
 
@@ -223,12 +238,26 @@ async function runDistribution(mode) {
       alert(
         "Chưa gọi được AI (có thể Edge Function chưa được triển khai). Đã tự động dùng thuật toán chia công bằng thay thế."
       );
-      aaPreviewItems = fairDistribute(items, load);
+      aaPreviewItems = fairDistribute(items, load, {}, eligible);
     } else {
-      aaPreviewItems = fairDistribute(items, load, aiMap);
+      aaPreviewItems = fairDistribute(items, load, aiMap, eligible);
     }
   } else {
-    aaPreviewItems = fairDistribute(items, load);
+    aaPreviewItems = fairDistribute(items, load, {}, eligible);
+  }
+
+  const noteEl = document.getElementById("aa-class-note");
+  if (noteEl) {
+    if (excludedByClass.length > 0) {
+      noteEl.style.display = "block";
+      noteEl.textContent =
+        "📚 Đã tạm né giao việc cho: " +
+        excludedByClass.map((p) => p.name).join(", ") +
+        " (đang trong giờ học).";
+    } else {
+      noteEl.style.display = "none";
+      noteEl.textContent = "";
+    }
   }
 
   renderPreview();

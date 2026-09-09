@@ -172,6 +172,7 @@
 
           <div id="aa-preview" style="display:none; margin-top:18px;">
             <h3 style="font-size:14px; margin-bottom:10px;">Xem trước — sửa người làm nếu cần</h3>
+            <p id="aa-class-note" style="font-size:12px;color:var(--ink-faint);margin:0 0 10px;display:none;"></p>
             <div id="aa-preview-list" class="task-list"></div>
             <div class="btn-row" style="margin-top:14px;">
               <button class="btn btn-primary btn-sm" id="aa-confirm-btn">✅ Tạo tất cả việc</button>
@@ -300,12 +301,22 @@
               <select id="st-university">
                 <option value="">— Không đi học —</option>
                 <option value="PTIT">PTIT</option>
-                <option value="HUCE">HUCE</option>
-                <option value="HUST">HUST</option>
+                <option value="HUCE">HUCE — Đại học Xây dựng Hà Nội</option>
+                <option value="HUST">HUST — Kíp học thứ 3</option>
               </select>
               <p style="font-size:12px;color:var(--ink-faint);margin:6px 0 0;">
                 Dùng để hệ thống tự tính giờ học và giờ bận theo đúng khung tiết của trường bạn.
               </p>
+            </div>
+            <div class="field" id="st-class-schedule-wrap" style="display:none;">
+              <label>Lịch học trong tuần</label>
+              <p style="font-size:12px;color:var(--ink-faint);margin:0 0 8px;">
+                Tick các tiết bạn có lịch học. Hệ thống sẽ tự tính giờ bận (gồm cả thời gian chuẩn bị + di chuyển)
+                cho từng ngày, và tránh giao việc vào lúc bạn đang bận này.
+              </p>
+              <div id="st-class-grid"><p class="empty-state">Chọn trường trước đã.</p></div>
+              <button type="button" class="btn btn-ghost btn-sm" id="st-class-save" style="margin-top:10px;">Lưu lịch học</button>
+              <p id="st-class-status" style="font-size:12px;color:var(--ink-faint);margin:6px 0 0;"></p>
             </div>
             <div class="field">
               <label for="st-household">Tên nhà</label>
@@ -357,6 +368,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/class-schedule.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/rotations.js"></script>
 <script src="js/notifications.js"></script>
