@@ -33,10 +33,14 @@ function formatDateShort(dateStr) {
 }
 
 function todayStr() {
-  const d = new Date();
-  const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60000);
-  return local.toISOString().slice(0, 10);
+  // Ngày nghiệp vụ của TTBK đổi lúc 03:00 theo giờ Việt Nam.
+  const businessTime = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(businessTime);
 }
 
 // Số ngày đã trễ so với hạn (0 nếu chưa tới hạn hoặc chưa có hạn).
