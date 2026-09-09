@@ -5,12 +5,16 @@
 // mà là: đệm chuẩn bị/di chuyển trước + giờ học + đệm về nhà/nghỉ sau.
 // Toàn bộ khoảng từ tiết sớm nhất -> tiết muộn nhất trong ngày được coi
 // là 1 "vùng bận" liền mạch (kể cả nếu giữa các tiết có tiết trống).
+//
+// LƯU Ý: lịch học không lặp cố định theo thứ mỗi tuần (lịch thật đổi theo
+// tuần thực tế), nên user_class_schedule lưu theo NGÀY CỤ THỂ (class_date),
+// không phải theo day_of_week. Người dùng cập nhật theo từng tuần ở trang
+// "Lịch" (xem phần renderClassScheduleCard trong schedule.js).
 // ============================================================
 
 const CLASS_BUFFER_BEFORE_MIN = 20; // chuẩn bị + di chuyển tới trường
 const CLASS_BUFFER_AFTER_MIN = 30;  // di chuyển về nhà + nghỉ sau khi tan học
 
-const CLASS_GRID_DAYS = [1, 2, 3, 4, 5, 6, 0]; // Thứ 2 -> Chủ nhật (0 = CN theo Date.getDay())
 const CLASS_WEEKDAY_SHORT = { 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 0: "CN" };
 
 let CLASS_PERIODS_CACHE = {}; // university -> [{period_number, start_time, end_time}]
@@ -62,15 +66,38 @@ function classMinutesToTime(mins) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+// "YYYY-MM-DD" theo giờ địa phương (không dùng toISOString vì lệch múi giờ)
+function classDateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Mảng 7 Date (Thứ 2 -> Chủ nhật) của tuần chứa anchorDate
+function getWeekDates(anchorDate) {
+  const d = new Date(anchorDate);
+  d.setHours(0, 0, 0, 0);
+  const dow = d.getDay(); // 0 = CN .. 6 = T7
+  const diffToMonday = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  return Array.from({ length: 7 }, (_, i) => {
+    const dt = new Date(monday);
+    dt.setDate(monday.getDate() + i);
+    return dt;
+  });
+}
+
 // Tính "vùng bận do học" của 1 người trong 1 ngày cụ thể (Date object).
 // Trả về {start, end, classStart, classEnd, university} hoặc null nếu hôm đó không có lịch học.
 async function computeClassBusyZone(userId, dateObj) {
   const profile = findProfile(STATE.profiles, userId);
   if (!profile || !profile.university) return null;
 
-  const dayOfWeek = dateObj.getDay();
+  const dateKey = classDateKey(dateObj);
   const rows = await fetchUserClassSchedule(userId);
-  const todayRows = rows.filter((r) => r.day_of_week === dayOfWeek && r.university === profile.university);
+  const todayRows = rows.filter((r) => r.class_date === dateKey && r.university === profile.university);
   if (todayRows.length === 0) return null;
 
   const periods = await fetchClassPeriods(profile.university);

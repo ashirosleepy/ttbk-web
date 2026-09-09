@@ -276,6 +276,176 @@ function bindScheduleEvents() {
   }
 }
 
+// ============================================================
+// LỊCH HỌC — theo tuần thực tế (không lặp cố định theo thứ)
+// ============================================================
+
+let clsWeekAnchor = new Date();
+
+function classWeekLabel(weekDates) {
+  const fmt = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const first = weekDates[0];
+  const last = weekDates[6];
+  return `${fmt(first)} - ${fmt(last)}/${last.getFullYear()}`;
+}
+
+async function renderClassScheduleCard() {
+  const gridEl = document.getElementById("cls-grid");
+  const labelEl = document.getElementById("cls-week-label");
+  if (!gridEl || !labelEl) return;
+
+  const weekDates = getWeekDates(clsWeekAnchor);
+  labelEl.textContent = classWeekLabel(weekDates);
+
+  const university = STATE.me?.university;
+  if (!university) {
+    gridEl.innerHTML = `<p class="empty-state">Chưa chọn trường học — vào mục Cài đặt để chọn trước.</p>`;
+    return;
+  }
+
+  gridEl.innerHTML = `<p class="empty-state">Đang tải khung tiết...</p>`;
+  const periods = await fetchClassPeriods(university);
+  if (periods.length === 0) {
+    gridEl.innerHTML = `<p class="empty-state">Chưa có dữ liệu khung tiết cho trường này.</p>`;
+    return;
+  }
+
+  const rows = await fetchUserClassSchedule(STATE.me.id, { fresh: true });
+  const weekKeys = weekDates.map(classDateKey);
+  const ticks = new Set(
+    rows
+      .filter((r) => r.university === university && weekKeys.includes(r.class_date))
+      .map((r) => `${r.class_date}-${r.period_number}`)
+  );
+
+  const header = `<tr><th style="text-align:left;padding:4px 8px;">Tiết</th>${weekDates
+    .map(
+      (d) =>
+        `<th style="padding:4px 8px;">${CLASS_WEEKDAY_SHORT[d.getDay()]}<br><span style="font-weight:400;font-size:11px;">${String(
+          d.getDate()
+        ).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}</span></th>`
+    )
+    .join("")}</tr>`;
+
+  const bodyRows = periods
+    .map((p) => {
+      const timeLabel = `${p.start_time.slice(0, 5)}-${p.end_time.slice(0, 5)}`;
+      const cells = weekDates
+        .map((d) => {
+          const dateKey = classDateKey(d);
+          const key = `${dateKey}-${p.period_number}`;
+          const checked = ticks.has(key) ? "checked" : "";
+          return `<td style="text-align:center;padding:4px 8px;"><input type="checkbox" data-date="${dateKey}" data-period="${p.period_number}" ${checked} /></td>`;
+        })
+        .join("");
+      return `<tr><td style="padding:4px 8px;white-space:nowrap;">Tiết ${p.period_number}<br><span style="font-size:11px;color:var(--ink-faint);">${timeLabel}</span></td>${cells}</tr>`;
+    })
+    .join("");
+
+  gridEl.innerHTML = `<table class="class-schedule-table" style="width:100%;border-collapse:collapse;font-size:13px;">${header}${bodyRows}</table>`;
+}
+
+async function saveClassScheduleWeek() {
+  const university = STATE.me?.university;
+  const statusEl = document.getElementById("cls-status");
+  const saveBtn = document.getElementById("cls-save");
+  if (!university) return;
+
+  const weekDates = getWeekDates(clsWeekAnchor);
+  const weekKeys = weekDates.map(classDateKey);
+
+  const ticked = Array.from(document.querySelectorAll("#cls-grid input[type=checkbox]:checked")).map((cb) => ({
+    user_id: STATE.me.id,
+    university,
+    class_date: cb.dataset.date,
+    period_number: Number(cb.dataset.period),
+  }));
+
+  if (saveBtn) saveBtn.disabled = true;
+  if (statusEl) statusEl.textContent = "Đang lưu...";
+
+  // Chỉ xoá + ghi lại đúng các ngày trong tuần đang sửa, không đụng tới tuần khác.
+  const { error: delErr } = await supabaseClient
+    .from("user_class_schedule")
+    .delete()
+    .eq("user_id", STATE.me.id)
+    .eq("university", university)
+    .in("class_date", weekKeys);
+  if (delErr) {
+    if (saveBtn) saveBtn.disabled = false;
+    if (statusEl) statusEl.textContent = "";
+    return alert("Lỗi: " + delErr.message);
+  }
+
+  if (ticked.length > 0) {
+    const { error: insErr } = await supabaseClient.from("user_class_schedule").insert(ticked);
+    if (insErr) {
+      if (saveBtn) saveBtn.disabled = false;
+      if (statusEl) statusEl.textContent = "";
+      return alert("Lỗi: " + insErr.message);
+    }
+  }
+
+  invalidateUserClassScheduleCache(STATE.me.id);
+  if (saveBtn) saveBtn.disabled = false;
+  if (statusEl) statusEl.textContent = "Đã lưu lịch học tuần này.";
+}
+
+// Chép các tiết đã tick của tuần trước sang đúng cùng thứ của tuần đang xem
+// (chỉ tick lên lưới hiện tại — vẫn phải bấm "Lưu lịch học tuần này" để ghi lại).
+async function copyClassScheduleFromPrevWeek() {
+  const university = STATE.me?.university;
+  const statusEl = document.getElementById("cls-status");
+  if (!university) return;
+
+  const thisWeek = getWeekDates(clsWeekAnchor);
+  const prevAnchor = new Date(clsWeekAnchor);
+  prevAnchor.setDate(prevAnchor.getDate() - 7);
+  const prevWeek = getWeekDates(prevAnchor);
+  const prevKeys = prevWeek.map(classDateKey);
+
+  const rows = await fetchUserClassSchedule(STATE.me.id, { fresh: true });
+  const prevTicks = rows.filter((r) => r.university === university && prevKeys.includes(r.class_date));
+
+  if (prevTicks.length === 0) {
+    if (statusEl) statusEl.textContent = "Tuần trước chưa có lịch học nào để sao chép.";
+    return;
+  }
+
+  prevWeek.forEach((prevDate, idx) => {
+    const prevKey = classDateKey(prevDate);
+    const periodsThatDay = prevTicks.filter((r) => r.class_date === prevKey).map((r) => r.period_number);
+    const targetKey = classDateKey(thisWeek[idx]);
+    periodsThatDay.forEach((periodNum) => {
+      const cb = document.querySelector(`#cls-grid input[data-date="${targetKey}"][data-period="${periodNum}"]`);
+      if (cb) cb.checked = true;
+    });
+  });
+
+  if (statusEl) statusEl.textContent = "Đã điền theo tuần trước — bấm \"Lưu lịch học tuần này\" để ghi lại.";
+}
+
+function bindClassScheduleEvents() {
+  const prevBtn = document.getElementById("cls-week-prev");
+  if (!prevBtn || prevBtn.dataset.bound) return;
+  prevBtn.dataset.bound = "1";
+
+  prevBtn.addEventListener("click", () => {
+    clsWeekAnchor.setDate(clsWeekAnchor.getDate() - 7);
+    renderClassScheduleCard();
+  });
+  document.getElementById("cls-week-next").addEventListener("click", () => {
+    clsWeekAnchor.setDate(clsWeekAnchor.getDate() + 7);
+    renderClassScheduleCard();
+  });
+  document.getElementById("cls-week-today").addEventListener("click", () => {
+    clsWeekAnchor = new Date();
+    renderClassScheduleCard();
+  });
+  document.getElementById("cls-save").addEventListener("click", saveClassScheduleWeek);
+  document.getElementById("cls-copy-prev").addEventListener("click", copyClassScheduleFromPrevWeek);
+}
+
 async function loadScheduleSection() {
   const assignedSelect = document.getElementById("sc-assigned");
   if (assignedSelect) {
@@ -286,7 +456,9 @@ async function loadScheduleSection() {
   await refreshScheduleRotationOptions();
   if (document.getElementById("sc-assign-mode")) toggleAssignModeUI();
   bindScheduleEvents();
+  bindClassScheduleEvents();
   await renderScheduleView();
+  await renderClassScheduleCard();
   await loadRotationAdmin();
   await loadMonthCalendar();
 }

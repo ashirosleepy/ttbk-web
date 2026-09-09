@@ -188,99 +188,6 @@ function openAvatarCropper(file) {
   });
 }
 
-// ---- Lưới chọn tiết học trong tuần (theo trường đã chọn ở "Trường học") ----
-
-async function renderClassScheduleBlock() {
-  const wrap = document.getElementById("st-class-schedule-wrap");
-  const gridEl = document.getElementById("st-class-grid");
-  const statusEl = document.getElementById("st-class-status");
-  if (!wrap || !gridEl) return;
-  if (statusEl) statusEl.textContent = "";
-
-  const university = document.getElementById("st-university").value;
-  if (!university) {
-    wrap.style.display = "none";
-    return;
-  }
-  wrap.style.display = "block";
-  gridEl.innerHTML = `<p class="empty-state">Đang tải khung tiết...</p>`;
-
-  const periods = await fetchClassPeriods(university);
-  if (periods.length === 0) {
-    gridEl.innerHTML = `<p class="empty-state">Chưa có dữ liệu khung tiết cho trường này.</p>`;
-    return;
-  }
-
-  const existingRows = await fetchUserClassSchedule(STATE.me.id, { fresh: true });
-  const ticks = new Set(
-    existingRows
-      .filter((r) => r.university === university)
-      .map((r) => `${r.day_of_week}-${r.period_number}`)
-  );
-
-  const header = `<tr><th style="text-align:left;padding:4px 8px;">Tiết</th>${CLASS_GRID_DAYS.map(
-    (d) => `<th style="padding:4px 8px;">${CLASS_WEEKDAY_SHORT[d]}</th>`
-  ).join("")}</tr>`;
-
-  const rows = periods
-    .map((p) => {
-      const timeLabel = `${p.start_time.slice(0, 5)}-${p.end_time.slice(0, 5)}`;
-      const cells = CLASS_GRID_DAYS.map((d) => {
-        const key = `${d}-${p.period_number}`;
-        const checked = ticks.has(key) ? "checked" : "";
-        return `<td style="text-align:center;padding:4px 8px;"><input type="checkbox" data-day="${d}" data-period="${p.period_number}" ${checked} /></td>`;
-      }).join("");
-      return `<tr><td style="padding:4px 8px;white-space:nowrap;">Tiết ${p.period_number}<br><span style="font-size:11px;color:var(--ink-faint);">${timeLabel}</span></td>${cells}</tr>`;
-    })
-    .join("");
-
-  gridEl.innerHTML = `<table class="class-schedule-table" style="width:100%;border-collapse:collapse;font-size:13px;">${header}${rows}</table>`;
-}
-
-async function saveClassSchedule() {
-  const university = document.getElementById("st-university").value;
-  const statusEl = document.getElementById("st-class-status");
-  const saveBtn = document.getElementById("st-class-save");
-  if (!university) return;
-
-  const ticked = Array.from(
-    document.querySelectorAll("#st-class-grid input[type=checkbox]:checked")
-  ).map((cb) => ({
-    user_id: STATE.me.id,
-    day_of_week: Number(cb.dataset.day),
-    period_number: Number(cb.dataset.period),
-    university,
-  }));
-
-  if (saveBtn) saveBtn.disabled = true;
-  if (statusEl) statusEl.textContent = "Đang lưu...";
-
-  // Xoá hết lịch cũ của trường này rồi ghi lại toàn bộ — đơn giản, tránh phải diff từng ô.
-  const { error: delErr } = await supabaseClient
-    .from("user_class_schedule")
-    .delete()
-    .eq("user_id", STATE.me.id)
-    .eq("university", university);
-  if (delErr) {
-    if (saveBtn) saveBtn.disabled = false;
-    if (statusEl) statusEl.textContent = "";
-    return alert("Lỗi: " + delErr.message);
-  }
-
-  if (ticked.length > 0) {
-    const { error: insErr } = await supabaseClient.from("user_class_schedule").insert(ticked);
-    if (insErr) {
-      if (saveBtn) saveBtn.disabled = false;
-      if (statusEl) statusEl.textContent = "";
-      return alert("Lỗi: " + insErr.message);
-    }
-  }
-
-  invalidateUserClassScheduleCache(STATE.me.id);
-  if (saveBtn) saveBtn.disabled = false;
-  if (statusEl) statusEl.textContent = "Đã lưu lịch học.";
-}
-
 function renderColorPicker() {
   const wrap = document.getElementById("st-colors");
   wrap.innerHTML = AVATAR_COLORS.map(
@@ -397,18 +304,6 @@ function bindSettingsEvents() {
     });
   }
 
-  const universitySel = document.getElementById("st-university");
-  if (universitySel && !universitySel.dataset.bound) {
-    universitySel.dataset.bound = "1";
-    universitySel.addEventListener("change", renderClassScheduleBlock);
-  }
-
-  const classSaveBtn = document.getElementById("st-class-save");
-  if (classSaveBtn && !classSaveBtn.dataset.bound) {
-    classSaveBtn.dataset.bound = "1";
-    classSaveBtn.addEventListener("click", saveClassSchedule);
-  }
-
   const saveBtn = document.getElementById("save-settings");
   if (!saveBtn.dataset.bound) {
     saveBtn.dataset.bound = "1";
@@ -493,7 +388,6 @@ async function loadSettingsSection() {
   document.getElementById("st-household").value = STATE.me.household || "Nhà TTBK";
   const universityEl = document.getElementById("st-university");
   if (universityEl) universityEl.value = STATE.me.university || "";
-  await renderClassScheduleBlock();
   renderColorPicker();
   renderAvatarPreview();
 
