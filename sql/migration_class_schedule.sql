@@ -95,19 +95,22 @@ alter table class_periods enable row level security;
 alter table user_class_schedule enable row level security;
 
 -- Khung tiết là dữ liệu công khai, ai đăng nhập cũng đọc được
-create policy if not exists "class_periods_select_all"
+drop policy if exists "class_periods_select_all" on class_periods;
+create policy "class_periods_select_all"
   on class_periods for select
   to authenticated
   using (true);
 
 -- Lịch học cá nhân: mọi người trong nhà xem được của nhau (để tính vùng bận khi chia việc),
 -- nhưng chỉ tự sửa được lịch của chính mình.
-create policy if not exists "user_class_schedule_select_all"
+drop policy if exists "user_class_schedule_select_all" on user_class_schedule;
+create policy "user_class_schedule_select_all"
   on user_class_schedule for select
   to authenticated
   using (true);
 
-create policy if not exists "user_class_schedule_write_own"
+drop policy if exists "user_class_schedule_write_own" on user_class_schedule;
+create policy "user_class_schedule_write_own"
   on user_class_schedule for all
   to authenticated
   using (auth.uid() = user_id)
