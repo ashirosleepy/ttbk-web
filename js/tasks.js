@@ -386,11 +386,12 @@ async function renderTasksView() {
 
   const today = todayStr();
 
-  // Những hàng đợi đã có 1 việc thật cho hôm nay (vd vừa "xin chuyển việc")
-  // thì không hiện thẻ ảo "Đang tới lượt" nữa, tránh hiện trùng.
-  const activeRotationQueues = new Set(
+  // Một queue đã có task thật hôm nay thì không tạo thêm thẻ ảo. Điều này
+  // cũng áp dụng cho task đã hoàn thành: sau khi Tài hoàn thành, task đó
+  // vẫn là lịch sử của lượt hôm nay và không được sinh thêm bản sao cho Bách.
+  const rotationQueuesWithTodayTask = new Set(
     tasks
-      .filter((t) => t.rotation_queue_id && t.status !== "hoan_thanh" && t.status !== "bo_lo")
+      .filter((t) => t.rotation_queue_id && t.due_date === today)
       .map((t) => t.rotation_queue_id)
   );
 
@@ -422,7 +423,7 @@ async function renderTasksView() {
     .filter((t) => t.status === "hoan_thanh" && t.completed_at && new Date(t.completed_at).getTime() >= doneCutoffMs)
     .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
 
-  const rotationSectionHTML = renderRotationSectionHTML(rotations, activeRotationQueues, rotationPinned, queueMap);
+  const rotationSectionHTML = renderRotationSectionHTML(rotations, rotationQueuesWithTodayTask, rotationPinned, queueMap);
   const hasRotationTurn = rotationSectionHTML !== "";
 
   const sections = [];
