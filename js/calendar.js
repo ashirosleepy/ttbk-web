@@ -131,7 +131,8 @@ async function renderMonthCalendar() {
 
   const daysInMonth = calDaysInMonth(calViewYear, calViewMonth);
   const offset = calMondayOffset(calViewYear, calViewMonth);
-  const totalCells = Math.ceil((offset + daysInMonth) / 7) * 7;
+  // Giữ thêm 7 ngày sau cuối tháng để thấy trước lượt luân phiên ở tuần đầu tháng sau.
+  const totalCells = Math.ceil((offset + daysInMonth + 7) / 7) * 7;
 
   const firstCellDate = new Date(calViewYear, calViewMonth, 1 - offset);
   const rangeStart = calDateStrFromDate(firstCellDate);
@@ -177,9 +178,8 @@ async function renderMonthCalendar() {
           })
         )
         .join("");
-    } else if (!isOutside) {
-      // Chỉ chiếu việc tương lai cho các ngày thuộc đúng tháng đang xem,
-      // để không làm rối phần ngày mờ của tháng kế bên.
+    } else if (dStr > today) {
+      // Chiếu cả tuần đầu tháng sau để không mất lượt ngay sau cuối tháng.
       const dayFuture = futureByDate[dStr] || [];
       chipsHTML = dayFuture.map((f) => calChipHTML(f)).join("");
     }
