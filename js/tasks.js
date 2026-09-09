@@ -780,6 +780,20 @@ async function handoffTask(id) {
   const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
   if (error || !task) return alert("Không tìm thấy việc.");
 
+  // Không tạo lại lời mời, thông báo và nhật ký nếu người dùng bấm gửi lần nữa
+  // trong lúc các lời mời cũ vẫn còn đang mở.
+  const { data: openExchanges, error: openExchangeError } = await supabaseClient
+    .from("task_exchanges")
+    .select("id")
+    .eq("task_id", id)
+    .eq("from_user", STATE.me.id)
+    .eq("status", "open")
+    .limit(1);
+  if (!openExchangeError && openExchanges?.length) {
+    alert("Việc này đã được gửi yêu cầu đổi việc. Hãy chờ mọi người phản hồi.");
+    return;
+  }
+
   const reason = prompt("Lý do (không bắt buộc):", "Bận việc khác") || "";
   let others = (STATE.profiles || []).filter((p) => p.id !== STATE.me.id && p.id !== task.assigned_to && !p.is_away);
   if (others.length === 0) {
@@ -834,11 +848,15 @@ async function handoffTask(id) {
 
     if (!exErr && exch) {
       createdExchangeIds.push(exch.id);
-      await createNotification(p.id, `🔄 ${STATE.me.name} muốn đổi việc "${task.title}". Ai nhận giúp?`, {
+      await createNotification(
+        p.id,
+        `🔄 ${STATE.me.name} báo bận${actingFor} và xin đổi việc "${task.title}"${reason ? " — " + reason : ""}`,
+        {
         type: "xin_doi",
         taskId: id,
         exchangeId: exch.id,
-      });
+        }
+      );
     }
   }
 
