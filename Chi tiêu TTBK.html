@@ -119,6 +119,16 @@
     html[data-theme="dark"] .top-controls button[style],
     html[data-theme="dark"] button[style*="background-color"] { color: #fff; }
 
+    /* Công tắc riêng của trang Chi tiêu: trượt theo chiều dọc */
+    .theme-toggle-wrap .theme-switch-track {
+      display: block;
+      width: 27px;
+      height: 50px;
+      box-sizing: border-box;
+    }
+    .theme-toggle-wrap .theme-switch-thumb { transform: translateY(0); }
+    html[data-theme="dark"] .theme-toggle-wrap .theme-switch-thumb { transform: translateY(23px); }
+
     /* Hide on print/pdf */
     @media print {
       .no-print { display: none !important; }
