@@ -562,8 +562,14 @@ async function handleCompleteAutoRotation(queueId) {
       await distributeAwayShadowPoints(task.id, queue.points);
     }
 
-    // Ghi lịch sử
-    await logHistory(task.id, STATE.me.id, "hoan_thanh", `${STATE.me.name} đã làm xong việc luân phiên: ${queue.label}`);
+    // Ghi lịch sử: holder là người được giao, STATE.me là người thực tế bấm hoàn thành.
+    const actingFor = holder.id !== STATE.me.id ? ` hộ ${holder.name}` : "";
+    await logHistory(
+      task.id,
+      STATE.me.id,
+      "hoan_thanh",
+      `${STATE.me.name} đánh dấu hoàn thành${actingFor} việc luân phiên: ${queue.label}`
+    );
 
     // Tự động tăng current_index lên người tiếp theo
     const nextIndex = (queue.current_index + 1) % queue.member_order.length;
