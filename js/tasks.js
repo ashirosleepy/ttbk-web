@@ -386,12 +386,11 @@ async function renderTasksView() {
 
   const today = todayStr();
 
-  // Một queue đã có task thật hôm nay thì không tạo thêm thẻ ảo. Điều này
-  // cũng áp dụng cho task đã hoàn thành: sau khi Tài hoàn thành, task đó
-  // vẫn là lịch sử của lượt hôm nay và không được sinh thêm bản sao cho Bách.
-  const rotationQueuesWithTodayTask = new Set(
+  // Queue có task thật đang mở hôm nay thì không tạo thêm thẻ ảo, tránh
+  // hiển thị song song task thật và lượt ảo của cùng một queue.
+  const activeRotationQueues = new Set(
     tasks
-      .filter((t) => t.rotation_queue_id && t.due_date === today)
+      .filter((t) => t.rotation_queue_id && t.due_date === today && t.status !== "hoan_thanh" && t.status !== "bo_lo")
       .map((t) => t.rotation_queue_id)
   );
 
@@ -420,10 +419,10 @@ async function renderTasksView() {
   // Hoàn thành gần đây: gồm cả việc thường lẫn việc luân phiên đã xong, mới nhất lên trước.
   const doneCutoffMs = Date.now() - RECENT_DONE_DAYS * 86400000;
   const recentDone = filteredTasks
-    .filter((t) => t.status === "hoan_thanh" && t.completed_at && new Date(t.completed_at).getTime() >= doneCutoffMs)
+    .filter((t) => !t.rotation_queue_id && t.status === "hoan_thanh" && t.completed_at && new Date(t.completed_at).getTime() >= doneCutoffMs)
     .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
 
-  const rotationSectionHTML = renderRotationSectionHTML(rotations, rotationQueuesWithTodayTask, rotationPinned, queueMap);
+  const rotationSectionHTML = renderRotationSectionHTML(rotations, activeRotationQueues, rotationPinned, queueMap);
   const hasRotationTurn = rotationSectionHTML !== "";
 
   const sections = [];
