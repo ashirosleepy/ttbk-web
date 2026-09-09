@@ -776,7 +776,17 @@ async function changeDueDate(id, newDate) {
   refreshActiveView();
 }
 
-async function handoffTask(id) {
+const handoffRequests = new Map();
+
+function handoffTask(id) {
+  if (handoffRequests.has(id)) return handoffRequests.get(id);
+
+  const request = handoffTaskInternal(id).finally(() => handoffRequests.delete(id));
+  handoffRequests.set(id, request);
+  return request;
+}
+
+async function handoffTaskInternal(id) {
   const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
   if (error || !task) return alert("Không tìm thấy việc.");
 
@@ -852,9 +862,9 @@ async function handoffTask(id) {
         p.id,
         `🔄 ${STATE.me.name} báo bận${actingFor} và xin đổi việc "${task.title}"${reason ? " — " + reason : ""}`,
         {
-        type: "xin_doi",
-        taskId: id,
-        exchangeId: exch.id,
+          type: "xin_doi",
+          taskId: id,
+          exchangeId: exch.id,
         }
       );
     }
