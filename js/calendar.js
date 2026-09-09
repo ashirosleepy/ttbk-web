@@ -112,7 +112,7 @@ function calChipHTML(item) {
   let cls = "cal-chip-future";
   if (!item.projected) {
     if (item.status === "hoan_thanh") cls = "cal-chip-done";
-    else if (item.status === "bo_lo" || item.missedByDate) cls = "cal-chip-missed";
+    else if (item.status === "bo_lo") cls = "cal-chip-missed";
     else cls = "cal-chip-todo";
   }
 
