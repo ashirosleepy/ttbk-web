@@ -62,7 +62,7 @@ async function fetchTasksInRange(startStr, endStr) {
 
 // Chiếu (dự kiến) các lịch lặp lại vào những ngày TƯƠNG LAI trong khoảng xem.
 // Trả về map: "YYYY-MM-DD" -> [{ title, assigneeId, points, projected: true }]
-function projectFutureOccurrences(schedules, queues, startStr, endStr, todayStr_) {
+function projectFutureOccurrences(schedules, queues, startStr, endStr, todayStr_, existingTasks = []) {
   const queueMap = Object.fromEntries(queues.map((q) => [q.id, q]));
   // Số bước đã dịch chuyển của mỗi hàng đợi, tính từ hôm nay tới ngày đang xét
   const queueStep = {};
@@ -96,6 +96,41 @@ function projectFutureOccurrences(schedules, queues, startStr, endStr, todayStr_
         title: s.title,
         assigneeId,
         points: s.points,
+        projected: true,
+      });
+    });
+  }
+
+  // Nếu lịch gốc đã bị xoá nhưng các task luân phiên đã tạo vẫn còn,
+  // dùng các thứ trong tuần của task cũ để không làm mất dự báo tương lai.
+  const scheduledQueueIds = new Set(schedules.filter((s) => s.rotation_queue_id).map((s) => s.rotation_queue_id));
+  const inferredByQueue = {};
+  existingTasks
+    .filter((task) => task.rotation_queue_id && task.due_date <= todayStr_)
+    .forEach((task) => {
+      if (scheduledQueueIds.has(task.rotation_queue_id)) return;
+      const date = new Date(task.due_date + "T00:00:00");
+      if (!inferredByQueue[task.rotation_queue_id]) inferredByQueue[task.rotation_queue_id] = new Set();
+      inferredByQueue[task.rotation_queue_id].add(date.getDay());
+    });
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const dStr = calDateStrFromDate(d);
+    if (dStr <= todayStr_) continue;
+
+    Object.entries(inferredByQueue).forEach(([queueId, weekdays]) => {
+      if (!weekdays.has(d.getDay())) return;
+      const queue = queueMap[queueId];
+      if (!queue || !Array.isArray(queue.member_order) || queue.member_order.length === 0) return;
+      const n = queue.member_order.length;
+      const step = queueStep[queueId] || 0;
+      const assigneeId = queue.member_order[(queue.current_index + step) % n];
+      queueStep[queueId] = step + 1;
+      if (!occurrencesByDate[dStr]) occurrencesByDate[dStr] = [];
+      occurrencesByDate[dStr].push({
+        title: queue.label,
+        assigneeId,
+        points: queue.points,
         projected: true,
       });
     });
@@ -152,7 +187,7 @@ async function renderMonthCalendar() {
     tasksByDate[t.due_date].push(t);
   });
 
-  const futureByDate = projectFutureOccurrences(schedules, queues, rangeStart, rangeEnd, today);
+  const futureByDate = projectFutureOccurrences(schedules, queues, rangeStart, rangeEnd, today, tasks);
 
   const weekdayHeader = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"]
     .map((d) => `<div class="cal-weekday">${d}</div>`)
