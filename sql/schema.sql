@@ -57,7 +57,7 @@ create table if not exists tasks (
 
 alter table tasks drop constraint if exists tasks_status_check;
 alter table tasks add constraint tasks_status_check
-  check (status in ('cho_nhan', 'chua_lam', 'dang_cho', 'hoan_thanh'));
+  check (status in ('cho_nhan', 'chua_lam', 'dang_cho', 'hoan_thanh', 'bo_lo', 'vo_chu'));
 
 alter table tasks add column if not exists rotation_queue_id uuid;
 alter table tasks drop constraint if exists tasks_rotation_queue_id_fkey;

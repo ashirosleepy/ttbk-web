@@ -480,6 +480,11 @@ async function toggleTaskDone(id) {
   const ticket = document.querySelector(`.task-ticket[data-id="${id}"]`);
   const isDone = ticket.classList.contains("done");
   const newStatus = isDone ? "chua_lam" : "hoan_thanh";
+  const currentTask = await supabaseClient.from("tasks").select("assigned_to, title").eq("id", id).single();
+  const assignedProfile = currentTask.data ? findProfile(STATE.profiles, currentTask.data.assigned_to) : null;
+  const actingFor = assignedProfile && assignedProfile.id !== STATE.me.id
+    ? ` hộ ${assignedProfile.name}`
+    : "";
 
   const { data, error } = await supabaseClient
     .from("tasks")
@@ -493,7 +498,9 @@ async function toggleTaskDone(id) {
     id,
     STATE.me.id,
     newStatus === "hoan_thanh" ? "hoan_thanh" : "mo_lai",
-    newStatus === "hoan_thanh" ? `${STATE.me.name} đánh dấu hoàn thành` : `${STATE.me.name} mở lại việc`
+    newStatus === "hoan_thanh"
+      ? `${STATE.me.name} đánh dấu hoàn thành${actingFor}`
+      : `${STATE.me.name} mở lại việc${actingFor}`
   );
 
   if (newStatus === "hoan_thanh") {
@@ -633,7 +640,7 @@ async function markTaskMissed(id) {
     id,
     STATE.me.id,
     "bo_viec",
-    `${STATE.me.name} đánh dấu "${task.title}" là không hoàn thành${penalty ? ` (trừ ${Math.abs(penalty)} điểm của ${assignee ? assignee.name : "?"})` : ""}.`
+    `${STATE.me.name} đánh dấu "${task.title}" là không hoàn thành${assignee && assignee.id !== STATE.me.id ? ` hộ ${assignee.name}` : ""}${penalty ? ` (trừ ${Math.abs(penalty)} điểm của ${assignee ? assignee.name : "?"})` : ""}.`
   );
   refreshActiveView();
 }
@@ -786,7 +793,9 @@ async function handoffTask(id) {
     return;
   }
 
-  await logHistory(id, STATE.me.id, "xin_doi", `${STATE.me.name} xin đổi việc "${task.title}"${reason ? " — " + reason : ""}`);
+  const assignee = findProfile(STATE.profiles, task.assigned_to);
+  const actingFor = assignee && assignee.id !== STATE.me.id ? ` hộ ${assignee.name}` : "";
+  await logHistory(id, STATE.me.id, "xin_doi", `${STATE.me.name} báo bận${actingFor} và xin đổi việc "${task.title}"${reason ? " — " + reason : ""}`);
 
   let frequencyMap = {};
   if (othersIds.length) {
