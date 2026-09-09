@@ -43,6 +43,16 @@ function todayStr() {
   }).format(businessTime);
 }
 
+function businessDateFromISO(isoString) {
+  const businessTime = new Date(new Date(isoString).getTime() - 3 * 60 * 60 * 1000);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(businessTime);
+}
+
 // Số ngày đã trễ so với hạn (0 nếu chưa tới hạn hoặc chưa có hạn).
 // referenceDateStr mặc định là hôm nay, có thể truyền ngày khác (vd ngày hoàn thành)
 // để tính "trễ N ngày so với hạn" ngay trên phiếu việc đã xong.

@@ -42,8 +42,7 @@ async function fetchRecentActivity(limit = 12) {
 function renderActivityLogGroup(rows) {
   const groups = {};
   rows.forEach((row) => {
-    const date = new Date(row.created_at);
-    const key = date.toISOString().slice(0, 10);
+    const key = businessDateFromISO(row.created_at);
     if (!groups[key]) groups[key] = [];
     groups[key].push(row);
   });
@@ -55,7 +54,9 @@ function renderActivityLogGroup(rows) {
       const dayRows = groups[dateKey].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       const dateObj = new Date(dateKey + "T00:00:00");
       const today = todayStr();
-      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const yesterdayDate = new Date(today + "T00:00:00");
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const yesterday = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, "0")}-${String(yesterdayDate.getDate()).padStart(2, "0")}`;
       let label = dateObj.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
       if (dateKey === today) label = "Hôm nay";
       else if (dateKey === yesterday) label = "Hôm qua";
@@ -69,7 +70,11 @@ function renderActivityLogGroup(rows) {
                 const actorName = row.actor ? escapeHTML(row.actor.name) : "Ai đó";
                 const taskName = escapeHTML(row.taskTitle || "công việc");
                 const detail = escapeHTML(row.detail || row.action || "Hoạt động");
-                const timeLabel = new Date(row.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+                const timeLabel = new Date(row.created_at).toLocaleTimeString("vi-VN", {
+                  timeZone: "Asia/Ho_Chi_Minh",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
                 return `
                   <div class="task-ticket" style="border-left-color:${row.actor?.avatar_color || "#ccc"}">
                     <div class="task-check" style="border:none; font-size:16px;">🕘</div>
