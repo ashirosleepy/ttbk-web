@@ -30,6 +30,43 @@ function setupNav() {
   document.getElementById("btn-logout").addEventListener("click", logout);
 }
 
+// Giai đoạn 2 — Thanh điều hướng dưới cùng trên di động: 4 mục hay dùng nhất
+// + nút "Menu" mở lại ngăn kéo đầy đủ (dùng chung hàm mở/đóng với nút ☰ cũ).
+function setupBottomNav() {
+  const bar = document.getElementById("bottom-nav");
+  if (!bar) return;
+  bar.querySelectorAll(".bn-item[data-section]").forEach((btn) => {
+    btn.addEventListener("click", () => loadSection(btn.dataset.section));
+  });
+  const moreBtn = document.getElementById("bn-more");
+  if (moreBtn) {
+    moreBtn.addEventListener("click", () => {
+      const sidebar = document.getElementById("sidebar");
+      const backdrop = document.getElementById("nav-backdrop");
+      if (!sidebar || !backdrop) return;
+      sidebar.classList.add("open");
+      backdrop.classList.add("show");
+    });
+  }
+
+  // Đồng bộ số thông báo/số món cần mua từ sidebar (thông báo đó do
+  // notifications.js / shopping.js tự cập nhật) sang huy hiệu ở thanh dưới.
+  mirrorBadge("notif-badge", "bn-notif-badge");
+  mirrorBadge("shop-nav-badge", "bn-shop-badge");
+}
+
+function mirrorBadge(sourceId, targetId) {
+  const source = document.getElementById(sourceId);
+  const target = document.getElementById(targetId);
+  if (!source || !target) return;
+  const sync = () => {
+    target.textContent = source.textContent;
+    target.style.display = source.style.display;
+  };
+  sync();
+  new MutationObserver(sync).observe(source, { characterData: true, childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+}
+
 // Menu ☰ trên di động: thay cho việc lướt ngang, bấm ☰ để hiện danh sách đầy đủ,
 // bấm vào 1 mục hoặc chạm ra ngoài (nền mờ) để tự đóng lại.
 function setupMobileMenu() {
@@ -56,6 +93,7 @@ function setupMobileMenu() {
 
 async function loadSection(name) {
   document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.section === name));
+  document.querySelectorAll(".bn-item[data-section]").forEach((b) => b.classList.toggle("active", b.dataset.section === name));
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === `section-${name}`));
   const loader = SECTION_LOADERS[name];
   if (loader) await loader();
@@ -96,9 +134,14 @@ async function init() {
   updateTopbar();
   setupNav();
   setupMobileMenu();
+  setupBottomNav();
   await generateTodayTasks(); // tự tạo việc của hôm nay từ các lịch lặp lại đang bật
   selectedUserId = STATE.me.id;
-  await loadSection("tasks");
+
+  // Mở đúng mục nếu được mở từ phím tắt PWA (VD: ?section=shopping)
+  const requestedSection = new URLSearchParams(location.search).get("section");
+  const validSection = requestedSection && SECTION_LOADERS[requestedSection] ? requestedSection : "tasks";
+  await loadSection(validSection);
   refreshNotifBadge(); // hiện số thông báo chưa đọc ngay trên thanh menu
   subscribeRealtime(); // tự cập nhật khi có ai đó thay đổi việc/thông báo
 }

@@ -426,7 +426,7 @@
       var qtyNeed = it.category === "phat_sinh" ? (it.qty || 1) : suggestedBuyQty(it);
       var placeTag = it.buyPlace ? (" · " + PLACE_LABEL[it.buyPlace]) : "";
       return (
-        '<div class="task-card shop-cart-row">' +
+        '<div class="task-card shop-cart-row" data-id="' + it.id + '">' +
           "<div><b>" + escapeHtml(it.name) + "</b> — cần khoảng " + fmtQty(qtyNeed) + " " + escapeHtml(it.unit || "") +
           '<div class="shop-note">' + CATEGORY_LABEL[it.category] + placeTag + "</div></div>" +
           '<div class="btn-row" style="margin:0;">' +
@@ -606,12 +606,14 @@
         it.cartPriority = suggestedPriority(it);
         renderAll();
         SHOP_DB.updateItem(id, { in_cart: true, cart_priority: it.cartPriority });
+        if (typeof showToast === "function") showToast("🛒 Đã thêm vào danh sách mua");
         break;
       }
       case "uncart": {
         it.inCart = false;
         renderAll();
         SHOP_DB.updateItem(id, { in_cart: false });
+        if (typeof showToast === "function") showToast("Đã bỏ khỏi danh sách mua");
         break;
       }
       case "edit":
@@ -622,6 +624,7 @@
           state.items = state.items.filter(function (x) { return x.id !== it.id; });
           renderAll();
           SHOP_DB.deleteItem(id);
+          if (typeof showToast === "function") showToast("🗑 Đã xoá \"" + it.name + "\"", "error");
         }
         break;
       case "buy":
@@ -682,6 +685,7 @@
       })
       .then(function (purchase) {
         if (purchase) { state.purchaseLog.unshift(purchase); renderAll(); }
+        if (typeof showToast === "function") showToast("✅ Đã ghi nhận mua \"" + it.name + "\"");
         if (cost && payerId) {
           return SHOP_DB.insertExpense({
             description: it.name, category: "shopping", amount: cost,
@@ -741,10 +745,12 @@
         min: data.min, ideal: data.ideal, cycle_days: data.cycleDays,
         expiry_date: data.expiryDate, buy_place: data.buyPlace, note: data.note || null
       });
+      if (typeof showToast === "function") showToast("Đã lưu \"" + data.name + "\"");
     } else {
       closeItemForm();
       SHOP_DB.insertItem(data).then(function (newItem) {
         if (newItem) { state.items.push(newItem); renderAll(); }
+        if (typeof showToast === "function") showToast("Đã thêm \"" + data.name + "\"");
       });
     }
   }
@@ -775,6 +781,7 @@
     closeAdhocForm();
     SHOP_DB.insertItem(data).then(function (newItem) {
       if (newItem) { state.items.push(newItem); switchShopTab("cart"); renderAll(); }
+      if (typeof showToast === "function") showToast("Đã thêm \"" + name + "\" vào danh sách mua");
     });
   }
 
@@ -805,6 +812,9 @@
     added.forEach(function (it) {
       SHOP_DB.updateItem(it.id, { in_cart: true, cart_priority: it.cartPriority });
     });
+    if (typeof showToast === "function") {
+      showToast(added.length ? ("🛒 Đã thêm " + added.length + " món vào danh sách mua") : "Không có món nào cần thêm");
+    }
   }
 
   /* ------------------------------------------------------------------ *
@@ -868,6 +878,18 @@
     document.getElementById("shop-items-grid").addEventListener("click", onGridClick);
     document.getElementById("shop-cart-list").addEventListener("click", onGridClick);
     document.getElementById("shop-replace-list").addEventListener("click", onGridClick);
+
+    // Giai đoạn 2 — vuốt phải để mở form "Đã mua", vuốt trái để bỏ khỏi
+    // danh sách mua, ngay trên từng dòng (chỉ hoạt động bằng cảm ứng).
+    if (typeof enableSwipeActions === "function") {
+      enableSwipeActions(document.getElementById("shop-cart-list"), {
+        itemSelector: ".shop-cart-row",
+        rightSelector: '[data-act="buy"]',
+        leftSelector: '[data-act="uncart"]',
+        rightLabel: "✅ Đã mua",
+        leftLabel: "✕ Bỏ khỏi ds",
+      });
+    }
 
     SHOP_DB.loadAll().then(function () {
       fillPayerSelect();
