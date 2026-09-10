@@ -206,3 +206,185 @@ async function fetchMemberPointsMap() {
 
   return map;
 }
+
+// ============================================================
+// GIAI ĐOẠN 3 — TOAST / SNACKBAR
+// Thông báo nhỏ mọc lên góc dưới màn hình khi thao tác xong,
+// thay cho việc chuyển trang hụt hẫng. Dùng: showToast("Đã lưu việc").
+// type: "success" (mặc định) | "error" | "info"
+// ============================================================
+function ensureToastHost() {
+  let host = document.getElementById("toast-host");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "toast-host";
+    host.className = "toast-host";
+    document.body.appendChild(host);
+  }
+  return host;
+}
+
+function showToast(message, type = "success", duration = 2600) {
+  if (!message) return;
+  const host = ensureToastHost();
+  const icon = type === "error" ? "⚠️" : type === "info" ? "ℹ️" : "✅";
+  const el = document.createElement("div");
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-msg"></span>`;
+  el.querySelector(".toast-msg").textContent = message;
+  host.appendChild(el);
+  // buộc reflow để animation vào chạy đúng
+  void el.offsetWidth;
+  el.classList.add("show");
+
+  const remove = () => {
+    el.classList.remove("show");
+    el.classList.add("hide");
+    setTimeout(() => el.remove(), 220);
+  };
+  el.addEventListener("click", remove);
+  setTimeout(remove, duration);
+}
+
+// ============================================================
+// GIAI ĐOẠN 3 — Ô TRỐNG (EMPTY STATE) THÂN THIỆN
+// Dùng: emptyStateHTML("🎉", "Hoàn thành mọi việc hôm nay!", "Nghỉ ngơi thôi")
+// ============================================================
+function emptyStateHTML(icon, title, sub = "") {
+  return `
+    <div class="empty-state-rich">
+      <div class="empty-state-icon">${icon}</div>
+      <div class="empty-state-title">${escapeHTML(title)}</div>
+      ${sub ? `<div class="empty-state-sub">${escapeHTML(sub)}</div>` : ""}
+    </div>`;
+}
+
+// ============================================================
+// GIAI ĐOẠN 3 — SKELETON LOADING
+// Dùng để thay chữ "Đang tải..." tĩnh trong index.html.
+// Sinh ra n khối xám nhấp nháy mờ, có thể dùng cho phiếu việc,
+// thẻ đồ dùng, hàng bảng... container CSS lo phần khung ngoài.
+// ============================================================
+function skeletonTicketsHTML(n = 3) {
+  let html = "";
+  for (let i = 0; i < n; i++) {
+    html += `
+      <div class="skeleton skeleton-ticket">
+        <div class="skeleton-circle"></div>
+        <div class="skeleton-lines">
+          <div class="skeleton-line" style="width:${55 + (i % 3) * 12}%"></div>
+          <div class="skeleton-line short" style="width:${30 + (i % 2) * 10}%"></div>
+        </div>
+      </div>`;
+  }
+  return html;
+}
+
+function skeletonCardsHTML(n = 4) {
+  let html = "";
+  for (let i = 0; i < n; i++) {
+    html += `
+      <div class="skeleton skeleton-card-block">
+        <div class="skeleton-line" style="width:70%"></div>
+        <div class="skeleton-line short" style="width:40%"></div>
+      </div>`;
+  }
+  return html;
+}
+
+// ============================================================
+// GIAI ĐOẠN 2 — VUỐT TRÁI/PHẢI (SWIPE ACTIONS) TRÊN DI ĐỘNG
+// Gắn 1 lần lên container (event delegation), tự nhận biết các thẻ
+// con khớp itemSelector và cho vuốt để kích hoạt nút hành động có sẵn
+// bên trong thẻ đó — không cần đổi cấu trúc dữ liệu hay render lại.
+//   enableSwipeActions(containerEl, {
+//     itemSelector: ".task-ticket",
+//     rightSelector: '[data-action="toggle"]',   // vuốt sang PHẢI
+//     leftSelector: '[data-action="miss"]',       // vuốt sang TRÁI
+//     rightLabel: "✓ Xong", leftLabel: "✕ Bỏ việc"
+//   });
+// Chỉ kích hoạt bằng cảm ứng (bỏ qua chuột) để không cấn thao tác kéo-thả khác.
+// ============================================================
+function enableSwipeActions(container, opts) {
+  if (!container || container.dataset.swipeBound) return;
+  container.dataset.swipeBound = "1";
+
+  const itemSelector = opts.itemSelector;
+  const rightSelector = opts.rightSelector || null;
+  const leftSelector = opts.leftSelector || null;
+  const rightLabel = opts.rightLabel || "✓";
+  const leftLabel = opts.leftLabel || "✕";
+  const THRESHOLD = 72;
+  const MAX_DRAG = 96;
+
+  let item = null, startX = 0, startY = 0, dx = 0, axis = null, dragging = false;
+
+  function setupBg(el) {
+    if (el.querySelector(":scope > .swipe-bg")) return;
+    el.classList.add("swipe-enabled");
+    const bg = document.createElement("div");
+    bg.className = "swipe-bg";
+    bg.innerHTML =
+      `<span class="swipe-bg-side swipe-bg-left">${leftSelector ? leftLabel : ""}</span>` +
+      `<span class="swipe-bg-side swipe-bg-right">${rightSelector ? rightLabel : ""}</span>`;
+    el.insertBefore(bg, el.firstChild);
+  }
+
+  function reset() {
+    if (item) {
+      item.classList.remove("swiping");
+      item.style.transform = "";
+      const bg = item.querySelector(":scope > .swipe-bg");
+      if (bg) bg.removeAttribute("data-dir");
+    }
+    item = null; dx = 0; axis = null; dragging = false;
+  }
+
+  container.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") return;
+    const el = e.target.closest(itemSelector);
+    if (!el || !container.contains(el)) return;
+    if (e.target.closest("button, select, input, a, textarea")) return;
+    item = el;
+    startX = e.clientX; startY = e.clientY; dx = 0; axis = null; dragging = false;
+    setupBg(item);
+  });
+
+  container.addEventListener("pointermove", (e) => {
+    if (!item) return;
+    const curDx = e.clientX - startX;
+    const curDy = e.clientY - startY;
+    if (axis === null) {
+      if (Math.abs(curDx) < 8 && Math.abs(curDy) < 8) return;
+      axis = Math.abs(curDx) > Math.abs(curDy) ? "x" : "y";
+      if (axis === "y") { item = null; return; }
+      dragging = true;
+      item.classList.add("swiping");
+    }
+    if (!dragging) return;
+    dx = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, curDx));
+    if (dx > 0 && !rightSelector) dx = 0;
+    if (dx < 0 && !leftSelector) dx = 0;
+    item.style.transform = `translateX(${dx}px)`;
+    const bg = item.querySelector(":scope > .swipe-bg");
+    if (bg) bg.setAttribute("data-dir", dx > 4 ? "right" : dx < -4 ? "left" : "");
+  });
+
+  function endDrag() {
+    if (!item) return;
+    const el = item;
+    const finalDx = dx;
+    el.classList.remove("swiping");
+    el.style.transform = "";
+    const bg = el.querySelector(":scope > .swipe-bg");
+    if (bg) bg.removeAttribute("data-dir");
+    if (dragging && Math.abs(finalDx) > THRESHOLD) {
+      const sel = finalDx > 0 ? rightSelector : leftSelector;
+      const btn = sel ? el.querySelector(sel) : null;
+      if (btn) btn.click();
+    }
+    item = null; dx = 0; axis = null; dragging = false;
+  }
+  container.addEventListener("pointerup", endDrag);
+  container.addEventListener("pointercancel", endDrag);
+}

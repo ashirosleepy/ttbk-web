@@ -1143,3 +1143,211 @@ html[data-theme="dark"] .theme-switch-thumb::before { content: "🌙"; }
 html.pg-fade { opacity: 0; }
 html.pg-fade.pg-ready { opacity: 1; transition: opacity .32s var(--ease); }
 html.pg-fade.pg-leave { opacity: 0 !important; transition: opacity .22s var(--ease) !important; }
+
+/* ==========================================================
+   NÂNG CẤP GIAO DIỆN — GIAI ĐOẠN 1-4 (xem roadmap UX/UI)
+   Toàn bộ phần dưới đây được THÊM MỚI, không sửa các rule ở trên,
+   để tận dụng thứ tự cascade (rule sau đè rule trước cùng độ ưu tiên).
+   ========================================================== */
+
+/* ---------------- Giai đoạn 1: vùng chạm tối thiểu 44x44px trên di động ---------------- */
+@media (max-width: 760px) {
+  .icon-btn { width: 44px; height: 44px; font-size: 16px; }
+  .task-check { width: 30px; height: 30px; }
+  .color-dot { width: 34px; height: 34px; }
+  .shop-tab-btn { min-height: 44px; }
+  .btn-hamburger { width: 44px; height: 44px; }
+  .calendar-detail-close { width: 44px; height: 44px; }
+}
+
+/* ---------------- Giai đoạn 3: Ô trống (empty state) thân thiện hơn ---------------- */
+.empty-state-rich {
+  text-align: center;
+  padding: 46px 20px;
+  color: var(--ink-faint);
+  animation: fadeIn .3s var(--ease);
+}
+.empty-state-icon { font-size: 40px; line-height: 1; margin-bottom: 10px; }
+.empty-state-title { font-size: 14.5px; font-weight: 700; color: var(--ink-soft); }
+.empty-state-sub { font-size: 12.5px; margin-top: 4px; }
+
+/* ---------------- Giai đoạn 3: Skeleton loading (thay cho chữ "Đang tải...") ---------------- */
+@keyframes skeleton-shimmer {
+  0% { background-position: -120% 0; }
+  100% { background-position: 220% 0; }
+}
+.skeleton-line, .skeleton-circle {
+  background: linear-gradient(90deg, var(--surface-soft) 25%, var(--border) 37%, var(--surface-soft) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-s);
+}
+.skeleton-ticket {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  padding: 13px 16px;
+  margin-bottom: 10px;
+}
+.skeleton-circle { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
+.skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.skeleton-line { height: 11px; }
+.skeleton-line.short { height: 9px; }
+.skeleton-card-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow-1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line, .skeleton-circle { animation: none; }
+}
+
+/* ---------------- Giai đoạn 3: Toast / Snackbar ---------------- */
+.toast-host {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+  width: min(92vw, 380px);
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink);
+  color: var(--bg);
+  padding: 11px 16px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-2);
+  font-size: 13.5px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(14px) scale(.96);
+  transition: opacity .2s var(--ease), transform .2s var(--ease);
+  cursor: pointer;
+  max-width: 100%;
+}
+.toast.show { opacity: 1; transform: translateY(0) scale(1); }
+.toast.hide { opacity: 0; transform: translateY(8px) scale(.97); }
+.toast-error { background: var(--missed); color: #fff; }
+.toast-info { background: var(--accent); color: var(--accent-ink); }
+.toast-icon { flex-shrink: 0; }
+.toast-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 760px) {
+  .toast-host { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { transition: opacity .01s linear; }
+}
+
+/* ---------------- Giai đoạn 2: Vuốt trái/phải (swipe) trên phiếu việc & đồ mua ---------------- */
+.swipe-enabled { position: relative; z-index: 0; touch-action: pan-y; }
+.swipe-enabled.swiping { transition: none; }
+.swipe-enabled:not(.swiping) { transition: transform .22s var(--ease); }
+.swipe-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  font-weight: 800;
+  font-size: 13.5px;
+  opacity: 0;
+  transition: opacity .15s var(--ease);
+  overflow: hidden;
+}
+.swipe-bg[data-dir] { opacity: 1; }
+.swipe-bg-left, .swipe-bg-right { position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; }
+.swipe-bg-left { color: var(--ok); }
+.swipe-bg-right { color: var(--missed); margin-left: auto; }
+.swipe-bg::before {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+}
+.swipe-bg[data-dir="right"]::before { background: var(--ok-soft); }
+.swipe-bg[data-dir="left"]::before { background: var(--missed-soft); }
+
+/* ---------------- Giai đoạn 2: Bottom Navigation (thanh điều hướng dưới, di động) ---------------- */
+.bottom-nav { display: none; }
+
+@media (max-width: 760px) {
+  /* Nút ☰ ở đầu trang không còn cần nữa — đã có nút "Menu" ở thanh dưới cùng */
+  .btn-hamburger { display: none !important; }
+
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 28;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    box-shadow: 0 -6px 20px rgba(var(--shadow-rgb), .10);
+  }
+  .bn-item {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 48px;
+    padding: 4px 2px;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    font-size: 10.5px;
+    font-weight: 700;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    transition: color .18s var(--ease), background .18s var(--ease), transform .1s var(--ease);
+  }
+  .bn-item:active { background: var(--surface-soft); transform: scale(.96); }
+  .bn-item.active { color: var(--accent); }
+  .bn-icon { font-size: 20px; line-height: 1; }
+  .bn-label { white-space: nowrap; max-width: 64px; overflow: hidden; text-overflow: ellipsis; }
+  .bn-badge {
+    position: absolute; top: 2px; right: 16%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    min-width: 15px;
+    height: 15px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    animation: badge-pulse 2.4s ease-in-out infinite;
+  }
+
+  /* Chừa đủ chỗ phía dưới cho thanh điều hướng cố định (đè lên padding cũ) */
+  .main { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .content { padding: 16px 14px calc(80px + env(safe-area-inset-bottom)); }
+
+}
+
+/* ---------------- Giai đoạn 4: PWA — trạng thái cài đặt / cập nhật ---------------- */
+.pwa-update-toast .toast-msg { max-width: 240px; white-space: normal; }

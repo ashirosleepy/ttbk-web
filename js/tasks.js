@@ -612,6 +612,9 @@ async function toggleTaskDone(id) {
     await restoreQueueToUser(data.rotation_queue_id, data.assigned_to);
   }
 
+  if (typeof showToast === "function") {
+    showToast(newStatus === "hoan_thanh" ? `✅ Đã hoàn thành "${data.title}"` : `↺ Đã mở lại "${data.title}"`);
+  }
   refreshActiveView();
 }
 
@@ -739,6 +742,7 @@ async function markTaskMissed(id) {
     "bo_viec",
     `${STATE.me.name} đánh dấu "${task.title}" là không hoàn thành${assignee && assignee.id !== STATE.me.id ? ` hộ ${assignee.name}` : ""}${penalty ? ` (trừ ${Math.abs(penalty)} điểm của ${assignee ? assignee.name : "?"})` : ""}.`
   );
+  if (typeof showToast === "function") showToast(`Đã đánh dấu "${task.title}" là không hoàn thành`, "error");
   refreshActiveView();
 }
 
@@ -757,6 +761,7 @@ async function undoMissedTask(id) {
   if (delErr) console.error("Không hoàn lại được điểm:", delErr.message);
 
   await logHistory(id, STATE.me.id, "huy_bo_viec", `${STATE.me.name} huỷ đánh dấu bỏ việc, hoàn lại điểm.`);
+  if (typeof showToast === "function") showToast("↺ Đã huỷ đánh dấu bỏ việc, hoàn lại điểm");
   refreshActiveView();
 }
 
@@ -816,6 +821,7 @@ async function acceptTask(id) {
     .eq("assigned_to", STATE.me.id);
   if (error) return alert("Lỗi: " + error.message);
   await logHistory(id, STATE.me.id, "nhan_viec", `${STATE.me.name} đã nhận việc`);
+  if (typeof showToast === "function") showToast("🙋 Đã nhận việc");
   refreshActiveView();
   if (typeof refreshNotifBadge === "function") refreshNotifBadge();
 }
@@ -855,7 +861,11 @@ async function claimUnassignedTask(id) {
 
   refreshActiveView();
   if (typeof refreshNotifBadge === "function") refreshNotifBadge();
-  alert(`Bạn đã nhận thay việc này (+${AWAY_COVER_BONUS} điểm thưởng).`);
+  if (typeof showToast === "function") {
+    showToast(`🙋 Đã nhận thay việc này (+${AWAY_COVER_BONUS} điểm thưởng)`);
+  } else {
+    alert(`Bạn đã nhận thay việc này (+${AWAY_COVER_BONUS} điểm thưởng).`);
+  }
 }
 
 async function reassignTask(id, newUserId) {
@@ -864,6 +874,7 @@ async function reassignTask(id, newUserId) {
   if (error) return alert("Lỗi: " + error.message);
 
   await logHistory(id, STATE.me.id, "doi_nguoi", `${STATE.me.name} đổi người làm thành ${newProfile ? newProfile.name : "?"}`);
+  if (typeof showToast === "function") showToast(`Đã đổi người làm thành ${newProfile ? newProfile.name : "?"}`);
   refreshActiveView();
 }
 
@@ -872,6 +883,7 @@ async function changeDueDate(id, newDate) {
   if (error) return alert("Lỗi: " + error.message);
 
   await logHistory(id, STATE.me.id, "gia_han", `${STATE.me.name} đổi hạn thành ${formatDateShort(newDate)}`);
+  if (typeof showToast === "function") showToast(`Đã đổi hạn thành ${formatDateShort(newDate)}`);
   refreshActiveView();
 }
 
@@ -976,6 +988,7 @@ async function deleteTask(id) {
   if (!confirm("Xoá việc này? Không thể hoàn tác.")) return;
   const { error } = await supabaseClient.from("tasks").delete().eq("id", id);
   if (error) return alert("Lỗi: " + error.message);
+  if (typeof showToast === "function") showToast("🗑 Đã xoá việc");
   refreshActiveView();
 }
 
@@ -986,6 +999,18 @@ function bindTaskEvents(containerId = "tasks-container") {
   const container = document.getElementById(containerId);
   if (!container || container.dataset.bound) return;
   container.dataset.bound = "1";
+
+  // Giai đoạn 2 — vuốt phải để đánh dấu hoàn thành, vuốt trái để đánh dấu không
+  // hoàn thành, ngay trên phiếu việc (chỉ hoạt động bằng cảm ứng trên di động).
+  if (typeof enableSwipeActions === "function") {
+    enableSwipeActions(container, {
+      itemSelector: ".task-ticket",
+      rightSelector: '[data-action="toggle"]',
+      leftSelector: '[data-action="miss"]',
+      rightLabel: "✓ Xong",
+      leftLabel: "✕ Bỏ việc",
+    });
+  }
 
   container.addEventListener("click", async (e) => {
     // 1. Xử lý click chuyển Tab User
