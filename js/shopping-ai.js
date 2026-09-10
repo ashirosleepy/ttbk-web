@@ -102,7 +102,23 @@
       }
     });
 
-    // 2) Cặp món hay được mua cùng ngày (từ lịch sử mua thật)
+    // 2) Sắp hết hạn / đã hết hạn dùng (đồ ăn, mỹ phẩm... có ghi hạn dùng)
+    items.filter(function (it) { return it.expiryDate; }).forEach(function (it) {
+      var remain = daysBetween(new Date().toISOString().slice(0, 10), it.expiryDate);
+      if (remain < 0) {
+        insights.push({
+          type: "warn", icon: "⏰", title: "Đã hết hạn dùng",
+          html: "<strong>" + escapeHtml(it.name) + "</strong> đã hết hạn dùng được <strong>" + Math.abs(remain) + " ngày</strong> — kiểm tra và bỏ đi nếu cần."
+        });
+      } else if (remain <= 3) {
+        insights.push({
+          type: "warn", icon: "⏰", title: "Sắp hết hạn dùng",
+          html: "<strong>" + escapeHtml(it.name) + "</strong> còn <strong>" + remain + " ngày</strong> nữa là hết hạn — ưu tiên dùng trước."
+        });
+      }
+    });
+
+    // 3) Cặp món hay được mua cùng ngày (từ lịch sử mua thật)
     var byDate = {};
     logs.forEach(function (l) { (byDate[l.date] = byDate[l.date] || []).push(l.itemName); });
     var pairCount = {};
@@ -124,7 +140,7 @@
       });
     }
 
-    // 3) Thiếu đồ dự phòng
+    // 4) Thiếu đồ dự phòng
     items.filter(function (it) { return it.category === "du_phong"; }).forEach(function (it) {
       var s = window.TTBK_SHOPPING.computeStatus(it);
       if (s.level !== "on") {
@@ -135,7 +151,7 @@
       }
     });
 
-    // 4) Ngân sách trung bình — từ purchaseLog có giá
+    // 5) Ngân sách trung bình — từ purchaseLog có giá
     var byMonth = {};
     logs.forEach(function (l) { if (!l.cost) return; var k = monthKey(l.date); byMonth[k] = (byMonth[k] || 0) + Number(l.cost); });
     var months = Object.keys(byMonth);

@@ -28,6 +28,13 @@
     phat_sinh: "⚡ Phát sinh"
   };
 
+  var PLACE_LABEL = {
+    sieu_thi: "🛒 Siêu thị",
+    cho: "🥬 Chợ",
+    tien_loi: "🏪 Tiện lợi",
+    online: "🛍️ Online"
+  };
+
   var PRIORITY_LABEL = {
     cao: "🔴 Cao",
     binh_thuong: "🟡 Bình thường",
@@ -40,6 +47,7 @@
   var state = { items: [], purchaseLog: [] };
   var profiles = [];       // [{id, name}] — 4 thành viên, lấy từ bảng profiles
   var activeCatFilter = "all";
+  var activePlaceFilter = "all";
 
   /* ------------------------------------------------------------------ *
    * TIỆN ÍCH NGÀY THÁNG / SỐ (giữ nguyên như bản cũ)                    *
@@ -78,6 +86,8 @@
       ideal: r.ideal != null ? Number(r.ideal) : null,
       cycleDays: r.cycle_days != null ? Number(r.cycle_days) : null,
       lastRestock: r.last_restock,
+      expiryDate: r.expiry_date || null,
+      buyPlace: r.buy_place || null,
       manualLevel: r.manual_level,
       manualBy: r.manual_by,
       manualAt: r.manual_at,
@@ -125,6 +135,7 @@
       var payload = {
         name: data.name, category: data.category, unit: data.unit || null,
         qty: data.qty, min: data.min, ideal: data.ideal, cycle_days: data.cycleDays,
+        expiry_date: data.expiryDate || null, buy_place: data.buyPlace || null,
         note: data.note || null
       };
       if (data.category === "dinh_ky") payload.last_restock = todayISO();
@@ -174,6 +185,11 @@
    * LOGIC TRẠNG THÁI / DỰ ĐOÁN (giữ nguyên logic bản cũ)                *
    * ------------------------------------------------------------------ */
   function computeStatus(item) {
+    var base = computeBaseStatus(item);
+    return applyExpiry(item, base);
+  }
+
+  function computeBaseStatus(item) {
     if (item.category === "dinh_ky") {
       if (!item.lastRestock || !item.cycleDays) {
         return { level: "unknown", emoji: "⚪", label: "Chưa có dữ liệu chu kỳ" };
@@ -197,6 +213,20 @@
     if (item.qty <= 0) return { level: "het", emoji: "🔴", label: "Đã hết" };
     if (item.qty <= item.min) return { level: "sap_het", emoji: "🟡", label: "Sắp hết" };
     return { level: "on", emoji: "🟢", label: "Còn đủ" };
+  }
+
+  // Hạn sử dụng chỉ LÀM NẶNG THÊM trạng thái (không bao giờ làm nhẹ đi):
+  // quá hạn -> luôn 🔴 dù còn số lượng; sắp hết hạn -> ít nhất 🟡.
+  function applyExpiry(item, base) {
+    if (!item.expiryDate || item.category === "dinh_ky") return base;
+    var remain = daysBetween(todayISO(), item.expiryDate);
+    if (remain < 0) {
+      return { level: "het", emoji: "🔴", label: "Đã hết hạn dùng " + Math.abs(remain) + " ngày trước" };
+    }
+    if (remain <= 2 && base.level === "on") {
+      return { level: "sap_het", emoji: "🟡", label: "Sắp hết hạn (còn " + remain + " ngày)" };
+    }
+    return base;
   }
 
   function needsBackup(item) {
@@ -326,13 +356,16 @@
         ? '<div class="shop-reporter">🧑 ' + escapeHtml(it.manualBy) + " báo lúc " + escapeHtml(it.manualAt || "") + "</div>"
         : "";
 
+      var placeTag = it.buyPlace ? (" · " + PLACE_LABEL[it.buyPlace]) : "";
+      var expiryTag = it.expiryDate ? (" · HSD: " + it.expiryDate) : "";
+
       return (
         '<div class="shop-item-card">' +
           '<div class="shop-item-top">' +
             "<h4>" + escapeHtml(it.name) + "</h4>" +
             '<span class="shop-badge shop-badge-' + st.level + '">' + st.emoji + " " + st.label + "</span>" +
           "</div>" +
-          '<div class="shop-meta">' + CATEGORY_LABEL[it.category] + " · " + qtyLine + "</div>" +
+          '<div class="shop-meta">' + CATEGORY_LABEL[it.category] + " · " + qtyLine + placeTag + expiryTag + "</div>" +
           (nudge ? '<div class="shop-note">' + nudge + "</div>" : "") +
           (it.note ? '<div class="shop-note">📝 ' + escapeHtml(it.note) + "</div>" : "") +
           reporter +
@@ -353,22 +386,49 @@
   /* ------------------------------------------------------------------ *
    * RENDER: DANH SÁCH MUA (CART)                                        *
    * ------------------------------------------------------------------ */
+  function lastKnownCost(itemId) {
+    var logs = state.purchaseLog.filter(function (l) { return l.itemId === itemId && l.cost != null; })
+      .sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
+    return logs.length ? logs[0].cost : null;
+  }
+
   function renderCart() {
     var host = document.getElementById("shop-cart-list");
+    var summaryEl = document.getElementById("shop-cart-summary");
     if (!host) return;
 
     var inCart = state.items.filter(function (it) { return it.inCart; });
-    if (!inCart.length) { host.innerHTML = '<p class="empty-state">Chưa có gì trong danh sách mua. Bấm "Đưa tất cả gợi ý vào danh sách mua" ở trên nếu có món sắp hết.</p>'; return; }
+    var filtered = inCart.filter(function (it) {
+      return activePlaceFilter === "all" || it.buyPlace === activePlaceFilter;
+    });
 
-    var cao = inCart.filter(function (it) { return (it.cartPriority || suggestedPriority(it)) === "cao"; });
-    var thuong = inCart.filter(function (it) { return (it.cartPriority || suggestedPriority(it)) !== "cao"; });
+    if (summaryEl) {
+      if (!inCart.length) {
+        summaryEl.textContent = "";
+      } else {
+        var estTotal = filtered.reduce(function (s, it) {
+          var c = lastKnownCost(it.id);
+          return c ? s + c : s;
+        }, 0);
+        summaryEl.textContent = filtered.length + " món" +
+          (activePlaceFilter !== "all" ? " ở " + PLACE_LABEL[activePlaceFilter] : "") +
+          (estTotal > 0 ? " — khoảng " + Math.round(estTotal).toLocaleString("vi-VN") + "đ (ước tính theo giá lần mua gần nhất)" : "");
+      }
+    }
+
+    if (!inCart.length) { host.innerHTML = '<p class="empty-state">Chưa có gì trong danh sách mua. Bấm "Đưa tất cả gợi ý vào danh sách mua" ở trên nếu có món sắp hết.</p>'; return; }
+    if (!filtered.length) { host.innerHTML = '<p class="empty-state">Không có món nào ở nơi mua này. Chọn "Tất cả nơi mua" để xem hết.</p>'; return; }
+
+    var cao = filtered.filter(function (it) { return (it.cartPriority || suggestedPriority(it)) === "cao"; });
+    var thuong = filtered.filter(function (it) { return (it.cartPriority || suggestedPriority(it)) !== "cao"; });
 
     function row(it) {
       var qtyNeed = it.category === "phat_sinh" ? (it.qty || 1) : suggestedBuyQty(it);
+      var placeTag = it.buyPlace ? (" · " + PLACE_LABEL[it.buyPlace]) : "";
       return (
         '<div class="task-card shop-cart-row">' +
           "<div><b>" + escapeHtml(it.name) + "</b> — cần khoảng " + fmtQty(qtyNeed) + " " + escapeHtml(it.unit || "") +
-          '<div class="shop-note">' + CATEGORY_LABEL[it.category] + "</div></div>" +
+          '<div class="shop-note">' + CATEGORY_LABEL[it.category] + placeTag + "</div></div>" +
           '<div class="btn-row" style="margin:0;">' +
             '<button class="btn btn-primary btn-sm" data-act="buy" data-id="' + it.id + '">✅ Đã mua</button>' +
             '<button class="btn btn-ghost btn-sm" data-act="uncart" data-id="' + it.id + '">Bỏ khỏi danh sách</button>' +
@@ -647,6 +707,8 @@
     document.getElementById("si-min").value = item ? item.min : 1;
     document.getElementById("si-ideal").value = item && item.ideal ? item.ideal : "";
     document.getElementById("si-cycle").value = item && item.cycleDays ? item.cycleDays : "";
+    document.getElementById("si-expiry").value = item && item.expiryDate ? item.expiryDate : "";
+    document.getElementById("si-place").value = item && item.buyPlace ? item.buyPlace : "";
     document.getElementById("si-note").value = item ? item.note : "";
     form.style.display = "block";
     form.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -665,6 +727,8 @@
       min: parseFloat(document.getElementById("si-min").value) || 0,
       ideal: document.getElementById("si-ideal").value ? parseFloat(document.getElementById("si-ideal").value) : null,
       cycleDays: document.getElementById("si-cycle").value ? parseInt(document.getElementById("si-cycle").value, 10) : null,
+      expiryDate: document.getElementById("si-expiry").value || null,
+      buyPlace: document.getElementById("si-place").value || null,
       note: document.getElementById("si-note").value.trim()
     };
     if (id) {
@@ -674,7 +738,8 @@
       renderAll();
       SHOP_DB.updateItem(id, {
         name: data.name, category: data.category, qty: data.qty, unit: data.unit || null,
-        min: data.min, ideal: data.ideal, cycle_days: data.cycleDays, note: data.note || null
+        min: data.min, ideal: data.ideal, cycle_days: data.cycleDays,
+        expiry_date: data.expiryDate, buy_place: data.buyPlace, note: data.note || null
       });
     } else {
       closeItemForm();
@@ -789,6 +854,15 @@
       document.querySelectorAll("#shop-cat-filter .shop-chip").forEach(function (c) { c.classList.remove("active"); });
       b.classList.add("active");
       renderItemsGrid();
+    });
+
+    document.getElementById("shop-place-filter").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-place]");
+      if (!b) return;
+      activePlaceFilter = b.getAttribute("data-place");
+      document.querySelectorAll("#shop-place-filter .shop-chip").forEach(function (c) { c.classList.remove("active"); });
+      b.classList.add("active");
+      renderCart();
     });
 
     document.getElementById("shop-items-grid").addEventListener("click", onGridClick);

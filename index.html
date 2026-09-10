@@ -363,6 +363,22 @@
             <label for="si-cycle">Chu kỳ mua / thay (ngày, ước tính)</label>
             <input type="number" id="si-cycle" min="1" placeholder="VD: 30" />
           </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="si-expiry">Hạn sử dụng (không bắt buộc)</label>
+              <input type="date" id="si-expiry" />
+            </div>
+            <div class="field">
+              <label for="si-place">Nơi thường mua (không bắt buộc)</label>
+              <select id="si-place">
+                <option value="">— Chưa chọn —</option>
+                <option value="sieu_thi">🛒 Siêu thị</option>
+                <option value="cho">🥬 Chợ</option>
+                <option value="tien_loi">🏪 Tiện lợi</option>
+                <option value="online">🛍️ Online</option>
+              </select>
+            </div>
+          </div>
           <div class="field">
             <label for="si-note">Ghi chú (không bắt buộc)</label>
             <textarea id="si-note" placeholder="VD: mua ở tạp hoá đầu ngõ"></textarea>
@@ -454,6 +470,14 @@
           <div class="btn-row" style="margin-bottom:14px;">
             <button class="btn btn-primary btn-sm" id="shop-btn-addall">🛒 Đưa tất cả gợi ý vào danh sách mua</button>
           </div>
+          <div class="shop-filter-row" id="shop-place-filter">
+            <button class="shop-chip active" data-place="all">Tất cả nơi mua</button>
+            <button class="shop-chip" data-place="sieu_thi">🛒 Siêu thị</button>
+            <button class="shop-chip" data-place="cho">🥬 Chợ</button>
+            <button class="shop-chip" data-place="tien_loi">🏪 Tiện lợi</button>
+            <button class="shop-chip" data-place="online">🛍️ Online</button>
+          </div>
+          <p class="shop-note" id="shop-cart-summary" style="margin:0 0 14px;"></p>
           <div id="shop-cart-list" class="task-list"><p class="empty-state">Chưa có gì cần mua.</p></div>
         </div>
 
