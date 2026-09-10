@@ -1,43 +1,16 @@
 {
-  "name": "Nhiệm vụ hệ thống — TTBK",
+  "name": "Nhiệm vụ hệ thống",
   "short_name": "TTBK",
-  "description": "Chia việc nhà công bằng, theo dõi đồ dùng cần mua và lịch chung cho cả nhà.",
   "start_url": "/ttbk-web/",
   "scope": "/ttbk-web/",
-  "id": "/ttbk-web/",
   "display": "standalone",
-  "orientation": "portrait-primary",
   "background_color": "#ffffff",
-  "theme_color": "#A13F52",
-  "lang": "vi",
-  "dir": "ltr",
-  "categories": ["productivity", "lifestyle", "utilities"],
+  "theme_color": "#0f172a",
   "icons": [
     {
       "src": "./css/ttbk.png",
       "sizes": "192x192 512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./css/ttbk.png",
-      "sizes": "192x192 512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Công việc",
-      "short_name": "Công việc",
-      "description": "Xem việc hôm nay",
-      "url": "/ttbk-web/?section=tasks"
-    },
-    {
-      "name": "Nhà cần gì?",
-      "short_name": "Cần mua",
-      "description": "Xem danh sách đồ cần mua",
-      "url": "/ttbk-web/?section=shopping"
+      "type": "image/png"
     }
   ]
 }

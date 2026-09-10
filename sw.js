@@ -1,72 +1,53 @@
-// ============================================================
-// SW.JS — Service Worker cho TTBK (PWA)
-// Chiến lược: "cache trước, mạng sau" cho các file tĩnh (giao diện),
-// còn dữ liệu thật (Supabase) luôn lấy từ mạng — không cache lại
-// để mọi người luôn thấy dữ liệu mới nhất, chỉ cache phần "vỏ" app.
-// Tăng CACHE_VERSION mỗi khi đổi các file tĩnh để buộc cập nhật cache.
-// ============================================================
+// sw.js — Service Worker cho thông báo đẩy (push notification) của TTBK
+// Đặt file này ở thư mục gốc (cùng cấp với index.html) để phạm vi (scope) bao trùm cả trang.
 
-const CACHE_VERSION = "ttbk-v1";
-const STATIC_CACHE = `${CACHE_VERSION}-static`;
-
-// Các file "vỏ" app — đủ để mở lại giao diện khi mất mạng tạm thời.
-// Đường dẫn để tương đối theo scope của service worker (ngang cấp index.html).
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./css/style.css",
-  "./css/shopping.css",
-  "./manifest.json",
-  "./css/ttbk.png",
-];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) =>
-      // Không để 1 file lỗi (404) làm hỏng toàn bộ cài đặt
-      Promise.allSettled(APP_SHELL.map((url) => cache.add(url)))
-    )
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key.startsWith("ttbk-") && key !== STATIC_CACHE)
-          .map((key) => caches.delete(key))
-      )
-    )
-  );
-  self.clients.claim();
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener("fetch", (event) => {
-  const req = event.request;
-  if (req.method !== "GET") return;
+// Nhận push từ server (Supabase Edge Function) và hiển thị notification
+self.addEventListener('push', (event) => {
+  let payload = { title: 'Nhiệm vụ hệ thống', body: 'Bạn có thông báo mới.' };
 
-  const url = new URL(req.url);
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (e) {
+      payload.body = event.data.text();
+    }
+  }
 
-  // Không cache API/DB (Supabase) hay tài nguyên ngoài origin — luôn lấy mới từ mạng.
-  if (url.origin !== self.location.origin) return;
-  if (url.pathname.includes("supabase")) return;
+  const options = {
+    body: payload.body || '',
+    icon: payload.icon || '/icons/icon-192.png',
+    badge: payload.badge || '/icons/badge-72.png',
+    tag: payload.tag || 'ttbk-notification',
+    data: { url: payload.url || '/index.html' },
+    vibrate: [100, 50, 100],
+  };
 
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      const networkFetch = fetch(req)
-        .then((res) => {
-          if (res && res.status === 200) {
-            const resClone = res.clone();
-            caches.open(STATIC_CACHE).then((cache) => cache.put(req, resClone));
-          }
-          return res;
-        })
-        .catch(() => cached); // mất mạng: dùng bản cache nếu có
+  event.waitUntil(self.registration.showNotification(payload.title || 'Nhiệm vụ hệ thống', options));
+});
 
-      // Có cache sẵn thì trả ngay (nhanh), vẫn âm thầm cập nhật cache ở nền.
-      return cached || networkFetch;
+// Khi người dùng bấm vào notification -> mở/focus đúng tab của app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || '/index.html';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(targetUrl.split('?')[0]) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
     })
   );
 });

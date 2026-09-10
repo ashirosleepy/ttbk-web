@@ -69,11 +69,7 @@
         <div class="view-head">
           <div><h2>Tổng quan</h2><p>Tình hình việc nhà hôm nay</p></div>
         </div>
-        <div id="dashboard-content">
-          <div class="skeleton skeleton-card-block" style="margin-bottom:10px;"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line short" style="width:35%"></div></div>
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:65%"></div><div class="skeleton-line short" style="width:30%"></div></div></div>
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:50%"></div><div class="skeleton-line short" style="width:40%"></div></div></div>
-        </div>
+        <div id="dashboard-content"><p class="empty-state">Đang tải...</p></div>
       </section>
 
       <!-- ---------- THÔNG BÁO ---------- -->
@@ -82,11 +78,7 @@
           <div><h2>Thông báo</h2><p>Việc đến lượt bạn và yêu cầu đổi việc từ mọi người</p></div>
           <button class="btn btn-ghost btn-sm" id="notif-mark-all">Đánh dấu đã đọc hết</button>
         </div>
-        <div id="notif-list" class="task-list">
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:70%"></div><div class="skeleton-line short" style="width:35%"></div></div></div>
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:55%"></div><div class="skeleton-line short" style="width:42%"></div></div></div>
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:62%"></div><div class="skeleton-line short" style="width:28%"></div></div></div>
-        </div>
+        <div id="notif-list" class="task-list"><p class="empty-state">Đang tải...</p></div>
       </section>
 
       <!-- ---------- NHẬT KÝ HOẠT ĐỘNG ---------- -->
@@ -94,10 +86,7 @@
         <div class="view-head">
           <div><h2>Nhật ký hoạt động</h2><p>Toàn bộ thay đổi và sự kiện gần đây trong nhà</p></div>
         </div>
-        <div id="activity-log">
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:75%"></div><div class="skeleton-line short" style="width:30%"></div></div></div>
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:58%"></div><div class="skeleton-line short" style="width:38%"></div></div></div>
-        </div>
+        <div id="activity-log"><p class="empty-state">Đang tải...</p></div>
       </section>
 
       <!-- ---------- CÔNG VIỆC ---------- -->
@@ -194,12 +183,7 @@
           </div>
         </div>
 
-        <div id="tasks-container">
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:64%"></div><div class="skeleton-line short" style="width:34%"></div></div></div>
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:48%"></div><div class="skeleton-line short" style="width:40%"></div></div></div>
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:70%"></div><div class="skeleton-line short" style="width:26%"></div></div></div>
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:55%"></div><div class="skeleton-line short" style="width:44%"></div></div></div>
-        </div>
+        <div id="tasks-container"><p class="empty-state">Đang tải...</p></div>
       </section>
 
       <!-- ---------- LỊCH ---------- -->
@@ -223,9 +207,7 @@
             <span class="cal-legend-item"><i class="cal-dot cal-dot-todo"></i> Chưa hoàn thành</span>
             <span class="cal-legend-item"><i class="cal-dot cal-dot-future"></i> Dự kiến sắp tới</span>
           </div>
-          <div class="cal-grid" id="cal-grid">
-            <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:40%"></div><div class="skeleton-line short" style="width:80%"></div><div class="skeleton-line short" style="width:65%"></div></div>
-          </div>
+          <div class="cal-grid" id="cal-grid"><p class="empty-state">Đang tải...</p></div>
         </div>
 
         <div class="card" style="margin-bottom:22px;">
@@ -242,9 +224,7 @@
             </div>
             <button class="btn btn-ghost btn-sm" id="cls-week-next">Tuần sau ›</button>
           </div>
-          <div id="cls-grid" style="overflow-x:auto; margin-top:14px;">
-            <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:50%"></div><div class="skeleton-line short" style="width:75%"></div></div>
-          </div>
+          <div id="cls-grid" style="overflow-x:auto; margin-top:14px;"><p class="empty-state">Đang tải...</p></div>
           <div class="btn-row" style="margin-top:14px;">
             <button class="btn btn-primary btn-sm" id="cls-save">Lưu lịch học tuần này</button>
             <button class="btn btn-ghost btn-sm" id="cls-copy-prev">⧉ Sao chép từ tuần trước</button>
@@ -278,16 +258,11 @@
           </div>
           <button class="btn btn-primary btn-sm" id="rq-save">Tạo hàng đợi</button>
 
-          <div id="rotation-list" class="task-list" style="margin-top:18px;">
-            <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:55%"></div><div class="skeleton-line short" style="width:32%"></div></div></div>
-          </div>
+          <div id="rotation-list" class="task-list" style="margin-top:18px;"><p class="empty-state">Đang tải...</p></div>
         </div>
 
         <h3 style="font-size:15px; margin-bottom:12px;">Lịch đang chạy</h3>
-        <div id="schedule-list" class="task-list">
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line short" style="width:36%"></div></div></div>
-          <div class="skeleton skeleton-ticket"><div class="skeleton-circle"></div><div class="skeleton-lines"><div class="skeleton-line" style="width:45%"></div><div class="skeleton-line short" style="width:50%"></div></div></div>
-        </div>
+        <div id="schedule-list" class="task-list"><p class="empty-state">Đang tải...</p></div>
       </section>
 
       <!-- ---------- THÀNH VIÊN ---------- -->
@@ -295,12 +270,7 @@
         <div class="view-head">
           <div><h2>Thành viên</h2><p>Số việc và điểm công bằng của từng người</p></div>
         </div>
-        <div id="members-grid" class="member-grid">
-          <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:50%"></div><div class="skeleton-line short" style="width:70%"></div></div>
-          <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line short" style="width:40%"></div></div>
-          <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:45%"></div><div class="skeleton-line short" style="width:65%"></div></div>
-          <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:55%"></div><div class="skeleton-line short" style="width:38%"></div></div>
-        </div>
+        <div id="members-grid" class="member-grid"><p class="empty-state">Đang tải...</p></div>
       </section>
 
       <!-- ---------- NHÀ CẦN GÌ? (ĐỒ DÙNG / MUA SẮM) ---------- -->
@@ -319,7 +289,7 @@
           <div class="card">
             <p class="shop-card-kicker"><span class="dot"></span> Tình trạng đồ dùng</p>
             <div id="shop-overview">
-              <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:45%"></div><div class="skeleton-line short" style="width:70%"></div></div>
+              <p class="empty-state">Đang tải...</p>
             </div>
           </div>
 
@@ -492,11 +462,7 @@
             <button class="shop-chip" data-cat="dinh_ky">🔧 Định kỳ thay</button>
             <button class="shop-chip" data-cat="phat_sinh">⚡ Phát sinh</button>
           </div>
-          <div id="shop-items-grid" class="shop-grid">
-            <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:60%"></div><div class="skeleton-line short" style="width:35%"></div></div>
-            <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:50%"></div><div class="skeleton-line short" style="width:45%"></div></div>
-            <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:65%"></div><div class="skeleton-line short" style="width:30%"></div></div>
-          </div>
+          <div id="shop-items-grid" class="shop-grid"><p class="empty-state">Đang tải...</p></div>
         </div>
 
         <!-- Panel: Danh sách mua -->
@@ -522,10 +488,7 @@
             <span>Gợi ý dưới đây tính từ chính lịch sử mua và giá bạn đã nhập trong "Danh sách mua". Dùng càng nhiều, gợi ý càng chuẩn.</span>
           </div>
 
-          <div class="shop-ai-grid" id="shop-ai-grid">
-            <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:55%"></div><div class="skeleton-line short" style="width:40%"></div></div>
-            <div class="skeleton skeleton-card-block"><div class="skeleton-line" style="width:48%"></div><div class="skeleton-line short" style="width:60%"></div></div>
-          </div>
+          <div class="shop-ai-grid" id="shop-ai-grid"><p class="empty-state">Đang tải...</p></div>
         </div>
 
         <!-- Panel: Lịch thay -->
@@ -710,15 +673,6 @@
 
     </main>
   </div>
-
-  <!-- ================= THANH ĐIỀU HƯỚNG DƯỚI (DI ĐỘNG) ================= -->
-  <nav class="bottom-nav" id="bottom-nav">
-    <button class="bn-item" data-section="dashboard"><span class="bn-icon">🏠</span><span class="bn-label">Tổng quan</span></button>
-    <button class="bn-item active" data-section="tasks"><span class="bn-icon">📝</span><span class="bn-label">Công việc</span></button>
-    <button class="bn-item" data-section="shopping"><span class="bn-icon">🛒</span><span class="bn-label">Cần mua</span><span class="bn-badge" id="bn-shop-badge" style="display:none">0</span></button>
-    <button class="bn-item" data-section="schedule"><span class="bn-icon">📅</span><span class="bn-label">Lịch</span></button>
-    <button class="bn-item" id="bn-more"><span class="bn-icon">☰</span><span class="bn-label">Menu</span><span class="bn-badge" id="bn-notif-badge" style="display:none">0</span></button>
-  </nav>
 </div>
 
 <script src="js/page-transition.js"></script>
@@ -760,26 +714,5 @@
 <script src="js/app.js"></script>
 <script src="js/push-notifications.js"></script>
 <script src="js/theme.js"></script>
-<script>
-/* Giai đoạn 4 — PWA: đăng ký service worker để cài ra màn hình chính
-   và dùng được (giao diện) khi mất mạng tạm thời. */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").then((reg) => {
-      reg.addEventListener("updatefound", () => {
-        const worker = reg.installing;
-        if (!worker) return;
-        worker.addEventListener("statechange", () => {
-          if (worker.state === "installed" && navigator.serviceWorker.controller) {
-            if (typeof showToast === "function") {
-              showToast("Có bản cập nhật mới — tải lại trang để dùng bản mới nhất", "info", 5000);
-            }
-          }
-        });
-      });
-    }).catch((err) => console.warn("Không đăng ký được service worker:", err));
-  });
-}
-</script>
 </body>
 </html>
