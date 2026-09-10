@@ -21,6 +21,7 @@
   }
 
   var CATEGORY_LABEL = {
+    thuc_pham: "🥦 Thực phẩm",
     tieu_hao: "🧻 Tiêu hao",
     du_phong: "🔋 Dự phòng",
     dinh_ky: "🔧 Định kỳ thay",
