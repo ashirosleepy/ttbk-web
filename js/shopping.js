@@ -1,19 +1,24 @@
 /* =========================================================================
    js/shopping.js — Module "Nhà cần gì?" (Đồ dùng / Mua sắm / Dự phòng / Định kỳ)
    -------------------------------------------------------------------------
-   Tự chứa (self-contained): lưu dữ liệu ở localStorage nên chạy được ngay,
-   không cần sửa schema Supabase. Đặt các hàm đọc/ghi dữ liệu riêng trong
-   SHOP_DB để sau này dễ thay bằng Supabase (chỉ cần viết lại các hàm trong
-   SHOP_DB, phần render/UI phía dưới không cần đổi).
+   BẢN SUPABASE: dữ liệu lưu ở bảng shopping_items / shopping_purchase_log /
+   expenses (xem sql/007_shopping_and_expenses.sql) — cả nhà cùng thấy 1 bộ
+   dữ liệu, không còn mỗi máy 1 kiểu như bản localStorage trước.
 
-   Quy ước module dùng lại của app hiện có: .card, .field, .form-row,
-   .btn/.btn-primary/.btn-ghost/.btn-sm/.btn-danger, .task-list, .empty-state,
-   .view/.view-head, cơ chế chuyển section theo [data-section] + #section-<id>.
+   🔧 GIẢ ĐỊNH CẦN KIỂM TRA: file này gọi client Supabase qua sbClient() bên
+   dưới, đang thử lần lượt window.sb / window.supabaseClient / window.db.
+   Nếu supabase-client.js của bạn đặt tên global khác, sửa 1 dòng trong
+   hàm sbClient() cho đúng là chạy được ngay, không cần sửa gì khác.
+
+   Giữ nguyên mọi id/class HTML + API window.TTBK_SHOPPING như bản cũ để
+   js/shopping-ai.js không cần sửa gì.
    ========================================================================= */
 (function () {
   "use strict";
 
-  var LS_KEY = "ttbk_shopping_v1";
+  function sbClient() {
+    return window.sb || window.supabaseClient || window.ttbkSupabase || window.db || null;
+  }
 
   var CATEGORY_LABEL = {
     tieu_hao: "🧻 Tiêu hao",
@@ -29,74 +34,23 @@
   };
 
   /* ------------------------------------------------------------------ *
-   * LỚP DỮ LIỆU — thay bằng Supabase sau này chỉ cần sửa trong SHOP_DB  *
+   * STATE (bộ nhớ đệm trong trình duyệt — nguồn thật là Supabase)       *
    * ------------------------------------------------------------------ */
-  var SHOP_DB = {
-    load: function () {
-      try {
-        var raw = localStorage.getItem(LS_KEY);
-        if (raw) return JSON.parse(raw);
-      } catch (e) {}
-      return SHOP_DB.seed();
-    },
-    save: function (state) {
-      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
-    },
-    seed: function () {
-      var today = todayISO();
-      return {
-        items: [
-          mkItem({ name: "Giấy vệ sinh", category: "tieu_hao", unit: "cuộn", qty: 2, min: 3, ideal: 12, cycleDays: 7, lastRestock: daysAgoISO(5) }),
-          mkItem({ name: "Nước giặt", category: "tieu_hao", unit: "chai", qty: 1.5, min: 0.5, ideal: 2, cycleDays: 30, lastRestock: daysAgoISO(28) }),
-          mkItem({ name: "Kem đánh răng", category: "tieu_hao", unit: "tuýp", qty: 0, min: 1, ideal: 2, cycleDays: 30, lastRestock: daysAgoISO(31) }),
-          mkItem({ name: "Nước uống", category: "tieu_hao", unit: "bình", qty: 2, min: 4, ideal: 6, cycleDays: 3, lastRestock: daysAgoISO(3) }),
-          mkItem({ name: "Bóng đèn dự phòng", category: "du_phong", unit: "cái", qty: 0, min: 1, ideal: 1 }),
-          mkItem({ name: "Pin AA", category: "du_phong", unit: "viên", qty: 2, min: 4, ideal: 8 }),
-          mkItem({ name: "Đầu cây lau nhà", category: "dinh_ky", unit: "cái", qty: 1, min: 1, ideal: 1, cycleDays: 30, lastRestock: daysAgoISO(27) }),
-          mkItem({ name: "Bàn chải đánh răng", category: "dinh_ky", unit: "cái", qty: 1, min: 1, ideal: 1, cycleDays: 90, lastRestock: daysAgoISO(40) }),
-          mkItem({ name: "Lõi lọc nước", category: "dinh_ky", unit: "cái", qty: 1, min: 1, ideal: 1, cycleDays: 180, lastRestock: daysAgoISO(50) })
-        ],
-        purchaseLog: [],
-        activity: [
-          { id: uid(), date: today, type: "info", text: "Đã khởi tạo module Nhà cần gì? với vài món mẫu — bạn có thể sửa/xoá tuỳ ý." }
-        ]
-      };
-    }
-  };
-
-  function mkItem(partial) {
-    return Object.assign({
-      id: uid(),
-      name: "",
-      category: "tieu_hao",
-      unit: "",
-      qty: 0,
-      min: 1,
-      ideal: null,
-      cycleDays: null,
-      lastRestock: null,
-      manualLevel: null,     // 'on' | 'sap_het' | 'het' — báo nhanh không cần nhập số
-      manualBy: null,
-      manualAt: null,
-      inCart: false,
-      cartPriority: null,
-      note: "",
-      createdAt: todayISO()
-    }, partial);
-  }
+  var state = { items: [], purchaseLog: [] };
+  var profiles = [];       // [{id, name}] — 4 thành viên, lấy từ bảng profiles
+  var activeCatFilter = "all";
 
   /* ------------------------------------------------------------------ *
-   * TIỆN ÍCH NGÀY THÁNG / SỐ                                            *
+   * TIỆN ÍCH NGÀY THÁNG / SỐ (giữ nguyên như bản cũ)                    *
    * ------------------------------------------------------------------ */
-  function uid() { return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function uid() { return "tmp" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
   function todayISO() { return new Date().toISOString().slice(0, 10); }
-  function daysAgoISO(n) { var d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
   function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
   function daysSince(iso) { return daysBetween(iso, todayISO()); }
   function fmtQty(n) {
     if (n === null || n === undefined) return "";
     var r = Math.round(n * 100) / 100;
-    return (r % 1 === 0) ? String(r) : String(r);
+    return String(r);
   }
   function currentUserName() {
     var el = document.getElementById("topbar-user");
@@ -110,17 +64,113 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * STATE                                                               *
+   * LỚP DỮ LIỆU — Supabase                                              *
    * ------------------------------------------------------------------ */
-  var state = SHOP_DB.load();
-  function persist() { SHOP_DB.save(state); }
-  function addActivity(type, text) {
-    state.activity.unshift({ id: uid(), date: todayISO(), type: type, text: text });
-    state.activity = state.activity.slice(0, 200);
+  function rowToItem(r) {
+    return {
+      id: r.id,
+      name: r.name,
+      category: r.category,
+      unit: r.unit || "",
+      qty: Number(r.qty) || 0,
+      min: Number(r.min) || 0,
+      ideal: r.ideal != null ? Number(r.ideal) : null,
+      cycleDays: r.cycle_days != null ? Number(r.cycle_days) : null,
+      lastRestock: r.last_restock,
+      manualLevel: r.manual_level,
+      manualBy: r.manual_by,
+      manualAt: r.manual_at,
+      inCart: !!r.in_cart,
+      cartPriority: r.cart_priority,
+      note: r.note || ""
+    };
+  }
+  function rowToPurchase(r) {
+    return {
+      id: r.id,
+      itemId: r.item_id,
+      itemName: r.item_name,
+      qty: Number(r.qty),
+      cost: r.cost != null ? Number(r.cost) : null,
+      paidBy: r.paid_by,
+      paidByName: (r.profiles && r.profiles.name) || null,
+      date: r.purchase_date
+    };
   }
 
+  var SHOP_DB = {
+    loadAll: function () {
+      var sb = sbClient();
+      if (!sb) {
+        console.error('[shopping.js] Không tìm thấy Supabase client. Sửa hàm sbClient() ở đầu file js/shopping.js cho đúng tên global bạn đang dùng.');
+        return Promise.resolve();
+      }
+      return Promise.all([
+        sb.from("shopping_items").select("*").order("created_at", { ascending: true }),
+        sb.from("shopping_purchase_log").select("*, profiles:paid_by(name)").order("purchase_date", { ascending: false }).limit(300),
+        sb.from("profiles").select("id,name").order("name", { ascending: true })
+      ]).then(function (results) {
+        var itemsRes = results[0], logsRes = results[1], profRes = results[2];
+        if (itemsRes.error) console.error("[shopping.js] load items:", itemsRes.error.message);
+        if (logsRes.error) console.error("[shopping.js] load purchase log:", logsRes.error.message);
+        if (profRes.error) console.error("[shopping.js] load profiles:", profRes.error.message);
+        state.items = (itemsRes.data || []).map(rowToItem);
+        state.purchaseLog = (logsRes.data || []).map(rowToPurchase);
+        profiles = profRes.data || [];
+      });
+    },
+    insertItem: function (data) {
+      var sb = sbClient(); if (!sb) return Promise.resolve(null);
+      var payload = {
+        name: data.name, category: data.category, unit: data.unit || null,
+        qty: data.qty, min: data.min, ideal: data.ideal, cycle_days: data.cycleDays,
+        note: data.note || null
+      };
+      if (data.category === "dinh_ky") payload.last_restock = todayISO();
+      if (data.category === "phat_sinh") { payload.in_cart = true; payload.cart_priority = data.cartPriority || "binh_thuong"; }
+      return sb.from("shopping_items").insert(payload).select().single().then(function (res) {
+        if (res.error) { alert("Lỗi lưu Supabase: " + res.error.message); return null; }
+        return rowToItem(res.data);
+      });
+    },
+    updateItem: function (id, patch) {
+      var sb = sbClient(); if (!sb) return Promise.resolve();
+      return sb.from("shopping_items").update(patch).eq("id", id).then(function (res) {
+        if (res.error) alert("Lỗi cập nhật Supabase: " + res.error.message);
+      });
+    },
+    deleteItem: function (id) {
+      var sb = sbClient(); if (!sb) return Promise.resolve();
+      return sb.from("shopping_items").delete().eq("id", id).then(function (res) {
+        if (res.error) alert("Lỗi xoá trên Supabase: " + res.error.message);
+      });
+    },
+    insertPurchase: function (entry) {
+      var sb = sbClient(); if (!sb) return Promise.resolve(null);
+      var payload = {
+        item_id: entry.itemId || null, item_name: entry.itemName, qty: entry.qty,
+        cost: entry.cost, paid_by: entry.paidBy || null, purchase_date: entry.date || todayISO()
+      };
+      return sb.from("shopping_purchase_log").insert(payload).select("*, profiles:paid_by(name)").single().then(function (res) {
+        if (res.error) { alert("Lỗi lưu lịch sử mua: " + res.error.message); return null; }
+        return rowToPurchase(res.data);
+      });
+    },
+    insertExpense: function (entry) {
+      var sb = sbClient(); if (!sb) return Promise.resolve();
+      var payload = {
+        description: entry.description, category: entry.category || "shopping",
+        amount: entry.amount, paid_by: entry.paidBy || null, expense_date: entry.date || todayISO(),
+        source: "shopping", shopping_purchase_id: entry.purchaseId || null
+      };
+      return sb.from("expenses").insert(payload).then(function (res) {
+        if (res.error) console.error("[shopping.js] Không ghi được vào expenses:", res.error.message);
+      });
+    }
+  };
+
   /* ------------------------------------------------------------------ *
-   * LOGIC TRẠNG THÁI / DỰ ĐOÁN                                          *
+   * LOGIC TRẠNG THÁI / DỰ ĐOÁN (giữ nguyên logic bản cũ)                *
    * ------------------------------------------------------------------ */
   function computeStatus(item) {
     if (item.category === "dinh_ky") {
@@ -134,7 +184,6 @@
       return { level: "on", emoji: "🟢", label: "Còn khoảng " + remain + " ngày" };
     }
 
-    // Báo nhanh (3 mức đơn giản) ưu tiên hơn nếu người dùng vừa bấm báo
     if (item.manualLevel) {
       var map = {
         on: { level: "on", emoji: "🟢", label: "Còn nhiều (báo tay)" },
@@ -170,7 +219,7 @@
     var cyc = avgCycleDays(item);
     if (!cyc) return null;
     var remain = cyc - daysSince(item.lastRestock);
-    if (remain <= 0) return null; // đã tính vào trạng thái sắp hết/hết rồi
+    if (remain <= 0) return null;
     if (remain <= Math.max(3, Math.round(cyc * 0.2))) {
       return "🟡 Có vẻ sẽ hết trong khoảng " + remain + " ngày nữa (theo chu kỳ mua trung bình " + cyc + " ngày).";
     }
@@ -238,8 +287,6 @@
   /* ------------------------------------------------------------------ *
    * RENDER: DANH SÁCH ĐỒ DÙNG                                           *
    * ------------------------------------------------------------------ */
-  var activeCatFilter = "all";
-
   function renderItemsGrid() {
     var host = document.getElementById("shop-items-grid");
     if (!host) return;
@@ -275,7 +322,7 @@
         : '<div class="shop-quickrow"><button data-act="replaced" data-id="' + it.id + '">✅ Vừa thay</button></div>';
 
       var reporter = it.manualLevel && it.manualBy
-        ? '<div class="shop-reporter">🧑 ' + escapeHtml(it.manualBy) + " báo lúc " + it.manualAt + "</div>"
+        ? '<div class="shop-reporter">🧑 ' + escapeHtml(it.manualBy) + " báo lúc " + escapeHtml(it.manualAt || "") + "</div>"
         : "";
 
       return (
@@ -357,7 +404,7 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * RENDER: LỊCH SỬ                                                     *
+   * RENDER: LỊCH SỬ — giờ hiện thêm luôn người trả tiền                 *
    * ------------------------------------------------------------------ */
   function renderHistory() {
     var host = document.getElementById("shop-history-list");
@@ -369,6 +416,7 @@
         '<div class="task-card shop-cart-row">' +
           "<div><b>" + escapeHtml(l.itemName) + "</b> — số lượng " + fmtQty(l.qty) +
           (l.cost ? " · " + Number(l.cost).toLocaleString("vi-VN") + "đ" : "") +
+          (l.paidByName ? " · 🧑 " + escapeHtml(l.paidByName) + " trả" : "") +
           '<div class="shop-note">' + l.date + "</div></div>" +
         "</div>"
       );
@@ -379,7 +427,6 @@
    * RENDER TỔNG                                                         *
    * ------------------------------------------------------------------ */
   function renderAll() {
-    persist();
     renderOverview();
     renderItemsGrid();
     renderCart();
@@ -389,9 +436,7 @@
   }
 
   /* ------------------------------------------------------------------ *
-   * THẺ TÓM TẮT TRÊN TRANG "TỔNG QUAN"                                  *
-   * (best-effort: chèn thêm 1 card vào #dashboard-content, không đụng   *
-   * vào code render sẵn có của dashboard.js)                            *
+   * THẺ TÓM TẮT TRÊN TRANG "TỔNG QUAN" (giữ nguyên như bản cũ)          *
    * ------------------------------------------------------------------ */
   function injectDashboardCard() {
     var host = document.getElementById("dashboard-content");
@@ -436,9 +481,6 @@
     };
   }
 
-  // Dashboard có thể tự vẽ lại #dashboard-content định kỳ (polling/subscribe);
-  // MutationObserver này chỉ chèn lại thẻ của mình nếu nó bị dashboard.js xoá mất,
-  // không can thiệp gì khác vào phần dashboard gốc.
   (function watchDashboard() {
     var host = document.getElementById("dashboard-content");
     if (!host || !window.MutationObserver) return;
@@ -449,7 +491,7 @@
   })();
 
   /* ------------------------------------------------------------------ *
-   * HÀNH ĐỘNG (event delegation)                                        *
+   * HÀNH ĐỘNG (event delegation) — giờ hầu hết là async (gọi Supabase)  *
    * ------------------------------------------------------------------ */
   function findItem(id) { return state.items.filter(function (it) { return it.id === id; })[0]; }
 
@@ -459,45 +501,58 @@
     var id = btn.getAttribute("data-id");
     var act = btn.getAttribute("data-act");
     var it = findItem(id);
-    if (!it && act !== "buy") return;
+    if (!it) return;
 
     switch (act) {
-      case "inc":
-        it.qty = Math.round((it.qty + 1) * 100) / 100;
-        it.manualLevel = null;
-        renderAll();
+      case "inc": {
+        var q1 = Math.round((it.qty + 1) * 100) / 100;
+        it.qty = q1; it.manualLevel = null; renderAll();
+        SHOP_DB.updateItem(id, { qty: q1, manual_level: null });
         break;
-      case "dec":
-        it.qty = Math.max(0, Math.round((it.qty - 1) * 100) / 100);
-        it.manualLevel = null;
-        renderAll();
+      }
+      case "dec": {
+        var q2 = Math.max(0, Math.round((it.qty - 1) * 100) / 100);
+        it.qty = q2; it.manualLevel = null; renderAll();
+        SHOP_DB.updateItem(id, { qty: q2, manual_level: null });
         break;
-      case "lvl":
-        it.manualLevel = btn.getAttribute("data-lvl");
-        it.manualBy = currentUserName();
-        it.manualAt = new Date().toLocaleString("vi-VN");
-        addActivity("report", "🧑 " + it.manualBy + " báo: " + it.name + " → " + it.manualLevel);
-        if (it.manualLevel !== "on" && !it.inCart) {
+      }
+      case "lvl": {
+        var lvl = btn.getAttribute("data-lvl");
+        var by = currentUserName();
+        var at = new Date().toLocaleString("vi-VN");
+        it.manualLevel = lvl; it.manualBy = by; it.manualAt = at;
+        var patch = { manual_level: lvl, manual_by: by, manual_at: at };
+        if (lvl !== "on" && !it.inCart) {
           it.inCart = true;
-          it.cartPriority = it.manualLevel === "het" ? "cao" : "binh_thuong";
+          it.cartPriority = lvl === "het" ? "cao" : "binh_thuong";
+          patch.in_cart = true; patch.cart_priority = it.cartPriority;
         }
         renderAll();
+        SHOP_DB.updateItem(id, patch);
         break;
-      case "replaced":
-        it.lastRestock = todayISO();
-        state.purchaseLog.push({ id: uid(), itemId: it.id, itemName: it.name, qty: 1, cost: null, date: todayISO() });
-        addActivity("replace", "🔧 Đã thay: " + it.name);
+      }
+      case "replaced": {
+        var today = todayISO();
+        it.lastRestock = today;
         renderAll();
+        SHOP_DB.updateItem(id, { last_restock: today }).then(function () {
+          return SHOP_DB.insertPurchase({ itemId: it.id, itemName: it.name, qty: 1, cost: null, paidBy: null, date: today });
+        }).then(function (p) { if (p) { state.purchaseLog.unshift(p); renderAll(); } });
         break;
-      case "addcart":
+      }
+      case "addcart": {
         it.inCart = true;
         it.cartPriority = suggestedPriority(it);
         renderAll();
+        SHOP_DB.updateItem(id, { in_cart: true, cart_priority: it.cartPriority });
         break;
-      case "uncart":
+      }
+      case "uncart": {
         it.inCart = false;
         renderAll();
+        SHOP_DB.updateItem(id, { in_cart: false });
         break;
+      }
       case "edit":
         openItemForm(it);
         break;
@@ -505,36 +560,74 @@
         if (confirm('Xoá "' + it.name + '" khỏi danh sách đồ dùng?')) {
           state.items = state.items.filter(function (x) { return x.id !== it.id; });
           renderAll();
+          SHOP_DB.deleteItem(id);
         }
         break;
       case "buy":
-        handleBuy(it);
+        openBuyForm(it);
         break;
     }
   }
 
-  function handleBuy(it) {
-    var suggestion = it.category === "phat_sinh" ? (it.qty || 1) : suggestedBuyQty(it);
-    var qtyStr = prompt('Đã mua bao nhiêu "' + it.name + '" (' + (it.unit || "đơn vị") + ')?', fmtQty(suggestion));
-    if (qtyStr === null) return;
-    var qty = parseFloat(qtyStr.replace(",", "."));
-    if (isNaN(qty) || qty <= 0) { alert("Số lượng không hợp lệ."); return; }
-    var costStr = prompt("Giá tiền (đ) — để trống nếu không muốn ghi:", "");
-    var cost = costStr && !isNaN(parseFloat(costStr)) ? parseFloat(costStr) : null;
+  /* ------------------------------------------------------------------ *
+   * FORM: XÁC NHẬN ĐÃ MUA — nhập số lượng, giá, VÀ ai trả tiền          *
+   * (thay cho chuỗi prompt() cũ — giờ ghi thẳng vào bảng expenses)      *
+   * ------------------------------------------------------------------ */
+  function fillPayerSelect() {
+    var sel = document.getElementById("buy-payer");
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— Chọn người trả —</option>' +
+      profiles.map(function (p) { return '<option value="' + p.id + '">' + escapeHtml(p.name) + "</option>"; }).join("");
+  }
 
-    it.qty = Math.round((it.qty + qty) * 100) / 100;
-    it.lastRestock = todayISO();
-    it.inCart = false;
-    it.manualLevel = null;
-    state.purchaseLog.push({ id: uid(), itemId: it.id, itemName: it.name, qty: qty, cost: cost, date: todayISO() });
-    addActivity("restock", "🛒 Đã mua " + it.name + " (+" + fmtQty(qty) + " " + (it.unit || "") + ")" + (cost ? " — " + cost.toLocaleString("vi-VN") + "đ" : ""));
+  function openBuyForm(it) {
+    fillPayerSelect();
+    document.getElementById("buy-item-id").value = it.id;
+    document.getElementById("buy-item-name").textContent = it.name;
+    var suggestion = it.category === "phat_sinh" ? (it.qty || 1) : suggestedBuyQty(it);
+    document.getElementById("buy-qty").value = fmtQty(suggestion);
+    document.getElementById("buy-cost").value = "";
+    document.getElementById("buy-payer").value = "";
+    var form = document.getElementById("shop-buy-form");
+    form.style.display = "block";
+    form.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function closeBuyForm() { document.getElementById("shop-buy-form").style.display = "none"; }
+
+  function confirmBuy() {
+    var id = document.getElementById("buy-item-id").value;
+    var it = findItem(id);
+    if (!it) return;
+
+    var qty = parseFloat(document.getElementById("buy-qty").value.toString().replace(",", "."));
+    if (isNaN(qty) || qty <= 0) { alert("Số lượng không hợp lệ."); return; }
+
+    var costStr = document.getElementById("buy-cost").value;
+    var cost = costStr && !isNaN(parseFloat(costStr)) ? parseFloat(costStr) : null;
+    var payerId = document.getElementById("buy-payer").value || null;
+
+    if (cost && !payerId) { alert("Bạn đã nhập giá tiền — chọn giúp ai là người trả nhé."); return; }
+
+    var today = todayISO();
+    var newQty = Math.round((it.qty + qty) * 100) / 100;
+
+    it.qty = newQty; it.lastRestock = today; it.inCart = false; it.manualLevel = null;
+    closeBuyForm();
     renderAll();
 
-    if (cost) {
-      var goExpense = confirm('Đã ghi lại lần mua này. Bạn có muốn mở trang "Chi tiêu" để ghi khoản ' + cost.toLocaleString("vi-VN") + 'đ này không?');
-      if (goExpense && window.ttbkNavigate) window.ttbkNavigate("Chi tiêu TTBK.html");
-      else if (goExpense) window.location.href = "Chi tiêu TTBK.html";
-    }
+    SHOP_DB.updateItem(id, { qty: newQty, last_restock: today, in_cart: false, manual_level: null })
+      .then(function () {
+        return SHOP_DB.insertPurchase({ itemId: it.id, itemName: it.name, qty: qty, cost: cost, paidBy: payerId, date: today });
+      })
+      .then(function (purchase) {
+        if (purchase) { state.purchaseLog.unshift(purchase); renderAll(); }
+        if (cost && payerId) {
+          return SHOP_DB.insertExpense({
+            description: it.name, category: "shopping", amount: cost,
+            paidBy: payerId, date: today, purchaseId: purchase ? purchase.id : null
+          });
+        }
+      });
   }
 
   /* ------------------------------------------------------------------ *
@@ -543,6 +636,7 @@
   function openItemForm(item) {
     var form = document.getElementById("shop-item-form");
     document.getElementById("shop-adhoc-form").style.display = "none";
+    document.getElementById("shop-buy-form").style.display = "none";
     document.getElementById("shop-item-form-title").textContent = item ? "Sửa đồ dùng" : "Thêm đồ dùng";
     document.getElementById("si-id").value = item ? item.id : "";
     document.getElementById("si-name").value = item ? item.name : "";
@@ -575,15 +669,18 @@
     if (id) {
       var it = findItem(id);
       Object.assign(it, data);
-      addActivity("edit", "✏️ Đã sửa: " + it.name);
+      closeItemForm();
+      renderAll();
+      SHOP_DB.updateItem(id, {
+        name: data.name, category: data.category, qty: data.qty, unit: data.unit || null,
+        min: data.min, ideal: data.ideal, cycle_days: data.cycleDays, note: data.note || null
+      });
     } else {
-      var newItem = mkItem(data);
-      if (data.category === "dinh_ky" && !newItem.lastRestock) newItem.lastRestock = todayISO();
-      state.items.push(newItem);
-      addActivity("add", "➕ Đã thêm món mới: " + name);
+      closeItemForm();
+      SHOP_DB.insertItem(data).then(function (newItem) {
+        if (newItem) { state.items.push(newItem); renderAll(); }
+      });
     }
-    closeItemForm();
-    renderAll();
   }
 
   /* ------------------------------------------------------------------ *
@@ -591,6 +688,7 @@
    * ------------------------------------------------------------------ */
   function openAdhocForm() {
     document.getElementById("shop-item-form").style.display = "none";
+    document.getElementById("shop-buy-form").style.display = "none";
     document.getElementById("sa-name").value = "";
     document.getElementById("sa-qty").value = 1;
     document.getElementById("sa-priority").value = "binh_thuong";
@@ -607,12 +705,11 @@
     var qty = parseFloat(document.getElementById("sa-qty").value) || 1;
     var priority = document.getElementById("sa-priority").value;
     var note = document.getElementById("sa-note").value.trim();
-    var item = mkItem({ name: name, category: "phat_sinh", qty: qty, min: 0, inCart: true, cartPriority: priority, note: note });
-    state.items.push(item);
-    addActivity("adhoc", "⚡ Phát sinh: " + name + " (" + PRIORITY_LABEL[priority] + ")");
+    var data = { name: name, category: "phat_sinh", qty: qty, unit: "", min: 0, ideal: null, cycleDays: null, note: note, cartPriority: priority };
     closeAdhocForm();
-    switchShopTab("cart");
-    renderAll();
+    SHOP_DB.insertItem(data).then(function (newItem) {
+      if (newItem) { state.items.push(newItem); switchShopTab("cart"); renderAll(); }
+    });
   }
 
   /* ------------------------------------------------------------------ *
@@ -622,24 +719,45 @@
     document.querySelectorAll(".shop-tab-btn").forEach(function (b) {
       b.classList.toggle("active", b.getAttribute("data-shoptab") === tab);
     });
-    ["items", "cart", "replace", "history"].forEach(function (t) {
+    ["items", "cart", "ai", "replace", "history"].forEach(function (t) {
       var panel = document.getElementById("shop-panel-" + t);
       if (panel) panel.style.display = (t === tab) ? "block" : "none";
     });
   }
 
   function addAllSuggested() {
-    var added = 0;
+    var added = [];
     state.items.forEach(function (it) {
       if (isSuggested(it)) {
         it.inCart = true;
         it.cartPriority = suggestedPriority(it);
-        added++;
+        added.push(it);
       }
     });
-    if (added) addActivity("bulk", "🛒 Đã đưa " + added + " món (gợi ý) vào danh sách mua.");
     renderAll();
     switchShopTab("cart");
+    added.forEach(function (it) {
+      SHOP_DB.updateItem(it.id, { in_cart: true, cart_priority: it.cartPriority });
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * ĐỒNG BỘ TRỰC TIẾP GIỮA CÁC THÀNH VIÊN (Supabase Realtime)           *
+   * ------------------------------------------------------------------ */
+  function subscribeRealtime() {
+    var sb = sbClient();
+    if (!sb || !sb.channel) return;
+    var pending = null;
+    function debouncedReload() {
+      if (pending) clearTimeout(pending);
+      pending = setTimeout(function () {
+        SHOP_DB.loadAll().then(renderAll);
+      }, 400);
+    }
+    sb.channel("shopping-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "shopping_items" }, debouncedReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "shopping_purchase_log" }, debouncedReload)
+      .subscribe();
   }
 
   /* ------------------------------------------------------------------ *
@@ -655,6 +773,8 @@
     document.getElementById("shop-adhoc-save").addEventListener("click", saveAdhoc);
     document.getElementById("shop-adhoc-cancel").addEventListener("click", closeAdhocForm);
     document.getElementById("shop-btn-addall").addEventListener("click", addAllSuggested);
+    document.getElementById("buy-confirm").addEventListener("click", confirmBuy);
+    document.getElementById("buy-cancel").addEventListener("click", closeBuyForm);
 
     document.getElementById("shop-tabs").addEventListener("click", function (e) {
       var b = e.target.closest("[data-shoptab]");
@@ -674,7 +794,11 @@
     document.getElementById("shop-cart-list").addEventListener("click", onGridClick);
     document.getElementById("shop-replace-list").addEventListener("click", onGridClick);
 
-    renderAll();
+    SHOP_DB.loadAll().then(function () {
+      fillPayerSelect();
+      renderAll();
+      subscribeRealtime();
+    });
   }
 
   if (document.readyState === "loading") {
@@ -683,7 +807,7 @@
     init();
   }
 
-  // Expose để debug / để các module khác (tasks.js, notifications.js...) có thể móc vào sau này.
+  // Expose để shopping-ai.js và các module khác móc vào — giữ đúng hình dạng như bản cũ.
   window.TTBK_SHOPPING = {
     state: state,
     renderAll: renderAll,

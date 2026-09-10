@@ -408,6 +408,33 @@
           </div>
         </div>
 
+        <!-- Form: xác nhận đã mua — nhập số lượng, giá, VÀ ai trả tiền -->
+        <div class="card" id="shop-buy-form" style="display:none; margin-bottom:22px;">
+          <h3 style="font-size:15px; margin-bottom:4px;">✅ Xác nhận đã mua — <span id="buy-item-name"></span></h3>
+          <input type="hidden" id="buy-item-id" />
+          <div class="form-row">
+            <div class="field">
+              <label for="buy-qty">Số lượng đã mua</label>
+              <input type="number" id="buy-qty" step="0.1" min="0.1" />
+            </div>
+            <div class="field">
+              <label for="buy-cost">Giá tiền (đ, để trống nếu không muốn ghi)</label>
+              <input type="number" id="buy-cost" min="0" step="1000" placeholder="VD: 85000" />
+            </div>
+          </div>
+          <div class="field" style="max-width:260px;">
+            <label for="buy-payer">Ai trả tiền?</label>
+            <select id="buy-payer"><option value="">— Chọn người trả —</option></select>
+          </div>
+          <p style="font-size:12px;color:var(--ink-faint);margin:0 0 14px;">
+            Có nhập giá thì mới cần chọn người trả — khoản này sẽ tự ghi vào Chi tiêu chung của nhà.
+          </p>
+          <div class="btn-row">
+            <button class="btn btn-primary btn-sm" id="buy-confirm">Xác nhận đã mua</button>
+            <button class="btn btn-ghost btn-sm" id="buy-cancel">Huỷ</button>
+          </div>
+        </div>
+
         <!-- Panel: Đồ dùng -->
         <div id="shop-panel-items" class="shop-panel">
           <div class="shop-filter-row" id="shop-cat-filter">
