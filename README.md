@@ -1,213 +1,82 @@
-﻿# TTBK - App viec nha
+# TTBK
 
-Web app quan ly viec nha cho 4 nguoi (Tien, Tai, Bach, Khoa), dung **GitHub Pages** de host va **Supabase** cho dang nhap, luu du lieu va realtime.
+Web app quan ly viec nha cho 4 thanh vien, dung HTML/CSS/JavaScript thuần, Supabase va GitHub Pages. Khong co buoc build frontend.
 
-App la **HTML + vanilla JavaScript**, khong co buoc build va khong dung `import/export` module. Thu tu cac the `script` trong HTML quan trong vi cac file dung bien va ham global cua file duoc nap truoc.
+## Chay nhanh
 
-## Tinh nang
+1. Mo `login.html` qua GitHub Pages, localhost hoac mot web server HTTPS.
+2. Tao tai khoan trong Supabase Authentication.
+3. Chay `sql/schema.sql`, sau do chay cac migration can thiet trong `sql/`.
+4. Dien Project URL va anon key vao `js/supabase-client.js`.
+5. Neu dung AI chia viec, deploy Edge Function `ai-assign-tasks` va dat secret `ANTHROPIC_API_KEY`.
 
-- Tong quan, thong bao, cong viec, lich thang, thanh vien va cai dat.
-- Lich viec lap lai co dinh hoac luan phien theo hang doi.
-- Xin doi viec, bao vang, lich su thay doi va tinh diem cong bang.
-- Mua sam chung trong muc "Nha can gi?".
-- Quan ly chi tieu rieng tai `Chi tieu TTBK.html`.
-- Theme sang/toi va Web Push tuy chon.
+## Cau truc
 
-## Cai dat nhanh
+```text
+/
+|-- index.html                 Trang chinh
+|-- login.html                 Dang nhap
+|-- Chi tieu TTBK.html         So chi tieu doc lap
+|-- demo.html                  Preview giao dien, khong phai entry point
+|-- manifest.json              Cau hinh PWA
+|-- sw.js                      Service worker cho Web Push
+|
+|-- css/
+|   |-- style.css              Theme va giao dien dung chung
+|   |-- shopping.css           Giao dien khu vuc Nha can gi
+|   |-- expense.css            Giao dien trang Chi tieu
+|   `-- ttbk.png               Icon
+|
+|-- js/
+|   |-- supabase-client.js     Cau hinh Supabase va hang so chung
+|   |-- auth.js                Session, profile, dang nhap/dang xuat
+|   |-- utils.js               Ham dung chung
+|   |-- app.js                 Khoi dong va dieu huong index
+|   |-- tasks.js               Cong viec
+|   |-- dashboard.js           Tong quan
+|   |-- notifications.js       Thong bao
+|   |-- schedule.js            Lich lap
+|   |-- calendar.js            Lich thang
+|   |-- class-schedule.js      Lich hoc
+|   |-- rotations.js           Luan phien
+|   |-- members.js             Thanh vien
+|   |-- settings.js            Cai dat
+|   |-- shopping.js            Danh sach mua sam
+|   |-- shopping-ai.js         Goi y AI cho mua sam
+|   |-- auto-assign.js         Chia viec cong bang/AI
+|   |-- push-notifications.js  Web Push
+|   |-- theme.js               Dong bo theme
+|   `-- page-transition.js     Chuyen trang
+|
+|-- sql/                       Schema va migration Supabase
+`-- supabase/functions/
+    |-- ai-assign-tasks/       Edge Function chia viec bang AI
+    `-- send-push/              Edge Function gui Web Push
+```
 
-1. Tao project tai Supabase Dashboard.
-2. Vao SQL Editor, chay `sql/schema.sql` truoc.
-3. Chay cac migration phu hop trong `sql/` (xem bang ben duoi).
-4. Vao Authentication > Users > Add user de tao tai khoan cho 4 thanh vien. Neu dung email gia, tat Confirm email.
-5. Copy Project URL va anon public key vao `js/supabase-client.js`.
-6. Chay `npm install` neu can dung Supabase CLI.
-7. Push toan bo thu muc len GitHub, bat GitHub Pages voi branch `main` va thu muc `/ (root)`.
-8. Mo `login.html`, dang nhap va kiem tra cac muc trong app.
+## Thu tu script cua index.html
 
-## Cau truc va tra cuu tung file
+`page-transition.js` -> Supabase CDN -> `supabase-client.js` -> `utils.js` va `auth.js` -> cac module nghiep vu -> `app.js` -> push/theme.
 
-### File o thu muc goc
+Cac file JavaScript dang dung bien/h ham global, vi vay khong tu y doi thu tu nap hoac doi ten file ma khong cap nhat `index.html`.
 
-| File | Vai tro | Can gi / luu y |
-|---|---|---|
-| `index.html` | Trang chinh: Tong quan, Thong bao, Cong viec, Lich, Thanh vien, Mua sam, Cai dat | Can `css/style.css`, `css/shopping.css`, `manifest.json`, Supabase CDN va cac file trong `js/`. |
-| `login.html` | Dang nhap bang email va mat khau Supabase | Can `css/style.css`, Supabase CDN, `js/supabase-client.js`, `js/auth.js` va tai khoan Authentication. |
-| `Chi tieu TTBK.html` | Quan ly quy, khoan chi, chia phan, cong no va bieu do | Can `css/style.css`, Supabase CDN, Chart.js, html2pdf.js, `js/page-transition.js`, `js/supabase-client.js`, `js/auth.js`; dung bang `finances`. |
-| `demo.html` | Trang thu nghiem giao dien | Khong phai entry point chinh; chi giu neu dang dung de thu UI. |
-| `index.ts` | Ma Edge Function AI chia viec `ai-assign-tasks` | Can Supabase CLI va secret `ANTHROPIC_API_KEY`; khong chay tren trinh duyet. Khi deploy chuan, dat noi dung vao `supabase/functions/ai-assign-tasks/index.ts`. |
-| `manifest.json` | Cau hinh PWA, icon, start URL va mau giao dien | Can `css/ttbk.png`; sua `start_url` va `scope` neu doi thu muc GitHub Pages. |
-| `sw.js` | Service worker cho Web Push | Chi hoat dong tren HTTPS hoac `localhost`; duoc dang ky boi `js/push-notifications.js`. |
-| `package.json` | Khai bao Supabase CLI trong devDependencies | Khong dung de build frontend. `package-lock.json` la file khoa phien ban, khong sua thu cong. |
-| `README.md` | Tai lieu cai dat, dependency va vai tro tung file | Cap nhat khi them file, bang database, secret hoac buoc deploy moi. |
+## Supabase Edge Functions
 
-### CSS va tai nguyen
+```powershell
+supabase functions deploy ai-assign-tasks
+supabase functions deploy send-push
+```
 
-| File | Vai tro | Can gi / luu y |
-|---|---|---|
-| `css/style.css` | Giao dien dung chung: theme, layout, form, button, card, lich, avatar, modal | Ca hai trang chinh deu dung; giu cac bien nhu `--bg`, `--surface`, `--accent`, `--ink`. |
-| `css/css-additions.css` | Cac bo sung style cho giao dien | Hien khong duoc tham chieu trong hai trang chinh; neu bat dau dung, nap sau `style.css` va cap nhat README. |
-| `css/shopping.css` | Giao dien rieng cho khu vuc "Nha can gi?" | Class va id phai khop voi markup cua `js/shopping.js`. |
-| `css/ttbk.png` | Favicon, Apple touch icon va PWA icon | Phai ton tai dung duong dan va phu hop voi `manifest.json`. |
+Secret can thiet:
 
-### JavaScript phia trinh duyet
+- `ai-assign-tasks`: `ANTHROPIC_API_KEY`
+- `send-push`: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
 
-| File | Vai tro | Can gi / file lien quan |
-|---|---|---|
-| `js/page-transition.js` | Hieu ung chuyen trang va dieu huong | Nap som tren cac trang co dung `ttbkNavigate`. |
-| `js/supabase-client.js` | Tao `supabaseClient`, chua Project URL va anon public key | Nap sau Supabase CDN va truoc moi file goi database. Tuyet doi khong dat service role key o day. |
-| `js/auth.js` | Session, dang nhap, dang xuat, lay profile | Can `supabaseClient` va bang `profiles`. |
-| `js/utils.js` | Ham dung chung: escape HTML, avatar, ngay gio, trang thai, lich su, diem | Can `supabaseClient`; mot so ham dung bien toan cuc `STATE`. |
-| `js/app.js` | Khoi dong app, kiem tra session, dieu huong section va realtime chung | Nap sau cac module nghiep vu; la diem noi chinh cua `index.html`. |
-| `js/tasks.js` | Tao, sua, hoan thanh, bo viec, giao lai va xem lich su | Can `tasks`, `task_history`, `profiles`, `task_exchanges`, `notifications`. |
-| `js/auto-assign.js` | Chia viec cong bang hoac goi AI xem truoc phan cong | Che do AI can Edge Function `ai-assign-tasks`; che do thuong can `tasks`, `profiles` va diem. |
-| `js/schedule.js` | Tao lich lap va sinh task theo ngay | Can `schedules`, `tasks`, `rotation_queues`. |
-| `js/calendar.js` | Ve lich thang, trang thai qua khu va du kien tuong lai | Can `tasks`, `schedules`, `rotation_queues` va cac id `cal-*`. |
-| `js/class-schedule.js` | Lich hoc theo tuan, truong va tiet hoc | Can cac bang do migration class schedule tao ra va cac id `cls-*`. |
-| `js/rotations.js` | Hang doi luan phien va viec phat sinh | Can `rotation_queues`, `tasks`, `notifications` va markup `rq-*`. |
-| `js/notifications.js` | Danh sach thong bao, badge chua doc va realtime | Can bang `notifications`, Realtime va cac id `notif-*`. |
-| `js/dashboard.js` | Thong ke tong quan va diem cong bang tuan | Can `tasks`, `profiles`, `point_adjustments`. |
-| `js/members.js` | Danh sach thanh vien, diem va trang thai vang | Can `profiles`, `tasks`, `point_adjustments` va migration away. |
-| `js/settings.js` | Doi ten, mau/avatar, truong hoc, theme va trang thai di vang | Can quyen update profile va cac bang/cot do migration tao ra. |
-| `js/shopping.js` | Vat dung, gio mua va lich su mua cua "Nha can gi?" | Can `shopping_items`, `shopping_purchase_log`, `expenses`, `profiles`; schema o migration 007. |
-| `js/shopping-ai.js` | Goi y AI cho khu vuc mua sam | Can tab AI trong `index.html` va API public cua `js/shopping.js`. |
-| `js/theme.js` | Chuyen sang/toi va dong bo theme giua cac trang | Dung localStorage key `ttbk-theme` va bien theme trong `css/style.css`. |
-| `js/push-notifications.js` | Xin quyen, dang ky/huy Web Push va luu subscription | Can HTTPS, `sw.js`, VAPID public key, bang `push_subscriptions` va user id trong `STATE`. |
+## Quy tac sua file
 
-### SQL va migration
-
-Chay `sql/schema.sql` truoc. Cac migration con lai chay theo nhu cau hoac khi nang cap project cu. Sau moi migration, kiem tra Tables, RLS policies va Realtime trong Supabase.
-
-| File | Dung khi nao / tao gi |
-|---|---|
-| `sql/schema.sql` | Bat buoc dau tien: bang loi, trigger profile, RLS va Realtime; co the chay lai. |
-| `sql/003_point_adjustments.sql` | Tao he thong cong/tru diem cho `utils.js`, dashboard, members va auto-assign. |
-| `sql/004_fix_completed_task_assignee.sql` | Sua cach xac dinh nguoi duoc tinh diem khi task hoan thanh trong schema cu. |
-| `sql/006_fix_task_status_and_actions.sql` | Bo sung/sua status va action cho nhan viec, bo viec, chuyen viec. |
-| `sql/007_shopping_and_expenses.sql` | Tao schema mua sam va lien ket khoan mua voi chi tieu; bat buoc cho `shopping.js`. |
-| `sql/008_shopping_food_category.sql` | Bo sung category thuc pham; chay sau migration 007. |
-| `sql/away_mode.sql` | Bat trang thai di vang va diem bu vang; can cho settings, utils, members. |
-| `sql/migration_class_schedule.sql` | Ban dau cua du lieu truong, mon va tiet hoc. |
-| `sql/migration_class_schedule_v2.sql` | Nang cap schema lich hoc phien ban 2. |
-| `sql/migration_class_schedule_v3.sql` | Nang cap schema lich hoc phien ban 3; dung ban moi nhat sau cac ban truoc. |
-| `sql/migration_status_engine.sql` | Cap nhat logic va status nghiep vu task cho project cu. |
-| `sql/migration_travel.sql` | Thay doi cho trang thai di xa/du lich va ban giao viec. |
-| `sql/push_subscriptions.sql` | Tao bang luu Web Push subscription; bat buoc truoc khi bat push. |
-
-### Supabase Edge Functions
-
-| File / thu muc | Vai tro | Secret / dieu kien |
-|---|---|---|
-| `supabase/functions/send-push/index.ts` | Gui Web Push toi mot hoac nhieu user, don subscription het han | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`; deploy bang `supabase functions deploy send-push`. |
-| `supabase/functions/daily-electricity/` | Function cho tac vu dien hang ngay | Doc file ben trong de biet body va secret truoc khi deploy. |
-| `index.ts` | Function AI chia viec dang o root | Dat noi dung vao `supabase/functions/ai-assign-tasks/index.ts`, dat `ANTHROPIC_API_KEY`, roi deploy `ai-assign-tasks`. |
-
-### Thu tu nap script cua `index.html`
-
-Giữ dependency theo thu tu: `page-transition.js` -> Supabase CDN -> `supabase-client.js` -> `utils.js`/`auth.js` -> cac module tasks, lich, dashboard, members, shopping -> `settings.js` -> `app.js` -> push/theme. File moi phai duoc nap sau cac file ma no goi.
-
-Neu doi ten `supabaseClient` hoac `STATE`, can tim va cap nhat tat ca file dung bien do.
-
-## Khoi niem nghiep vu
-
-- **Hang doi luan phien (`rotation_queues`)**: nho thu tu thanh vien va tu chuyen luot khi viec hoan thanh.
-- **Cho nhan (`cho_nhan`)**: viec phat sinh cho dung nguoi duoc gan nhan truoc khi lam.
-- **Xin doi viec**: gui yeu cau cho ca nha; nguoi nhan truoc duoc gan viec.
-- **Diem cong bang**: tinh tu viec hoan thanh va cac dieu chinh diem, dung de can doi viec moi.
-
-## Ghi chu
-
-- Du lieu duoc bao ve bang Row Level Security: chi nguoi da dang nhap moi doc/ghi duoc.
-- Neu thong bao khong cap nhat realtime, vao Supabase > Database > Replication va kiem tra `tasks` va `notifications`.
-- Web Push can HTTPS, quyen thong bao cua trinh duyet, VAPID key va Edge Function `send-push`.
-- Khi them file, cap nhat bang tra cuu nay va README cung luc de nguoi khac biet dependency moi.
-## Tra cứu từng file: dùng khi nào và cần gì
-
-App hiện là **HTML + vanilla JavaScript**, không có bước build và không dùng
-`import/export` module. Thứ tự các thẻ `script` trong HTML quan trọng vì các file
-dùng biến và hàm global của file được nạp trước đó.
-
-### File ở thư mục gốc
-
-| File | Vai trò | Cần gì / lưu ý |
-|---|---|---|
-| `index.html` | Trang chính: Tổng quan, Thông báo, Công việc, Lịch, Thành viên, Mua sắm, Cài đặt | Cần `css/style.css`, `css/shopping.css`, `manifest.json`, Supabase CDN và các file JS trong `js/`. |
-| `login.html` | Đăng nhập bằng email và mật khẩu Supabase | Cần `css/style.css`, Supabase CDN, `js/supabase-client.js`, `js/auth.js` và tài khoản trong Supabase Authentication. |
-| `Chi tiêu TTBK.html` | Quản lý quỹ, khoản chi, chia phần, công nợ và biểu đồ | Cần `css/style.css`, Supabase CDN, Chart.js, html2pdf.js, `js/page-transition.js`, `js/supabase-client.js`, `js/auth.js`. Dữ liệu dùng bảng `finances`. |
-| `demo.html` | Trang thử nghiệm giao diện | Không phải entry point chính; chỉ giữ nếu đang dùng để thử UI. |
-| `index.ts` | Mã Edge Function AI chia việc (`ai-assign-tasks`) | Cần Supabase CLI và secret `ANTHROPIC_API_KEY`; không chạy trực tiếp trên trình duyệt. Khi deploy chuẩn, đặt nội dung vào `supabase/functions/ai-assign-tasks/index.ts`. |
-| `manifest.json` | Cấu hình PWA, icon, start URL và màu giao diện | Cần `css/ttbk.png`; sửa `start_url` và `scope` nếu đổi thư mục GitHub Pages. |
-| `sw.js` | Service worker cho Web Push | Chỉ hoạt động trên HTTPS hoặc `localhost`; được đăng ký bởi `js/push-notifications.js`. |
-| `package.json` | Khai báo Supabase CLI trong devDependencies | Không dùng để build frontend. Chạy `npm install` nếu muốn dùng CLI theo package này. |
-
-### CSS và tài nguyên giao diện
-
-| File | Vai trò | Cần gì / lưu ý |
-|---|---|---|
-| `css/style.css` | Giao diện dùng chung: theme, layout, form, button, card, lịch, avatar, modal | Được cả hai trang chính dùng; giữ các biến như `--bg`, `--surface`, `--accent`, `--ink`. |
-| `css/shopping.css` | Giao diện riêng cho khu vực “Nhà cần gì?” | Class và id phải khớp với markup của `js/shopping.js`. |
-| `css/ttbk.png` | Favicon, Apple touch icon và PWA icon | Phải tồn tại đúng đường dẫn và phù hợp với `manifest.json`. |
-
-### JavaScript phía trình duyệt
-
-| File | Vai trò | Cần gì / file liên quan |
-|---|---|---|
-| `js/page-transition.js` | Hiệu ứng chuyển trang và điều hướng | Nạp sớm trên các trang có dùng `ttbkNavigate`. |
-| `js/supabase-client.js` | Tạo `supabaseClient`, chứa Project URL và anon public key | Bắt buộc nạp sau Supabase CDN và trước mọi file gọi database. Không đặt service role key ở đây. |
-| `js/auth.js` | Session, đăng nhập, đăng xuất, lấy profile | Cần `supabaseClient` và bảng `profiles`; dùng bởi login, app chính và trang chi tiêu. |
-| `js/utils.js` | Hàm dùng chung: escape HTML, avatar, ngày giờ, trạng thái, lịch sử, điểm | Cần `supabaseClient`; một số hàm dùng biến toàn cục `STATE`. |
-| `js/app.js` | Khởi động app, kiểm tra session, điều hướng section và realtime chung | Nạp sau các module nghiệp vụ; là điểm nối chính của `index.html`. |
-| `js/tasks.js` | Tạo, sửa, hoàn thành, bỏ việc, giao lại và xem lịch sử | Cần `tasks`, `task_history`, `profiles`, `task_exchanges`, `notifications`. |
-| `js/auto-assign.js` | Chia việc công bằng hoặc gọi AI để xem trước phân công | Chế độ AI cần Edge Function `ai-assign-tasks`; chế độ thường cần `tasks`, `profiles` và điểm. |
-| `js/schedule.js` | Tạo lịch lặp và sinh task theo ngày | Cần `schedules`, `tasks`, `rotation_queues`. |
-| `js/calendar.js` | Vẽ lịch tháng, trạng thái quá khứ và dự kiến tương lai | Cần `tasks`, `schedules`, `rotation_queues` và các id `cal-*`. |
-| `js/class-schedule.js` | Lịch học theo tuần, trường và tiết học | Cần các bảng do migration class schedule tạo ra và các id `cls-*`. |
-| `js/rotations.js` | Hàng đợi luân phiên và việc phát sinh | Cần `rotation_queues`, `tasks`, `notifications` và markup `rq-*`. |
-| `js/notifications.js` | Danh sách thông báo, badge chưa đọc và realtime | Cần bảng `notifications`, Realtime và các id `notif-*`. |
-| `js/dashboard.js` | Thống kê tổng quan và điểm công bằng tuần | Cần `tasks`, `profiles`, `point_adjustments`. |
-| `js/members.js` | Danh sách thành viên, điểm và trạng thái vắng | Cần `profiles`, `tasks`, `point_adjustments` và migration away. |
-| `js/settings.js` | Đổi tên, màu/avatar, trường học, theme và trạng thái đi vắng | Cần quyền update profile và các bảng/cột do migration tương ứng tạo ra. |
-| `js/shopping.js` | Vật dụng, giỏ mua và lịch sử mua của “Nhà cần gì?” | Cần `shopping_items`, `shopping_purchase_log`, `expenses`, `profiles`; schema ở migration 007. |
-| `js/shopping-ai.js` | Gợi ý AI cho khu vực mua sắm | Cần tab AI trong `index.html` và API public của `js/shopping.js`; kiểm tra endpoint/secret nếu bật AI. |
-| `js/theme.js` | Chuyển sáng/tối và đồng bộ theme giữa các trang | Dùng localStorage key `ttbk-theme` và biến theme trong `css/style.css`. |
-| `js/push-notifications.js` | Xin quyền, đăng ký/hủy Web Push và lưu subscription | Cần HTTPS, `sw.js`, VAPID public key, bảng `push_subscriptions` và user id trong `STATE`. |
-
-### SQL và migration
-
-Chạy `sql/schema.sql` trước. Các migration còn lại chạy theo nhu cầu hoặc khi nâng cấp
-project cũ. Sau mỗi migration, kiểm tra Tables, RLS policies và Realtime trong Supabase.
-
-| File | Dùng khi nào / tạo gì |
-|---|---|
-| `sql/schema.sql` | Bắt buộc đầu tiên: bảng lõi, trigger profile, RLS và Realtime; có thể chạy lại. |
-| `sql/003_point_adjustments.sql` | Tạo hệ thống cộng/trừ điểm dùng bởi `utils.js`, dashboard, members và auto-assign. |
-| `sql/004_fix_completed_task_assignee.sql` | Sửa cách xác định người được tính điểm khi task hoàn thành trong schema cũ. |
-| `sql/006_fix_task_status_and_actions.sql` | Bổ sung/sửa status và action cho nhận việc, bỏ việc, chuyển việc. |
-| `sql/007_shopping_and_expenses.sql` | Tạo schema mua sắm và liên kết khoản mua với chi tiêu; bắt buộc cho `shopping.js`. |
-| `sql/008_shopping_food_category.sql` | Bổ sung category thực phẩm; chạy sau migration 007. |
-| `sql/away_mode.sql` | Bật trạng thái đi vắng và điểm bù vắng; cần cho settings, utils và members. |
-| `sql/migration_class_schedule.sql` | Bản đầu của dữ liệu trường, môn và tiết học. |
-| `sql/migration_class_schedule_v2.sql` | Nâng cấp schema lịch học phiên bản 2. |
-| `sql/migration_class_schedule_v3.sql` | Nâng cấp schema lịch học phiên bản 3; dùng bản mới nhất sau các bản trước. |
-| `sql/migration_status_engine.sql` | Cập nhật logic và status nghiệp vụ task cho project cũ. |
-| `sql/migration_travel.sql` | Các thay đổi cho trạng thái đi xa/du lịch và bàn giao việc. |
-| `sql/push_subscriptions.sql` | Tạo bảng lưu Web Push subscription; bắt buộc trước khi bật push. |
-
-### Supabase Edge Functions
-
-| File / thư mục | Vai trò | Secret / điều kiện |
-|---|---|---|
-| `supabase/functions/send-push/index.ts` | Gửi Web Push tới một hoặc nhiều user, dọn subscription hết hạn | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`; deploy bằng `supabase functions deploy send-push`. |
-| `supabase/functions/daily-electricity/` | Function cho tác vụ điện hàng ngày | Đọc file bên trong để biết body và secret trước khi deploy. |
-| `index.ts` | Function AI chia việc hiện đang ở root | Đặt nội dung vào `supabase/functions/ai-assign-tasks/index.ts`, đặt `ANTHROPIC_API_KEY`, rồi chạy `supabase functions deploy ai-assign-tasks`. |
-
-### Thứ tự nạp script của `index.html`
-
-Giữ dependency theo thứ tự: `page-transition.js` → Supabase CDN → `supabase-client.js`
-→ `utils.js`/`auth.js` → các module tasks, lịch, dashboard, members, shopping →
-`settings.js` → `app.js` → push/theme. File mới phải được nạp sau các file mà nó gọi.
-Nếu đổi tên `supabaseClient` hoặc `STATE`, cần tìm và cập nhật tất cả file dùng biến đó.
-
-## Ghi chú
-‣呔䭂钀䄠灰瘠螻⁣桮ꃃ⠠楔뫡溿술₷썔榠술₷썂採⁨럂䬠潨⥡ਊ敗⁢灡⁰畱뫡溣氠뷃瘠螻⁣桮ꃃ挠潨㐠渠왧鶻Ⱪ搠맃杮⨠䜪瑩畈⁢慐敧⩳‪栨獯⁴敷⥢⬠⨠匪灵扡獡⩥ਪ쐨쒑溃⁧桮뫡炭⬠氠냆⁵꾻氠螻⁵‫敲污楴敭⸩䬠써溴⁧Ꞻ⁮敳癲牥爠썩溪Ⱨ欠써溴⁧Ꞻ⁮畢汩⁤潴汯ਮ⨊䈪뫡溣㈠⨪戠믡ₕ畳杮›楶믡掇欠써溴⁧썣₳楧믡₝醻쐠讻桮琠믡₱潸祡瘠닃杮琠敨⁯써溠⁧釄믡榣⠠桴祡瘠곃挠楨੡ꦻ杮琠敨⁯桴믡⦩‬楸⁮釄믡榕瘠螻⽣썢澡戠뫡溭‬썶₠牴湡⁧⨪桔듃杮戠ꇃ⩯‪杮祡琠썲溪琠慨桮洠湥⁵釄믡ઃ桮뫡溭瘠螻⁣胢ₔ桴潥쐠쎑溺⁧釄믡₁畸뫡璥琠潲杮琠ꃃ⁩楬믡疇琠楨뫡璿欠뫡⺿ਊ⨪ꎺ⁮⸲⨱‪閻猠湵㩧琠慲杮⨠䰪믡掋⩨‪楧믡₝楨믡溃琠讻搠뫡溡⁧⨪讻档吠써溡⩧‪桴뫡璭⠠썣₳釄膻ੵ왨鮻杮吠써溡⁧牴냆믡掛猯畡䠯듃⁭慮⥹‬썴₴썭疠琠敨⁯牴뫡溡⁧桴ꇃ⁩ꮻ杮瘠螻⁣胢ₔ慸桮氠ꇃ⠠釄ꏃ砠湯⥧ਬ釄믡₏戨믡₏ꆻ焯썵₡ꆺ⥮‬鎻杮渠ꆺ⁴栨듃⁭慮⁹档냆⁡潸杮Ⱙ砠湡⁨썸涡渠ꆺ⁴楶믡溁쐠ꦻ⁴썮璩⠠놻欠뾺੮꾺⁰鮻⥩钀琠慨⁹档⁯䰢냆믡榛挠뫡₣畴뫡溧•앣⺩ਊ⌣䌠뫡疥琠썲掺映汩੥怊恠琊扴⵫敷⽢鲔铢肔椠摮硥栮浴⁬†††††䬠畨杮愠灰⠠閻杮焠慵⁮ 桔듃杮戠ꇃ⁯ 썃溴⁧楶믡掇⼠䰠믡掋⁨ 桔ꃃ桮瘠썩溪⼠䌠ꃃ⁩釄뫡璷਩铢肔铢₀潬楧⹮瑨汭††††††牔湡⁧釄菄杮渠궺ੰ铢肔铢₀獣⽳瑳汹⹥獣⁳††††潔ꃃ⁮馻朠慩⁯楤믡溇鲔铢肔樠⽳畳慰慢敳挭楬湥⹴獪䬠뫡璿渠믡榑匠灵扡獡⁥쐨榑믡溁唠䱒⬠欠祥龻쐠쎑禢਩铢肔铢₀獪愯瑵⹨獪††††††郄菄杮渠궺⁰ 釄菄杮砠ꖺ⁴ ꖺ⁹鎻猠ꇆ鲔铢肔樠⽳瑵汩⹳獪†††††䠠ꃃ⁭썤溹⁧档湵⁧愨慶慴Ⱳ渠썧禠琠써溡Ⱨ琠귃桮琠Ꞻ⹮⸮਩铢肔铢₀獪爯瑯瑡潩獮樮⁳†††썈溠⁧釄믡榣氠썵溢瀠楨꫃㩮琠뫡澡‬썢澡挠돃瘠螻Ᵽ琠믡₱档祵믡溃氠냆믡璣鲔铢肔樠⽳潮楴楦慣楴湯⹳獪†吠慲杮吠써溴⁧썢澡琠썲溪洠湥⁵‫慢杤⁥醻挠왨憰쐠趻⁣‫敒污楴敭鲔铢肔樠⽳慴歳⹳獪†††††吠慲杮䌠듃杮瘠螻㩣琠써涪⼠砠湯⁧ 釄믡榕渠왧鶻⁩ 楧⁡ꆺ⁮ 档祵믡溃瘠螻⁣ 數⁭讻档猠믡₭ 潸ꇃ鲔铢肔樠⽳捳敨畤敬樮⁳†††吠慲杮䰠믡掋㩨焠ꎺ⁮썬₽楶믡掇氠뫡炷氠뫡榡⠠醻쐠讻桮栠랺⁣畬ꋃ⁮桰썩溪 ‫놻猠湩⁨楶믡掇洠믡榗渠썧禠鲔铢肔樠⽳慣敬摮牡樮⁳†††吠慲杮䰠믡掋㩨瘠뫡₽讻档吠써溡⁧쐨榑믡疁栠냆믡溛Ⱨ琠듃洠ꃃⱵ渠뫡炡瘠螻⁣畱ꇃ欠ꦻ⬠搠믡₱楫뫡溿琠냆ꇆ杮氠楡਩铢肔铢₀獪搯獡扨慯摲樮⁳†††牔湡⁧閻杮焠慵㩮琠醻杮欠꫃⬠挠듃杮戠뫡溱⁧畴뫡溧渠ꃃ⁹‫楶믡掇쐠憑杮挠鶻渠궺੮铢肔铢₀獪洯浥敢獲樮⁳††††牔湡⁧桔ꃃ桮瘠썩溪鲔铢肔樠⽳敳瑴湩獧樮⁳†††吠慲杮䌠ꃃ⁩釄뫡璷栠믡ₓ왳ડ铢肔铢₀獪愯灰樮⁳††††††桋믡榟쐠馻杮愠灰⬠쐠榑믡疁栠냆믡溛⁧敭畮钔铢肔猠汱猯档浥⹡煳⁬†††吠썯溠戠믡ₙꎺ杮搠瑡扡獡⁥‫䱒⁓‫敒污楴敭钀䄠⁎佔胃⁎档뫡禡氠뫡榡渠楨믡疁氠뫡溧怊恠ਊ⌣䌠ꃃ⁩釄뫡璷⠠썬涠琠敨⁯桴믡₩놻਩ㄊ‮⨪ꆺ⁯牰橯捥⁴畓慰慢敳⨪琠뫡榡猠灵扡獡⹥潣⽭慤桳潢牡⁤洨薻⁮桰귃⸩㈊‮⨪ꆺ⁯慤慴慢敳⨪›썶澠匠䱑䔠楤潴Ⱳ搠ꇃ⁮潴ꃃ⁮馻渠믡榙搠湵⁧獠汱猯档浥⹡煳恬‬ꖺ⁭畒⹮ †楆敬渠ꃃ⁹놻琠뫡澡쐠ꞻ戠뫡溣⁧怨牰景汩獥Ⱡ怠慴歳恳‬瑠獡彫楨瑳牯恹‬獠档摥汵獥Ⱡ †牠瑯瑡潩彮畱略獥Ⱡ怠慴歳敟捸慨杮獥Ⱡ怠潮楴楦慣楴湯恳Ⱙ戠뫡璭删卌瘠ꃃ戠뫡璭删慥瑬浩⁥档੯†怠慴歳恳⬠怠潮楴楦慣楴湯恳‮뾺⁵慳⁵썮禠挠돃戠뫡溣挠뫡炭渠궺⁴捳敨慭洠믡榛‬档믡₉Ꞻ⁮썤溡쐠쎑₨썶ઠ†挠ꆺ⁹ꆺ⁩胢ₔ桫듃杮氠ꃃ⁭ꖺ⁴꾻氠螻⁵앣⺩㌊‮⨪ꆺ⁯‴썴榠欠潨뫡溣⨪›畁桴湥楴慣楴湯銆唠敳獲銆䄠摤甠敳Ⱳ琠뫡澡挠潨吠뾺⽮썔榠䈯ꇃ档䬯潨੡†⠠浥楡⁬ꆺ杮怠整䁮牴⹯潬慣恬‬潨뫡掷攠慭汩琠궺⥴‮鎻猠ꇆ⠠灠潲楦敬恳 놻猠湩⁨桮믡₝牴杩敧⁲썣₳떺⹮ †蛢ₒ꾺⁴䌢湯楦浲攠慭汩•牴湯⁧畁桴湥楴慣楴湯銆匠瑥楴杮⁳뾺⁵썤溹⁧浥楡⁬楧뫡ⲣ쐠莻쐠쒑溃⁧桮뫡炭쐠욑ꎻ⁣杮祡ਮ⸴⨠䰪뫡禥䄠䥐欠祥⨪›牐橯捥⁴敓瑴湩獧銆䄠䥐‬潣祰∠牐橯捥⁴剕≌瘠ꃃ∠湡湯瀠扵楬⁣敫≹ਬ†搠ꇃ⁮썶澠怠獪猯灵扡獡ⵥ汣敩瑮樮恳ਮ⸵⨠쐪ꦺ⁹潣敤氠꫃⁮楇䡴扵⨪›ꆺ⁯敲潰⠠摶怠瑴止眭扥⥠‬異桳琠썯溠戠믡ₙ桴냆洠믡接渠ꃃ⁹썬溪ਮ⸶⨠䈪뫡璭䜠瑩畈⁢慐敧⩳㨪匠瑥楴杮⁳蛢ₒ慐敧⁳蛢ₒ档믡溍戠慲据⁨浠楡恮‬桴냆洠믡接怠 爨潯⥴⹠㜊‮⨪郄菄杮渠궺⁰桴믡⪭‪놺杮ㄠ琠潲杮㐠琠ꃃ⁩桫ꎺ⁮釄믡₃楫믡涃琠慲欠뫡璿渠믡榑ਮ⸸嘠ꃃ⁯⨪讻档⨪‬桴꫃⁭讻档氠뫡炷氠뫡榡钀挠趻⁮⨪䌢믡ₑ釄믡溋⁨‱杮냆믡榝⨢‪档⁯楶믡掇挠믡ₑ釄믡溋⁨瘨⁤ꖺੴ†焠Ꞻ⁮ꇃ⁯畬듃⁮ꞻ⁡‱杮냆믡榝Ⱙ栠랺⁣⨪䰢썵溢瀠楨꫃⁮桴潥栠ꃃ杮쐠ꎻ≩⨪挠潨瘠螻⁣桮냆琠놻⁣釄湵 †왮鮻Ᵽ琠믡溕⁧螻猠湩⁨䍗⠠ꆺ⁯써溠⁧釄믡榣龻欠醻⁩ꆚ嘠螻⁣畬ꋃ⁮桰썩溪•杮祡戠꫃⁮왤鮻⁩牴냆믡掛⸩㤊‮鮻⁩楶믡掇瀠써璡猠湩⁨桫듃杮挠돃朠鶻挠믡ₑ釄믡溋⁨쐨閻爠ꇃⱣ琠慨⁹썢溬⁨왮鮻Ᵽ쐠榑挠ꎻ⸮⤮›ꆺ⁯਱†栠ꃃ杮쐠ꎻ⁩畬ꋃ⁮桰썩溪⠠桫듃杮朠뫡溯瘠ꃃ⁯讻档Ⱙ爠믡榓戠뫡涥⨠∪썂澡挠돃瘠螻≣⨪洠믡榗欠楨瘠螻⁣釄돃 †桴뫡璭猠믡₱ꎺ⁹慲钀栠믡₇桴믡溑⁧놻朠ꇃ⁮档⁯釄뫃杮渠왧鶻⁩釄湡⁧鮻⁩왬ꎻ⁴썶₠궻⁩桴듃杮戠ꇃ⹯ㄊ⸰䴠믡榗渠왧鶻⁩档믡溉⁨썴溪洯ꃃ⁵楲꫃杮龻⨠䌪ꃃ⁩釄뫡璷⨪‮潘杮钀搠믡₯楬믡疇氠냆⁵牴꫃⁮畓慰慢敳渠꫃⁮釄믡榕 †洠ꇃⱹ琠뫡璯洠ꇃ⁹ꮺ⁮썣溲渠畧썹溪‬썶₠썭溠栠곃桮洠믡榍渠왧鶻⁩놻挠뫡炭渠궺⁴桮믡₝敒污楴敭ਮ⌊‣桎믡溯⁧桫ꇃ⁩楮믡涇洠믡榛琠潲杮戠뫡溣㈠ਊ‭⨪썈溠⁧釄믡榣氠썵溢瀠楨꫃⁮怨潲慴楴湯煟敵敵恳⨩㨪琠慨⁹썶€썧溡挠믡溩⁧吢뾺⁮畬듃⁮桴믡₩∲‬螻 琠醻杮渠鮻琠ꦻ琠믡₱‴杮냆믡榝瘠ꃃ愠⁩釄湡⁧鮻⁩왬ꎻ⹴嘠螻⁣潸杮琠써€놻挠畨莻⁮档⁯杮냆믡榝欠뫡િ†楴뫡炿钀搠맃杮쐠욑ꎻ⁣档⁯ꎺ瘠螻⁣랺⁰ꆺ⁩木뫡溯瘠ꃃ⁯讻档 ꮺ⁮楶믡掇瀠써璡猠湩⁨戨뫡涥∠썂澡挠돃瘠螻≣⸩ⴊ⨠吪ꆺ杮琠써榡∠桃믡₝桮뫡溭•怨档彯桮湡⥠⨪›楶믡掇搠⁯써溠⁧釄믡榣氠썵溢瀠楨꫃⁮ꆺ⁯慲猠뫡₽믡₟牴뫡溡੧†桴ꇃ⁩썮禠挠潨쐠뾺⁮桫⁩釄뫃杮渠왧鶻⁩釄냆믡掣朠ꇃ⁮ꖺ⁭⨪丢궺⁮楶믡掇⨢⸪丠뫡疿欠써溴⁧썬涠쐠욑ꎻⱣ栠믡₍썣ળ†桴믡₃ꖺ⁭⨪鿰薘挠畨莻⁮楶믡掇⨪渠慧⁹胢ₔ桫듃杮挠뫡溧渠궺⁮牴냆믡掛爠믡榓洠믡榛挠畨莻⹮ⴊ⨠钟₄楘⁮釄믡榕瘠螻⩣㨪瘠믡榛瘠螻⁣桴냆믡溝⁧欨써溴⁧桴馻⁣써溠⁧釄믡榣Ⱙ戠뫡涥颟₅붺朠믡榭礠꫃⁵Ꞻ⁵档੯†ꎺ渠써Ⲡ愠⁩ꖺ⁭丢궺⁮釄믡榕瘠螻≣琠왲鮻⁣桴곃쐠욑ꎻ⁣胢ₔ牴ꇃ桮㈠渠왧鶻⁩썣溹⁧桮뫡溭渠Ꞻ⁭‱楶믡掇ਮ‭⨪鿰钔吠써溴⁧썢澡⨪›ꖻ⁣楲꫃杮琠썲溪琠慨桮洠湥Ⱶ挠돃猠믡ₑ釄뫡涿挠왨憰쐠趻Ᵽ瘠ꃃ挠뫡炭渠궺⁴杮祡氠뫡炭 琠믡掩⠠敒污楴敭 桫⁩썣₳楶믡掇洠믡榛쐯뾺⁮왬ꎻ⽴楡쐠쎑₳楸⁮釄믡榕瘠螻⁣胢ₔ桫듃杮挠뫡溧琠뫡榣氠뫡榡琠慲杮ਮ‭⨪髢辸䌠듃杮戠뫡溱⁧畴뫡溧渠ꃃ⩹㨪龻吠믡溕⁧畱湡‬썴溭⁨釄莻⁭楶믡掇쐠쎑₣潨ꃃ⁮桴ꃃ桮琠믡₫釄뫡疧琠ꞺⱮ朠썩為 琠ꖺ⁹杮祡愠⁩釄湡⁧썬涠渠楨믡疁쌯璭栠ꇆ⁮釄믡₃썣溢쐠醻⁩楶믡掇琠뾺⁰桴潥ਮ‭⨪鿰颕堠浥氠믡掋⁨궻⨪›ꖺ⁭楢믡疃琠냆믡溣⁧釄믡溓⁧鎻琠썲溪瀠楨뫡疿瘠螻⁣釄믡₃數⁭潴ꃃ⁮馻琠慨⁹釄믡榕挠믡憧 瘠螻⁣釄돃⠠楡琠뫡澡‬楡쐠閻⁩杮냆믡榝‬楡戠ꇃ⁯궺Ɱ愠⁩潨ꃃ⁮桴ꃃ桮⸮⤮钀欠써溴⁧潸ꇃ氠믡掋⁨궻挠꧅ਬ†釄뫃杮渠왨₰썴榠氠螻⁵썹疪挠뫡疧‬釄믡₃牴ꇃ桮琠慲桮挠ꏃ⹩ਊ‭⨪鿰薓䰠믡掋⁨桔ꇃ杮⨪›數⁭潴ꃃ⁮馻琠써溡⁧썣溹⁧썬掺琠慨⁹썶€ꮻ杮琠Ꞻ⹮丠썧禠쐠쎑₣畱⁡ꖺ⁹釄뫃杮 搠믡₯楬믡疇琠궺⁴ꮻ氠믡掋⁨궻瘠螻㭣渠썧禠琠냆ꇆ杮氠楡氠ꃃ⨠搪믡₱楫뫡溿⨪钀쐠욑ꎻ⁣썴溭⁨ꮻ挠ꇃ⁣讻档 氠뫡炷氠뫡榡瘠ꃃ栠ꃃ杮쐠ꎻ⁩畬ꋃ⁮桰썩溪쐠憑杮戠뫡璭‬楧뫡₣釄믡溋⁨써溠⁧釄믡榣搠믡掋⁨档祵믡溃쐠쎑溺⁧‱왢鮻⁣鞻੩†Ꞻ⁮ꎺ⁹慲‮뾺⁵썣₳楡戠뫡涥∠썂澡挠돃瘠螻≣琠ꞻ挠듃杮砠湥朠꾻ⱡ瀠Ꞻ⁮놻欠뾺⁮慸挠돃琠莻氠믡掇੨†桮뫡₹潳瘠믡榛琠놻⁣뾺钀쐠쎑禢氠ꃃ쐠쎑溡⁨釄믡榕쐠莻朠꾻瘠螻⁣썢澡戠뫡溭쐯閻⁩楶믡掇瘠뫡溫氠湩⁨潨뫡璡ਮ⌊‣桇⁩档뫃ⴊ䄠灰搠맃杮瘠湡汩慬䨠癡卡牣灩⁴欨써溴⁧敒捡ⱴ欠써溴⁧왢鮻⁣畢汩⥤钀洠믡₟桴뫡溳⁧楦敬怠栮浴恬氠ꃃ挠ꆺ⹹ⴊ䈠뫡澣洠뫡璭搠믡₯楬믡疇搠맃杮删睯䰠癥汥匠捥牵瑩⁹刨卌㨩挠覻愠⁩釄菄杮渠궺⁰鮻⁩釄믡掍术楨쐠욑ꎻ⹣ⴊ丠뫡疿挠畨듃杮琠써溴⁧썢澡欠써溴⁧놻挠뫡炭渠궺⁴敲污楴敭‬썶澠匠灵扡獡⁥蛢ₒ慄慴慢敳銆删灥楬慣楴湯ਬ†楫믡涃琠慲怠慴歳恳瘠ꃃ怠潮楴楦慣楴湯恳쐠쎑₣釄냆믡掣戠뫡璭⠠捳敨慭献汱쐠쎑₣醻琠믡₱궺ⱴ渠왨溰⁧뾺⁵놻쌠溡 挠꧅挠돃琠莻挠뫡溧戠뫡璭琠祡⸩ⴊ䴠醻⁮썢澡戠뫡溭琠敨⁯桫湵⁧楧믡₝釄믡₃螻琠醻杮琠믡₱썮₩杮냆믡榝쐠憑杮戠뫡溭欠楨瀠써溢瘠螻⁣鮻⁩琨慨⁹썶બ†档祵믡溃瘠螻⁣桴믡₧썣溴⁧놺杮渠뫃⁴鿰薘 썬₠왨鮻杮洠믡₟馻杮琠뾺⁰桴潥栠믡炣氠뷃‬썴榠氠螻⁵醻⁣썣₳釄믡ઁ†궺⁰믡₟ꖻ⁣愢慶汩扡汩瑩≹钀栠螻⁮档냆⁡썬涠쐠莻朠꾻愠灰쐠욑溡朠ꎺⱮ搠믡₅썤溹⁧档⁯楳桮瘠썩溪ਮ
-
-
+- Giao dien dung chung sua trong `css/style.css`.
+- Giao dien mua sam sua trong `css/shopping.css`.
+- Giao dien chi tieu sua trong `css/expense.css`.
+- Logic moi khu vuc sua trong file JS cung ten.
+- Thay doi database them thanh migration moi trong `sql/`, khong sua ngược migration da chay.
+- Khi them/xoa file, cap nhat cay thu muc trong README nay.
