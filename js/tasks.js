@@ -556,11 +556,25 @@ async function toggleTaskHistory(id, ticketEl) {
 }
 
 // Hoàn thành task truyền thống
-async function toggleTaskDone(id) {
+const taskCompletionRequests = new Map();
+
+function toggleTaskDone(id) {
+  if (taskCompletionRequests.has(id)) return taskCompletionRequests.get(id);
+
+  const request = toggleTaskDoneInternal(id).finally(() => taskCompletionRequests.delete(id));
+  taskCompletionRequests.set(id, request);
+  return request;
+}
+
+async function toggleTaskDoneInternal(id) {
   const ticket = document.querySelector(`.task-ticket[data-id="${id}"]`);
+  if (!ticket) return;
   const isDone = ticket.classList.contains("done");
+  const currentTask = await supabaseClient.from("tasks").select("assigned_to, title, status").eq("id", id).single();
+  if (currentTask.error || !currentTask.data) return alert("Không tìm thấy việc.");
+
+  const currentStatus = currentTask.data.status;
   const newStatus = isDone ? "chua_lam" : "hoan_thanh";
-  const currentTask = await supabaseClient.from("tasks").select("assigned_to, title").eq("id", id).single();
   const assignedProfile = currentTask.data ? findProfile(STATE.profiles, currentTask.data.assigned_to) : null;
   const actingFor = assignedProfile && assignedProfile.id !== STATE.me.id
     ? ` hộ ${assignedProfile.name}`
@@ -570,9 +584,17 @@ async function toggleTaskDone(id) {
     .from("tasks")
     .update({ status: newStatus, completed_at: newStatus === "hoan_thanh" ? new Date().toISOString() : null })
     .eq("id", id)
+    .eq("status", currentStatus)
+    .neq("status", newStatus)
     .select()
     .single();
-  if (error) return alert("Lỗi: " + error.message);
+  if (error) {
+    if (error.code === "PGRST116") {
+      refreshActiveView();
+      return;
+    }
+    return alert("Lỗi: " + error.message);
+  }
 
   await logHistory(
     id,
@@ -1037,7 +1059,11 @@ function bindTaskEvents(containerId = "tasks-container") {
     const action = e.target.dataset.action;
 
     // Phân luồng hành động:
-    if (action === "toggle") toggleTaskDone(id);
+    if (action === "toggle") {
+      const button = e.target.closest('[data-action="toggle"]');
+      if (button) button.disabled = true;
+      await toggleTaskDone(id);
+    }
     if (action === "accept") acceptTask(id);
     if (action === "handoff") handoffTask(id);
     if (action === "miss") await markTaskMissed(id);
