@@ -41,41 +41,6 @@
     </p>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-client.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/theme.js"></script>
-  <script>
-    // Nếu đã đăng nhập rồi thì vào thẳng trang chính, khỏi phải nhập lại
-    (async () => {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (session) window.location.href = "index.html";
-    })();
-
-    const form = document.getElementById("login-form");
-    const errorBox = document.getElementById("auth-error");
-    const loginBtn = document.getElementById("login-btn");
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      errorBox.classList.remove("show");
-      loginBtn.disabled = true;
-      loginBtn.textContent = "Đang đăng nhập...";
-
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-
-      const { error } = await login(email, password);
-
-      if (error) {
-        errorBox.textContent = "Sai email hoặc mật khẩu. Thử lại nhé.";
-        errorBox.classList.add("show");
-        loginBtn.disabled = false;
-        loginBtn.textContent = "Đăng nhập";
-        return;
-      }
-      window.location.href = "index.html";
-    });
-  </script>
+  <script type="module" src="/src/login.js"></script>
 </body>
 </html>

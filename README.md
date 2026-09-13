@@ -1,6 +1,6 @@
 # TTBK
 
-Web app quan ly viec nha cho 4 thanh vien, dung HTML/CSS/JavaScript thuần, Supabase va GitHub Pages. Khong co buoc build frontend.
+Web app quan ly viec nha cho 4 thanh vien, dung HTML/CSS/JavaScript thuần, Supabase va GitHub Pages. Frontend duoc bundle bang Vite.
 
 ## Chay nhanh
 
@@ -10,6 +10,14 @@ Web app quan ly viec nha cho 4 thanh vien, dung HTML/CSS/JavaScript thuần, Sup
 4. Dien Project URL va anon key vao `js/supabase-client.js`.
 5. Neu dung AI chia viec, deploy Edge Function `ai-assign-tasks` va dat secret `ANTHROPIC_API_KEY`.
 
+Lenh frontend:
+
+```powershell
+npm run dev
+npm run build
+npm run preview
+```
+
 ## Cau truc
 
 ```text
@@ -18,6 +26,7 @@ Web app quan ly viec nha cho 4 thanh vien, dung HTML/CSS/JavaScript thuần, Sup
 |-- login.html                 Dang nhap
 |-- Chi tieu TTBK.html         So chi tieu doc lap
 |-- demo.html                  Preview giao dien, khong phai entry point
+|-- vite.config.js             Cau hinh multi-page build
 |-- manifest.json              Cau hinh PWA
 |-- sw.js                      Service worker cho Web Push
 |
@@ -54,11 +63,13 @@ Web app quan ly viec nha cho 4 thanh vien, dung HTML/CSS/JavaScript thuần, Sup
     `-- send-push/              Edge Function gui Web Push
 ```
 
-## Thu tu script cua index.html
+`src/` la cac entry ES Module cua Vite. `src/generated/` duoc tao tu dong trong luc build va khong sua truc tiep.
 
-`page-transition.js` -> Supabase CDN -> `supabase-client.js` -> `utils.js` va `auth.js` -> cac module nghiep vu -> `app.js` -> push/theme.
+## Entry frontend
 
-Cac file JavaScript dang dung bien/h ham global, vi vay khong tu y doi thu tu nap hoac doi ten file ma khong cap nhat `index.html`.
+`src/main.js` la entry cua app chinh, `src/login.js` la entry cua dang nhap, `src/demo.js` la entry cua preview. Vite tao bundle tu dong; thu tu legacy van duoc khai bao tap trung trong `scripts/build-legacy.mjs`.
+
+Cac module moi dung `import`/`export`. Cac module legacy dang duoc bundle trong scope tuong thich de giu nguyen chuc nang trong khi chuyen doi dan.
 
 ## Supabase Edge Functions
 
