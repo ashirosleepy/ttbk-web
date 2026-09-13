@@ -1,0 +1,1 @@
+const e=localStorage.getItem("ttbk-theme"),t=e==="light"||e==="dark"?e:window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);document.documentElement.classList.add("pg-fade");
