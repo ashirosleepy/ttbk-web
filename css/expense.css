@@ -1,0 +1,97 @@
+/* Responsive layout for the standalone expense ledger. */
+#main-app {
+  width: min(100% - 32px, 1180px);
+  max-width: none;
+  margin: 24px auto 48px;
+}
+
+#pdf-content > h1 {
+  margin: 28px 0 8px;
+  font-size: clamp(24px, 3vw, 36px);
+  line-height: 1.2;
+}
+
+.top-controls {
+  align-items: center;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-1);
+}
+.top-controls > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.top-controls button { min-height: 42px; }
+.top-controls .theme-toggle-wrap { margin: 0 8px 0 0; }
+
+#pdf-content > .card,
+#pdf-content > .fund-summary { overflow: hidden; }
+#pdf-content .card { border: 1px solid var(--border); }
+#pdf-content h2 { text-align: left; line-height: 1.3; }
+#pdf-content h3 { text-align: left; line-height: 1.35; }
+.year-header { align-items: center; }
+.year-header h3 { flex: 1 1 240px; }
+.year-controls { flex-wrap: wrap; }
+.month-btn { min-height: 42px; }
+
+.grid { min-width: 0; }
+.input-group { min-width: 0; }
+.input-group input, .input-group select { width: 100%; min-width: 0; min-height: 42px; }
+#pdf-content .card > button { min-height: 44px; }
+
+table { display: block; overflow-x: auto; white-space: nowrap; }
+th, td { min-width: 112px; }
+th:first-child, td:first-child { min-width: 170px; }
+.chart-container { align-items: stretch; }
+.chart-box { flex: 1 1 360px; min-width: 0; }
+.chart-box canvas { max-width: 100%; }
+
+.modal { padding: 16px; }
+.modal-content { margin: 5vh auto; max-height: 90vh; overflow-y: auto; }
+.modal-content h2 { text-align: left; }
+
+@media (max-width: 760px) {
+  #main-app { width: min(100% - 20px, 620px); margin: 10px auto 28px; }
+  #pdf-content > h1 { margin: 18px 4px 8px; font-size: 24px; text-align: left; }
+  .status-bar { text-align: left; margin: 0 4px 12px; line-height: 1.45; }
+  .top-controls { align-items: stretch; padding: 10px; }
+  .top-controls > div { width: 100%; }
+  .top-controls > div:first-child button { flex: 1 1 0; }
+  .top-controls > div:last-child { display: grid; grid-template-columns: 1fr 1fr; }
+  .top-controls .theme-toggle-wrap { grid-column: 1 / -1; justify-content: space-between; margin: 0; }
+  .top-controls > div:last-child > div:last-child { display: contents !important; }
+  .top-controls > div:last-child > div:last-child button { width: 100%; }
+  #pdf-content .card { padding: 15px; margin-bottom: 14px; }
+  .year-header { align-items: stretch; }
+  .year-header h3 { flex-basis: 100%; }
+  .year-controls { width: 100%; }
+  .year-controls select, .year-controls button { flex: 1 1 0; min-width: 0; }
+  .month-tabs { grid-template-columns: repeat(4, 1fr) !important; gap: 6px; }
+  .month-btn { padding: 9px 5px; font-size: 12px; }
+  #pdf-content .grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 9px; }
+  #pdf-content .grid > .input-group:first-child { grid-column: 1 / -1; }
+  #pdf-content .card > .grid[style*="2fr"] > .input-group { grid-column: auto; }
+  #pdf-content .card > .grid[style*="2fr"] > .input-group:first-child { grid-column: 1 / -1; }
+  #pdf-content .input-group label { font-size: 12px; line-height: 1.35; }
+  #pdf-content table { margin-top: 10px; font-size: 12px; }
+  #pdf-content th, #pdf-content td { padding: 8px; }
+  .chart-container { gap: 12px; }
+  .chart-box { flex-basis: 100%; padding: 10px; }
+  .settlement-list li { font-size: 13px; line-height: 1.5; }
+}
+
+@media (max-width: 420px) {
+  #main-app { width: calc(100% - 12px); }
+  .top-controls > div:first-child { display: grid; grid-template-columns: 1fr 1fr; }
+  .top-controls > div:first-child button:first-child { grid-column: 1 / -1; }
+  #pdf-content .grid { grid-template-columns: 1fr !important; }
+  #pdf-content .grid > .input-group,
+  #pdf-content .grid > .input-group:first-child { grid-column: auto; }
+  .month-tabs { grid-template-columns: repeat(3, 1fr) !important; }
+  .modal { padding: 8px; }
+  .modal-content { padding: 16px; }
+}
+
+@media print {
+  #main-app { width: 100%; margin: 0; }
+  table { overflow: visible; white-space: normal; }
+}

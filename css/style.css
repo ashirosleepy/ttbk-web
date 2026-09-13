@@ -1351,3 +1351,56 @@ html.pg-fade.pg-leave { opacity: 0 !important; transition: opacity .22s var(--ea
 
 /* ---------------- Giai đoạn 4: PWA — trạng thái cài đặt / cập nhật ---------------- */
 .pwa-update-toast .toast-msg { max-width: 240px; white-space: normal; }
+
+/* ==========================================================
+   Responsive refinement — desktop rộng, mobile gọn
+   ========================================================== */
+.main { min-width: 0; }
+.content { width: 100%; max-width: 1440px; margin: 0 auto; }
+.view-head > div:first-child { min-width: 0; }
+.view-head h2, .view-head p { overflow-wrap: anywhere; }
+.view-head > div:last-child { max-width: 100%; }
+.view-head > div:last-child .btn { flex: 0 1 auto; }
+.task-ticket, .card, .stat, .member-card { min-width: 0; }
+.task-body { min-width: 0; }
+.task-title, .task-meta { overflow-wrap: anywhere; }
+.task-actions { flex-wrap: wrap; }
+.cal-nav { gap: 10px; }
+.cal-nav-center { min-width: 0; }
+.cal-month-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (min-width: 761px) {
+  .sidebar { width: clamp(220px, 20vw, 280px); flex: 0 0 clamp(220px, 20vw, 280px); }
+  .content { padding-left: clamp(24px, 4vw, 56px); padding-right: clamp(24px, 4vw, 56px); }
+  .view-head { gap: 24px; }
+  .view-head > div:last-child { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+}
+
+@media (max-width: 760px) {
+  .content { max-width: 100%; }
+  .view-head { gap: 12px; margin-bottom: 18px; }
+  .view-head h2 { font-size: 21px; line-height: 1.25; }
+  .view-head p { font-size: 12.5px; line-height: 1.5; }
+  .view-head > div:last-child { display: flex; width: 100%; gap: 8px; }
+  .view-head > div:last-child .btn { flex: 1 1 0; min-width: 0; }
+  .card { width: 100%; max-width: 100%; overflow: hidden; }
+  .card > h2, .card > h3 { line-height: 1.35; overflow-wrap: anywhere; }
+  .form-row { gap: 0; }
+  .cal-nav { align-items: stretch; }
+  .cal-nav > .btn { flex: 0 1 auto; min-width: 0; padding-left: 9px; padding-right: 9px; }
+  .cal-nav-center { display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; justify-content: center; }
+  .cal-nav-center .btn { width: 100%; }
+  .shop-hero { gap: 12px; }
+  .shop-hero > .card { min-width: 0; }
+}
+
+@media (max-width: 420px) {
+  .view-head > div:last-child { flex-direction: column; }
+  .view-head > div:last-child .btn { width: 100%; }
+  .task-ticket { gap: 10px; }
+  .task-body { flex-basis: calc(100% - 42px); }
+  .task-actions { justify-content: stretch; }
+  .task-actions .btn, .task-actions .icon-btn { flex: 1 1 0; }
+  .cal-nav { gap: 5px; }
+  .cal-nav > .btn { font-size: 12px; }
+}
