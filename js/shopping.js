@@ -41,6 +41,14 @@
     thap: "🟢 Thấp"
   };
 
+  function categoryLabel(category) {
+    return CATEGORY_LABEL[category] || "📦 Khác";
+  }
+
+  function placeLabel(place) {
+    return PLACE_LABEL[place] || "Nơi mua chưa chọn";
+  }
+
   /* ------------------------------------------------------------------ *
    * STATE (bộ nhớ đệm trong trình duyệt — nguồn thật là Supabase)       *
    * ------------------------------------------------------------------ */
@@ -356,7 +364,7 @@
         ? '<div class="shop-reporter">🧑 ' + escapeHtml(it.manualBy) + " báo lúc " + escapeHtml(it.manualAt || "") + "</div>"
         : "";
 
-      var placeTag = it.buyPlace ? (" · " + PLACE_LABEL[it.buyPlace]) : "";
+      var placeTag = it.buyPlace ? (" · " + placeLabel(it.buyPlace)) : "";
       var expiryTag = it.expiryDate ? (" · HSD: " + it.expiryDate) : "";
 
       return (
@@ -365,7 +373,7 @@
             "<h4>" + escapeHtml(it.name) + "</h4>" +
             '<span class="shop-badge shop-badge-' + st.level + '">' + st.emoji + " " + st.label + "</span>" +
           "</div>" +
-          '<div class="shop-meta">' + CATEGORY_LABEL[it.category] + " · " + qtyLine + placeTag + expiryTag + "</div>" +
+          '<div class="shop-meta">' + categoryLabel(it.category) + " · " + qtyLine + placeTag + expiryTag + "</div>" +
           (nudge ? '<div class="shop-note">' + nudge + "</div>" : "") +
           (it.note ? '<div class="shop-note">📝 ' + escapeHtml(it.note) + "</div>" : "") +
           reporter +
@@ -411,7 +419,7 @@
           return c ? s + c : s;
         }, 0);
         summaryEl.textContent = filtered.length + " món" +
-          (activePlaceFilter !== "all" ? " ở " + PLACE_LABEL[activePlaceFilter] : "") +
+          (activePlaceFilter !== "all" ? " ở " + placeLabel(activePlaceFilter) : "") +
           (estTotal > 0 ? " — khoảng " + Math.round(estTotal).toLocaleString("vi-VN") + "đ (ước tính theo giá lần mua gần nhất)" : "");
       }
     }
@@ -424,11 +432,11 @@
 
     function row(it) {
       var qtyNeed = it.category === "phat_sinh" ? (it.qty || 1) : suggestedBuyQty(it);
-      var placeTag = it.buyPlace ? (" · " + PLACE_LABEL[it.buyPlace]) : "";
+      var placeTag = it.buyPlace ? (" · " + placeLabel(it.buyPlace)) : "";
       return (
         '<div class="task-card shop-cart-row" data-id="' + it.id + '">' +
           "<div><b>" + escapeHtml(it.name) + "</b> — cần khoảng " + fmtQty(qtyNeed) + " " + escapeHtml(it.unit || "") +
-          '<div class="shop-note">' + CATEGORY_LABEL[it.category] + placeTag + "</div></div>" +
+          '<div class="shop-note">' + categoryLabel(it.category) + placeTag + "</div></div>" +
           '<div class="btn-row" style="margin:0;">' +
             '<button class="btn btn-primary btn-sm" data-act="buy" data-id="' + it.id + '">✅ Đã mua</button>' +
             '<button class="btn btn-ghost btn-sm" data-act="uncart" data-id="' + it.id + '">Bỏ khỏi danh sách</button>' +
