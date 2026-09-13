@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "dev": "node scripts/build-legacy.mjs && vite",
+    "dev": "node scripts/build-legacy.mjs && vite --force",
     "build": "node scripts/build-legacy.mjs && vite build",
     "preview": "vite preview"
   },
