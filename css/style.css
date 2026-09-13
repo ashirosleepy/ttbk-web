@@ -1356,7 +1356,7 @@ html.pg-fade.pg-leave { opacity: 0 !important; transition: opacity .22s var(--ea
    Responsive refinement — desktop rộng, mobile gọn
    ========================================================== */
 .main { min-width: 0; }
-.content { width: 100%; max-width: 1440px; margin: 0 auto; }
+.content { width: 100%; max-width: none; margin: 0; }
 .view-head > div:first-child { min-width: 0; }
 .view-head h2, .view-head p { overflow-wrap: anywhere; }
 .view-head > div:last-child { max-width: 100%; }
@@ -1368,6 +1368,26 @@ html.pg-fade.pg-leave { opacity: 0 !important; transition: opacity .22s var(--ea
 .cal-nav { gap: 10px; }
 .cal-nav-center { min-width: 0; }
 .cal-month-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+#section-settings > .card {
+  width: 100%;
+  max-width: none !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 28px;
+}
+#section-settings > .card > .settings-block:first-child,
+#section-settings > .card > .settings-block:nth-child(2),
+#section-settings > .card > .settings-block:last-child { grid-column: 1 / -1; }
+#section-settings > .card > .settings-block:not(:last-child) { border-bottom: 1px solid var(--border); }
+.settings-block { min-width: 0; }
+.cal-more {
+  color: var(--ink-faint);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 4px;
+  text-align: right;
+}
 
 @media (min-width: 761px) {
   .sidebar { width: clamp(220px, 20vw, 280px); flex: 0 0 clamp(220px, 20vw, 280px); }
@@ -1392,6 +1412,9 @@ html.pg-fade.pg-leave { opacity: 0 !important; transition: opacity .22s var(--ea
   .cal-nav-center .btn { width: 100%; }
   .shop-hero { gap: 12px; }
   .shop-hero > .card { min-width: 0; }
+  #section-settings > .card { display: block; max-width: 100% !important; }
+  #section-settings > .card > .settings-block { border-bottom: 1px solid var(--border); }
+  #section-settings > .card > .settings-block:last-child { border-bottom: 0; }
 }
 
 @media (max-width: 420px) {

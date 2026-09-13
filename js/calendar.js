@@ -224,6 +224,12 @@ function calChipHTML(item) {
   return `<div class="cal-chip ${cls}" title="${escapeHTML(titleAttr)}">${label}</div>`;
 }
 
+function calCellChipsHTML(items) {
+  const visibleItems = (items || []).slice(0, 3);
+  const remaining = Math.max(0, (items || []).length - visibleItems.length);
+  return visibleItems.map((item) => calChipHTML(item)).join("") + (remaining ? `<div class="cal-more">+${remaining} việc khác</div>` : "");
+}
+
 function calEnsureDetailModal() {
   if (document.getElementById("calendar-detail-modal")) return;
   document.body.insertAdjacentHTML("beforeend", `
@@ -296,8 +302,7 @@ async function renderMonthCalendar() {
 
   const daysInMonth = calDaysInMonth(calViewYear, calViewMonth);
   const offset = calMondayOffset(calViewYear, calViewMonth);
-  // Giữ thêm 7 ngày sau cuối tháng để thấy trước lượt luân phiên ở tuần đầu tháng sau.
-  const totalCells = Math.ceil((offset + daysInMonth + 7) / 7) * 7;
+  const totalCells = Math.ceil((offset + daysInMonth) / 7) * 7;
 
   const firstCellDate = new Date(calViewYear, calViewMonth, 1 - offset);
   const rangeStart = calDateStrFromDate(firstCellDate);
@@ -351,20 +356,15 @@ async function renderMonthCalendar() {
     let chipsHTML = "";
     if (dStr <= today) {
       const dayTasks = tasksByDate[dStr] || [];
-      chipsHTML = dayTasks
-        .map((t) =>
-          calChipHTML({
+      chipsHTML = calCellChipsHTML(dayTasks.map((t) => ({
             title: t.title,
             status: t.status,
             assigneeId: t.assigned_to,
             overdueRequired: dStr < today && calendarTaskIsRequired(t) && t.status !== "hoan_thanh" && t.status !== "bo_lo",
-          })
-        )
-        .join("");
+          })));
     } else if (dStr > today) {
-      // Chiếu cả tuần đầu tháng sau để không mất lượt ngay sau cuối tháng.
       const dayFuture = futureByDate[dStr] || [];
-      chipsHTML = dayFuture.map((f) => calChipHTML(f)).join("");
+      chipsHTML = calCellChipsHTML(dayFuture);
     }
 
     const cls = ["cal-day", isOutside ? "outside" : "", isToday ? "today" : ""].filter(Boolean).join(" ");
