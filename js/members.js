@@ -59,7 +59,7 @@ function estimateAvailability(p, pendingCount) {
   return Math.max(0, base - penalty);
 }
 
-function statusBadgeHTML(status) {
+function memberStatusBadgeHTML(status) {
   const untilTxt = status.until ? ` đến ${formatDateShort(status.until)}` : "";
   const reasonTxt = status.reason ? ` · ${escapeHTML(status.reason)}` : "";
   return `<span class="status-badge" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:${status.bg};color:${status.fg};font-size:11.5px;font-weight:600;line-height:1.3;">
@@ -97,7 +97,7 @@ async function renderMembers() {
           <div class="m-points"><div class="n">${points}</div><div class="l">điểm</div></div>
         </div>
         <div class="member-details">
-          ${statusBadgeHTML(status)}
+          ${memberStatusBadgeHTML(status)}
           ${universityLine}
           <div class="m-sub">${assigned.length} việc • ${done.length} hoàn thành${missed.length ? ` • ${missed.length} bỏ việc` : ""}</div>
           <div class="m-sub m-availability">
