@@ -4,7 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>TTBK</title>
-<script type="module" src="/src/theme-preload.js"></script>
+<script>
+  (function () {
+    var theme = localStorage.getItem("ttbk-theme");
+    if (theme !== "light" && theme !== "dark") {
+      theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.classList.add("pg-fade");
+  })();
+</script>
 <meta name="color-scheme" content="light dark" />
 <link rel="stylesheet" href="./css/style.css" />
 <link rel="stylesheet" href="./css/shopping.css" />
@@ -709,6 +718,25 @@
   </nav>
 </div>
 
-<script type="module" src="/src/main.js"></script>
+<script src="js/page-transition.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/class-schedule.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/rotations.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/tasks.js"></script>
+<script src="js/auto-assign.js"></script>
+<script src="js/schedule.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/members.js"></script>
+<script src="js/shopping.js"></script>
+<script src="js/shopping-ai.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/app.js"></script>
+<script src="js/push-notifications.js"></script>
+<script src="js/theme.js"></script>
 </body>
 </html>

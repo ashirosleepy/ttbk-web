@@ -5,7 +5,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản Lý Chi Tiêu</title>
-  <script type="module" src="/src/theme-preload.js"></script>
+  <script>
+    (function () {
+      var theme = localStorage.getItem("ttbk-theme");
+      if (theme !== "light" && theme !== "dark") {
+        theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-theme", theme);
+      document.documentElement.classList.add("pg-fade");
+    })();
+  </script>
   <meta name="color-scheme" content="light dark" />
   <link rel="stylesheet" href="./css/style.css" />
   <link rel="stylesheet" href="./css/expense.css" />
@@ -423,9 +432,12 @@
     </div>
   </div>
 
-  <script type="module" src="/src/expense-main.js"></script>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/page-transition.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/theme.js"></script>
+  <script type="module" src="./src/expense-events.js"></script>
 
   <script>
     (function () {
