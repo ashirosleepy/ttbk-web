@@ -5,18 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản Lý Chi Tiêu</title>
-  <script>
-  (function(){
-    try{
-      var t = localStorage.getItem('ttbk-theme');
-      if (t !== 'light' && t !== 'dark') {
-        t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-      document.documentElement.setAttribute('data-theme', t);
-    }catch(e){}
-    document.documentElement.classList.add('pg-fade');
-  })();
-  </script>
+  <script type="module" src="/src/theme-preload.js"></script>
   <meta name="color-scheme" content="light dark" />
   <link rel="stylesheet" href="./css/style.css" />
   <link rel="stylesheet" href="./css/expense.css" />
@@ -145,10 +134,10 @@
   <div id="main-app">
     <div class="top-controls no-print">
       <div>
-        <button class="btn-secondary" onclick="(window.ttbkNavigate||function(u){window.location.href=u;})('index.html')" style="background-color: #343a40;">⬅️ Trang chủ</button>
-        <button class="btn-secondary" onclick="exportJSON()">💾 Backup</button>
-        <input type="file" id="importFile" style="display:none" onchange="importJSON(event)" accept=".json">
-        <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📂 Phục Hồi Dữ Liệu</button>
+        <button class="btn-secondary" data-navigate="index.html" style="background-color: #343a40;">⬅️ Trang chủ</button>
+        <button class="btn-secondary" data-expense-action="export-json">💾 Backup</button>
+        <input type="file" id="importFile" data-expense-action="import-json" style="display:none" accept=".json">
+        <button class="btn-secondary" data-expense-action="open-import">📂 Phục Hồi Dữ Liệu</button>
       </div>
       <div style="display: flex; align-items: center; gap: 16px;">
         <div class="theme-toggle-wrap">
@@ -158,8 +147,8 @@
           </button>
         </div>
         <div style="display: flex; align-items: center; gap: 10px;">
-        <button class="btn-warning" onclick="exportPDF()">📄 Xuất Báo Cáo PDF</button>
-        <button class="btn-success" onclick="exportCSV()">📊 Xuất File Excel</button>
+        <button class="btn-warning" data-expense-action="export-pdf">📄 Xuất Báo Cáo PDF</button>
+        <button class="btn-success" data-expense-action="export-csv">📊 Xuất File Excel</button>
         </div>
       </div>
     </div>
@@ -173,8 +162,8 @@
         <div class="year-header">
           <h3 style="margin: 0;">Quản Lý Chi Tiêu Theo Năm:</h3>
           <div class="year-controls">
-            <select id="year-select" onchange="switchYear(parseInt(this.value))" style="font-weight: bold; font-size: 1rem;"></select>
-            <button class="btn-success" onclick="addNewYear()">+ Thêm Năm Mới</button>
+            <select id="year-select" data-expense-action="switch-year" style="font-weight: bold; font-size: 1rem;"></select>
+            <button class="btn-success" data-expense-action="add-year">+ Thêm Năm Mới</button>
           </div>
         </div>
         
@@ -190,12 +179,12 @@
           <h2 style="margin: 0;">1. Tiền Ứng / Quỹ Ban Đầu</h2>
         </div>
         <div class="grid" style="margin-top: 15px;">
-          <div class="input-group"><label>Tiến (VNĐ):</label><input type="number" id="init-Tiến" value="0" oninput="updateInitValue('Tiến', this.value)"></div>
-          <div class="input-group"><label>Tài (VNĐ):</label><input type="number" id="init-Tài" value="0" oninput="updateInitValue('Tài', this.value)"></div>
-          <div class="input-group"><label>Bách (VNĐ):</label><input type="number" id="init-Bách" value="0" oninput="updateInitValue('Bách', this.value)"></div>
-          <div class="input-group"><label>Khoa (VNĐ):</label><input type="number" id="init-Khoa" value="0" oninput="updateInitValue('Khoa', this.value)"></div>
+          <div class="input-group"><label>Tiến (VNĐ):</label><input type="number" id="init-Tiến" data-init-member="Tiến" value="0"></div>
+          <div class="input-group"><label>Tài (VNĐ):</label><input type="number" id="init-Tài" data-init-member="Tài" value="0"></div>
+          <div class="input-group"><label>Bách (VNĐ):</label><input type="number" id="init-Bách" data-init-member="Bách" value="0"></div>
+          <div class="input-group"><label>Khoa (VNĐ):</label><input type="number" id="init-Khoa" data-init-member="Khoa" value="0"></div>
         </div>
-        <button id="btn-save-fund" class="no-print" onclick="saveInitFund()" style="width: 100%; margin-top: 15px; padding: 12px; font-size: 1.1em; background-color: #17a2b8;">💾 Lưu Tiền Quỹ / Ứng Tháng Này</button>
+        <button id="btn-save-fund" class="no-print" data-expense-action="save-fund" style="width: 100%; margin-top: 15px; padding: 12px; font-size: 1.1em; background-color: #17a2b8;">💾 Lưu Tiền Quỹ / Ứng Tháng Này</button>
       </div>
 
       <!-- 2. Chi Phí Phát Sinh -->
@@ -234,7 +223,7 @@
             <div class="input-group"><label>Khoa:</label><input type="number" id="share-Khoa" value="1" min="0" step="1"></div>
           </div>
         </div>
-        <button onclick="addExpense()" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 1.1em;">+ Ghi Nhận Khoản Chi</button>
+        <button data-expense-action="add-expense" style="width: 100%; margin-top: 10px; padding: 12px; font-size: 1.1em;">+ Ghi Nhận Khoản Chi</button>
       </div>
 
       <!-- Bảng danh sách khoản chi -->
@@ -282,7 +271,7 @@
           </div>
           <div class="input-group"><label>Số tiền (VNĐ):</label><input type="number" id="transfer-amount" placeholder="0"></div>
           <div class="input-group" style="justify-content: flex-end;">
-            <button onclick="addTransfer()" style="padding: 10px; background-color: #6f42c1;">+ Xác Nhận Chuyển</button>
+            <button data-expense-action="add-transfer" style="padding: 10px; background-color: #6f42c1;">+ Xác Nhận Chuyển</button>
           </div>
         </div>
 
@@ -376,7 +365,7 @@
   <!-- Modal Edit Expense -->
   <div id="editModal" class="modal">
     <div class="modal-content">
-      <span class="close" onclick="closeEditModal()">&times;</span>
+      <span class="close" data-expense-action="close-expense-modal">&times;</span>
       <h2>Sửa Khoản Chi</h2>
       <input type="hidden" id="edit-index">
       <div class="input-group"><label>Nội dung:</label><input type="text" id="edit-desc"></div>
@@ -403,14 +392,14 @@
           <div class="input-group"><label>Khoa:</label><input type="number" id="edit-share-Khoa" value="1" min="0" step="1"></div>
         </div>
       </div>
-      <button onclick="saveEditExpense()" style="width: 100%; margin-top: 15px; padding: 10px;">Lưu Thay Đổi</button>
+      <button data-expense-action="save-edit-expense" style="width: 100%; margin-top: 15px; padding: 10px;">Lưu Thay Đổi</button>
     </div>
   </div>
 
   <!-- Modal Edit Transfer -->
   <div id="editTransferModal" class="modal">
     <div class="modal-content" style="max-width: 400px;">
-      <span class="close" onclick="closeEditTransferModal()">&times;</span>
+      <span class="close" data-expense-action="close-transfer-modal">&times;</span>
       <h2>Sửa Chuyển Tiền / Trả Nợ</h2>
       <input type="hidden" id="edit-transfer-index">
       <div class="input-group">
@@ -430,14 +419,13 @@
         </select>
       </div>
       <div class="input-group"><label>Số tiền (VNĐ):</label><input type="number" id="edit-transfer-amount"></div>
-      <button onclick="saveEditTransfer()" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #6f42c1;">Lưu Thay Đổi</button>
+      <button data-expense-action="save-edit-transfer" style="width: 100%; margin-top: 15px; padding: 10px; background-color: #6f42c1;">Lưu Thay Đổi</button>
     </div>
   </div>
 
-  <script src="js/page-transition.js"></script>
+  <script type="module" src="/src/expense-main.js"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/supabase-client.js"></script>
-  <script src="js/auth.js"></script>
 
   <script>
     (function () {
@@ -654,8 +642,8 @@
         
         let actionTd = `
           <td class="no-print">
-            <button class="btn-warning" style="padding: 5px; font-size: 0.8em;" onclick="openEditModal(${index})">Sửa</button>
-            <button class="btn-danger" style="padding: 5px; font-size: 0.8em;" onclick="deleteExpense(${index})">Xóa</button>
+            <button class="btn-warning" data-expense-action="edit-expense" data-index="${index}" style="padding: 5px; font-size: 0.8em;">Sửa</button>
+            <button class="btn-danger" data-expense-action="delete-expense" data-index="${index}" style="padding: 5px; font-size: 0.8em;">Xóa</button>
           </td>
         `;
 
@@ -706,8 +694,8 @@
         
         let actionTd = `
           <td class="no-print">
-            <button class="btn-warning" style="padding: 5px; font-size: 0.8em;" onclick="openEditTransferModal(${index})">Sửa</button>
-            <button class="btn-danger" style="padding: 5px; font-size: 0.8em;" onclick="deleteTransfer(${index})">Xóa</button>
+            <button class="btn-warning" data-expense-action="edit-transfer" data-index="${index}" style="padding: 5px; font-size: 0.8em;">Sửa</button>
+            <button class="btn-danger" data-expense-action="delete-transfer" data-index="${index}" style="padding: 5px; font-size: 0.8em;">Xóa</button>
           </td>
         `;
 

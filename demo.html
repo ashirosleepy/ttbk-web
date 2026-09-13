@@ -4,17 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>TTBK — Xem trước giao diện</title>
-<script>
-(function(){
-  try{
-    var t = localStorage.getItem('ttbk-theme');
-    if (t !== 'light' && t !== 'dark') {
-      t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    document.documentElement.setAttribute('data-theme', t);
-  }catch(e){}
-})();
-</script>
+<script type="module" src="/src/theme-preload.js"></script>
 <meta name="color-scheme" content="light dark" />
 <link rel="stylesheet" href="./css/style.css" />
 <meta name="theme-color" content="#A13F52" />
@@ -329,74 +319,6 @@
   </div>
 </div>
 
-<script src="./js/theme.js"></script>
-<script>
-/* Chỉ dùng cho trang xem trước: chuyển section + tương tác nhẹ + dựng lưới lịch mẫu */
-document.querySelectorAll('.nav-item[data-section]').forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    document.querySelectorAll('.nav-item[data-section]').forEach(function (b) { b.classList.remove('active'); });
-    document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
-    btn.classList.add('active');
-    document.getElementById('section-' + btn.dataset.section).classList.add('active');
-    document.getElementById('topbar-title').textContent = btn.textContent.trim();
-  });
-});
-document.getElementById('btn-menu-toggle').addEventListener('click', function () {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('nav-backdrop').classList.toggle('show');
-});
-document.getElementById('nav-backdrop').addEventListener('click', function () {
-  document.getElementById('sidebar').classList.remove('open');
-  this.classList.remove('show');
-});
-document.querySelectorAll('#demo-filters .filter-chip').forEach(function (chip) {
-  chip.addEventListener('click', function () {
-    document.querySelectorAll('#demo-filters .filter-chip').forEach(function (c) { c.classList.remove('on'); });
-    chip.classList.add('on');
-  });
-});
-document.querySelectorAll('.color-dot').forEach(function (dot) {
-  dot.addEventListener('click', function () {
-    document.querySelectorAll('.color-dot').forEach(function (d) { d.classList.remove('on'); });
-    dot.classList.add('on');
-  });
-});
-document.querySelectorAll('.task-check:not(.done)').forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    btn.classList.toggle('done');
-    btn.textContent = btn.classList.contains('done') ? '✓' : '';
-  });
-});
-
-(function buildCalendar() {
-  const grid = document.getElementById('cal-grid-demo');
-  const weekdayHeader = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
-    .map((d) => `<div class="cal-weekday">${d}</div>`).join('');
-  const sample = {
-    3: [{ t: 'Rửa bát', c: 'cal-chip-done' }],
-    5: [{ t: 'Hút bụi', c: 'cal-chip-missed' }],
-    9: [{ t: 'Nấu ăn tối', c: 'cal-chip-done' }, { t: 'Đổ rác', c: 'cal-chip-todo' }],
-    12: [{ t: 'Thay bình nước', c: 'cal-chip-future' }],
-    18: [{ t: 'Lau cửa sổ', c: 'cal-chip-future' }],
-    24: [{ t: 'Dọn ban công', c: 'cal-chip-future' }],
-  };
-  let cells = '';
-  const offset = 1; // tháng 9/2026 bắt đầu vào Thứ 3
-  for (let i = 0; i < 35; i++) {
-    const dayNum = i - offset + 1;
-    const outside = dayNum < 1 || dayNum > 30;
-    const isToday = dayNum === 9;
-    const items = (sample[dayNum] || [])
-      .map((it) => `<div class="cal-chip ${it.c}">${it.t}</div>`)
-      .join('');
-    const label = outside ? ((dayNum < 1) ? 31 + dayNum : dayNum - 30) : dayNum;
-    cells += `<div class="cal-day ${outside ? 'outside' : ''} ${isToday ? 'today' : ''}">
-      <div class="cal-day-num">${label}</div>
-      <div class="cal-day-chips">${items}</div>
-    </div>`;
-  }
-  grid.innerHTML = weekdayHeader + cells;
-})();
-</script>
+<script type="module" src="/src/demo.js"></script>
 </body>
 </html>
