@@ -706,7 +706,9 @@ async function helpTask(id) {
   const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
   if (error || !task) return alert("Không tìm thấy việc.");
   if (task.assigned_to === STATE.me.id) return alert("Bạn không thể tự làm hộ việc của mình.");
-  if (!confirm(`Bạn làm hộ "${task.title}"? Bạn nhận x2 điểm, người được giao bị trừ ${task.points || 0} điểm.`)) return;
+  const reason = prompt(`Lý do bạn làm hộ "${task.title}"?`);
+  if (!reason || !reason.trim()) return;
+  if (!confirm(`Bạn làm hộ "${task.title}"? Bạn nhận ${task.points || 0} điểm, người được giao bị trừ ${task.points || 0} điểm.`)) return;
 
   const { data, error: helpError } = await supabaseClient.rpc("mark_task_helped", {
     p_task_id: id,
@@ -717,13 +719,13 @@ async function helpTask(id) {
   if (helpError || !data) return alert(helpError?.message || "Việc này vừa được người khác làm hộ.");
 
   const owner = findProfile(STATE.profiles, task.assigned_to);
-  await logHistory(id, STATE.me.id, "lam_ho", `${STATE.me.name} đã làm hộ ${owner ? owner.name : "người phụ trách"} việc "${task.title}" và nhận x2 điểm.`);
-  await createNotification(task.assigned_to, `✅ ${STATE.me.name} đã làm hộ việc "${task.title}". Bạn bị trừ thêm ${task.points || 0} điểm.`, {
+  await logHistory(id, STATE.me.id, "lam_ho", `${STATE.me.name} đã làm hộ ${owner ? owner.name : "người phụ trách"} việc "${task.title}". Lý do: ${reason.trim()}`);
+  await createNotification(task.assigned_to, `✅ ${STATE.me.name} đã làm hộ việc "${task.title}". Lý do: ${reason.trim()}. Bạn bị trừ ${task.points || 0} điểm.`, {
     type: "lam_ho",
     taskId: id,
     title: "Việc đã được làm hộ",
   });
-  if (typeof showToast === "function") showToast(`✅ Đã làm hộ "${task.title}" và nhận x2 điểm.`);
+  if (typeof showToast === "function") showToast(`✅ Đã làm hộ "${task.title}" và nhận ${task.points || 0} điểm.`);
   refreshActiveView();
 }
 
