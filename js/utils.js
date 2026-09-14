@@ -159,6 +159,21 @@ async function fetchPointAdjustmentsSince(sinceISO = null) {
   return map;
 }
 
+async function fetchPointAdjustmentsBetween(startISO, endISO) {
+  const map = {};
+  let query = supabaseClient.from("point_adjustments").select("user_id, delta").gte("created_at", startISO);
+  if (endISO) query = query.lt("created_at", endISO);
+  const { data, error } = await query;
+  if (error) {
+    console.error("Không lấy được điều chỉnh điểm trong tuần:", error.message);
+    return map;
+  }
+  (data || []).forEach((row) => {
+    map[row.user_id] = (map[row.user_id] || 0) + (row.delta || 0);
+  });
+  return map;
+}
+
 async function fetchPointPenaltyMap() {
   const map = {};
   const { data, error } = await supabaseClient

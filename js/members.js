@@ -20,6 +20,22 @@ const BUSY_LEVEL_MAP = {
   3: { emoji: "🔴", label: "Không khả dụng" },
 };
 
+let memberWeekOffset = 0;
+
+function memberWeekRange(offset = memberWeekOffset) {
+  const currentMonday = new Date(mondayOfWeek(todayStr()) + "T00:00:00");
+  currentMonday.setDate(currentMonday.getDate() + offset * 7);
+  const nextMonday = new Date(currentMonday);
+  nextMonday.setDate(nextMonday.getDate() + 7);
+  return { start: currentMonday, end: nextMonday };
+}
+
+function memberWeekLabel(start, end) {
+  const endDisplay = new Date(end);
+  endDisplay.setDate(endDisplay.getDate() - 1);
+  return `${formatDateShort(start.toISOString().slice(0, 10))} - ${formatDateShort(endDisplay.toISOString().slice(0, 10))}`;
+}
+
 // Gộp trạng thái thật của 1 thành viên, có fallback cho dữ liệu cũ (is_away)
 function resolveMemberStatus(p) {
   // Tương thích ngược: nếu chưa có cột status mới nhưng có is_away cũ
@@ -71,12 +87,14 @@ function memberStatusBadgeHTML(status) {
 async function renderMembers() {
   const container = document.getElementById("members-grid");
   const [tasks, pointsMap, penaltyMap] = await Promise.all([fetchTasks(), fetchMemberPointsMap(), fetchPointPenaltyMap()]);
-  const weekStart = new Date(mondayOfWeek(todayStr()) + "T00:00:00").getTime();
-  const weeklyAdjustments = await fetchPointAdjustmentsSince(new Date(weekStart).toISOString());
+  const weekRange = memberWeekRange();
+  const weekStart = weekRange.start.getTime();
+  const weekEnd = weekRange.end.getTime();
+  const weeklyAdjustments = await fetchPointAdjustmentsBetween(weekRange.start.toISOString(), weekRange.end.toISOString());
   const weeklyPoints = {};
   STATE.profiles.forEach((p) => (weeklyPoints[p.id] = weeklyAdjustments[p.id] || 0));
   tasks
-    .filter((task) => task.status === "hoan_thanh" && task.completed_at && new Date(task.completed_at).getTime() >= weekStart)
+    .filter((task) => task.status === "hoan_thanh" && task.completed_at && new Date(task.completed_at).getTime() >= weekStart && new Date(task.completed_at).getTime() < weekEnd)
     .forEach((task) => {
       const creditedUserId = task.completed_by || task.assigned_to;
       if (weeklyPoints[creditedUserId] !== undefined) weeklyPoints[creditedUserId] += task.points || 0;
@@ -99,7 +117,15 @@ async function renderMembers() {
 
   const leaderboardHTML = `
     <div class="card" style="grid-column:1/-1;margin-bottom:18px;border-left:4px solid var(--accent);">
-      <h3 style="margin:0 0 10px;font-size:15px;">⚖️ Điểm công bằng tuần này</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+        <h3 style="margin:0;font-size:15px;">⚖️ Điểm công bằng ${memberWeekOffset === 0 ? "tuần này" : memberWeekOffset < 0 ? "tuần trước" : "tuần sau"}</h3>
+        <div class="btn-row" style="margin:0;">
+          <button type="button" class="btn btn-ghost btn-sm" data-member-week="prev">← Tuần trước</button>
+          ${memberWeekOffset !== 0 ? `<button type="button" class="btn btn-ghost btn-sm" data-member-week="current">Tuần này</button>` : ""}
+          <button type="button" class="btn btn-ghost btn-sm" data-member-week="next">Tuần sau →</button>
+        </div>
+      </div>
+      <div class="m-sub" style="margin-bottom:10px;">${memberWeekLabel(weekRange.start, weekRange.end)}</div>
       ${ranking.map((row, index) => `
         <div class="progress-row">
           <span class="name">${index + 1}. ${escapeHTML(row.profile.name)}</span>
@@ -154,5 +180,18 @@ async function renderMembers() {
 }
 
 async function loadMembersSection() {
+  const container = document.getElementById("members-grid");
+  if (container && !container.dataset.weekBound) {
+    container.dataset.weekBound = "1";
+    container.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-member-week]");
+      if (!button) return;
+      const action = button.dataset.memberWeek;
+      if (action === "prev") memberWeekOffset -= 1;
+      if (action === "next") memberWeekOffset += 1;
+      if (action === "current") memberWeekOffset = 0;
+      renderMembers();
+    });
+  }
   await renderMembers();
 }
