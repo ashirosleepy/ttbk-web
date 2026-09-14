@@ -236,7 +236,7 @@ function taskTicketHTML(task) {
             isMine
               ? `<button class="btn btn-primary btn-sm" data-action="accept">Nhận việc</button>
                  <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>`
-              : ""
+              : `<button class="btn btn-primary btn-sm" data-action="help" title="Làm hộ và nhận x2 điểm">Làm hộ</button>`
           }
           <button class="icon-btn" data-action="miss" title="Đánh dấu không hoàn thành (trừ điểm)">✕</button>
           <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
@@ -290,6 +290,7 @@ function taskTicketHTML(task) {
         </div>
       </div>
       <div class="task-actions">
+        ${task.assigned_to !== STATE.me.id ? `<button class="btn btn-primary btn-sm" data-action="help" title="Làm hộ và nhận x2 điểm">Làm hộ</button>` : ""}
         <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
         <button class="icon-btn" data-action="miss" title="Đánh dấu không hoàn thành (trừ điểm)">✕</button>
         <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
@@ -699,11 +700,11 @@ async function toggleTaskDoneInternal(id) {
   refreshActiveView();
 }
 
-async function helpOverdueTask(id) {
+async function helpTask(id) {
   const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
   if (error || !task) return alert("Không tìm thấy việc.");
   if (task.assigned_to === STATE.me.id) return alert("Bạn không thể tự làm hộ việc của mình.");
-  if (!confirm(`Bạn làm hộ "${task.title}"? Bạn nhận x2 điểm, người được giao bị trừ thêm ${task.points || 0} điểm.`)) return;
+  if (!confirm(`Bạn làm hộ "${task.title}"? Bạn nhận x2 điểm, người được giao bị trừ ${task.points || 0} điểm.`)) return;
 
   const { data, error: helpError } = await supabaseClient.rpc("mark_task_helped", {
     p_task_id: id,
@@ -1162,7 +1163,7 @@ function bindTaskEvents(containerId = "tasks-container") {
     if (action === "history") toggleTaskHistory(id, ticket);
     if (action === "delete") deleteTask(id);
     if (action === "claim-unassigned") await claimUnassignedTask(id);
-    if (action === "help") await helpOverdueTask(id);
+    if (action === "help") await helpTask(id);
 
     // Xử lý các nút của Phiếu việc luân phiên tự động
     if (action === "complete-rotation") await handleCompleteAutoRotation(queueId);
