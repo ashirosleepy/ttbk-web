@@ -23,7 +23,7 @@ const BUSY_LEVEL_MAP = {
 let memberWeekOffset = 0;
 
 function memberWeekRange(offset = memberWeekOffset) {
-  const currentMonday = new Date(`${mondayOfWeek(todayStr())}T00:00:00+07:00`);
+  const currentMonday = new Date(`${mondayOfWeek(todayStr())}T03:00:00+07:00`);
   currentMonday.setDate(currentMonday.getDate() + offset * 7);
   const nextMonday = new Date(currentMonday);
   nextMonday.setDate(nextMonday.getDate() + 7);
@@ -36,8 +36,8 @@ function memberVietnamDateKey(date) {
 
 function memberWeekLabel(start, end) {
   const endDisplay = new Date(end);
-  endDisplay.setDate(endDisplay.getDate() - 1);
-  return `${formatDateShort(start.toISOString().slice(0, 10))} - ${formatDateShort(endDisplay.toISOString().slice(0, 10))}`;
+  endDisplay.setUTCDate(endDisplay.getUTCDate() - 1);
+  return `${formatDateShort(memberVietnamDateKey(start))} 03:00 - ${formatDateShort(memberVietnamDateKey(endDisplay))} 02:59`;
 }
 
 // Gộp trạng thái thật của 1 thành viên, có fallback cho dữ liệu cũ (is_away)
@@ -96,7 +96,7 @@ async function renderMembers() {
   const weekEnd = weekRange.end.getTime();
   const weekStartDate = memberVietnamDateKey(weekRange.start);
   const weekEndDate = memberVietnamDateKey(weekRange.end);
-  const weeklyAdjustments = await fetchPointAdjustmentsBetween(vietnamDateStartISO(weekStartDate), vietnamDateStartISO(weekEndDate));
+  const weeklyAdjustments = await fetchPointAdjustmentsBetween(vietnamBusinessWeekStartISO(weekStartDate), vietnamBusinessWeekStartISO(weekEndDate));
   const weeklyPoints = {};
   STATE.profiles.forEach((p) => (weeklyPoints[p.id] = weeklyAdjustments[p.id] || 0));
   tasks

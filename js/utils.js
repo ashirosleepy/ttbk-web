@@ -124,8 +124,8 @@ function mondayOfWeek(dateStr) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function vietnamDateStartISO(dateStr) {
-  return new Date(`${dateStr}T00:00:00+07:00`).toISOString();
+function vietnamBusinessWeekStartISO(dateStr) {
+  return new Date(`${dateStr}T03:00:00+07:00`).toISOString();
 }
 
 // Ghi 1 dòng vào task_history — gọi hàm này mỗi khi có thay đổi trên 1 việc

@@ -183,9 +183,9 @@ async function renderDashboard() {
   // Điểm công bằng: việc hoàn thành CỘNG các khoản trừ (bỏ việc, xin đổi việc)
   // từ thứ 2 tuần này trở đi.
   const weekStartDate = mondayOfWeek(today);
-  const weekStart = new Date(vietnamDateStartISO(weekStartDate)).getTime();
+  const weekStart = new Date(vietnamBusinessWeekStartISO(weekStartDate)).getTime();
   const weeklyAdjustments = typeof fetchPointAdjustmentsSince === "function"
-    ? await fetchPointAdjustmentsSince(vietnamDateStartISO(weekStartDate))
+    ? await fetchPointAdjustmentsSince(vietnamBusinessWeekStartISO(weekStartDate))
     : {};
   const weekly = STATE.profiles.map((p) => {
     const earned = tasks
