@@ -378,6 +378,7 @@ function rotationTaskTicketHTML(task, queue) {
         </div>
       </div>
       <div class="task-actions">
+        ${task.assigned_to !== STATE.me.id ? `<button class="btn btn-primary btn-sm" data-action="help" title="Làm hộ và nhận 1 lần điểm">Làm hộ</button>` : ""}
         <button class="icon-btn" data-action="handoff" title="Xin chuyển việc">😅</button>
         <button class="icon-btn" data-action="miss" title="Không hoàn thành">✕</button>
         <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
@@ -417,7 +418,8 @@ function renderRotationSectionHTML(rotations, queueHasTaskToday, activeRotationL
                   <span>+${r.points} điểm</span>
               </div>
           </div>
-          <div class="task-actions">
+            <div class="task-actions">
+              ${selectedUserId !== STATE.me.id ? `<button class="btn btn-primary btn-sm" data-action="help-rotation" data-queue="${r.id}" title="Làm hộ và nhận 1 lần điểm">Làm hộ</button>` : ""}
               <button class="icon-btn" data-action="request-handoff" data-queue="${r.id}" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
               <button class="icon-btn" data-action="miss-rotation" data-queue="${r.id}" title="Không hoàn thành — trừ điểm và chuyển lượt cho người kế tiếp">✕</button>
           </div>
