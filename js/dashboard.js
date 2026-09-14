@@ -180,16 +180,26 @@ async function renderDashboard() {
     return { profile: p, pct };
   });
 
-  // Điểm công bằng: việc hoàn thành CỘNG các khoản trừ (bỏ việc, xin đổi việc)
-  // từ thứ 2 tuần này trở đi.
+  // Điểm công bằng: việc hoàn thành CỘNG các khoản trừ trong tuần nghiệp vụ hiện tại.
   const weekStartDate = mondayOfWeek(today);
   const weekStart = new Date(vietnamBusinessWeekStartISO(weekStartDate)).getTime();
-  const weeklyAdjustments = typeof fetchPointAdjustmentsSince === "function"
-    ? await fetchPointAdjustmentsSince(vietnamBusinessWeekStartISO(weekStartDate))
+  const nextWeekStartDate = mondayOfWeek(
+    new Date(new Date(`${weekStartDate}T00:00:00Z`).getTime() + 7 * 86400000).toISOString().slice(0, 10)
+  );
+  const weekEnd = new Date(vietnamBusinessWeekStartISO(nextWeekStartDate)).getTime();
+  const weeklyAdjustments = typeof fetchPointAdjustmentsBetween === "function"
+    ? await fetchPointAdjustmentsBetween(
+        vietnamBusinessWeekStartISO(weekStartDate),
+        vietnamBusinessWeekStartISO(nextWeekStartDate)
+      )
     : {};
   const weekly = STATE.profiles.map((p) => {
     const earned = tasks
-      .filter((t) => t.assigned_to === p.id && t.status === "hoan_thanh" && t.completed_at && new Date(t.completed_at).getTime() >= weekStart)
+      .filter((t) => {
+        const completedAt = t.completed_at ? new Date(t.completed_at).getTime() : 0;
+        const creditedUserId = t.completed_by || t.assigned_to;
+        return creditedUserId === p.id && t.status === "hoan_thanh" && completedAt >= weekStart && completedAt < weekEnd;
+      })
       .reduce((sum, t) => sum + (t.points || 0), 0);
     const points = earned + (weeklyAdjustments[p.id] || 0);
     return { profile: p, points };
