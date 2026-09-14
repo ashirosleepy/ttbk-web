@@ -121,7 +121,11 @@ function mondayOfWeek(dateStr) {
   const day = d.getDay(); // 0=CN..6=T7
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function vietnamDateStartISO(dateStr) {
+  return new Date(`${dateStr}T00:00:00+07:00`).toISOString();
 }
 
 // Ghi 1 dòng vào task_history — gọi hàm này mỗi khi có thay đổi trên 1 việc

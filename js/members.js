@@ -23,11 +23,15 @@ const BUSY_LEVEL_MAP = {
 let memberWeekOffset = 0;
 
 function memberWeekRange(offset = memberWeekOffset) {
-  const currentMonday = new Date(mondayOfWeek(todayStr()) + "T00:00:00");
+  const currentMonday = new Date(`${mondayOfWeek(todayStr())}T00:00:00+07:00`);
   currentMonday.setDate(currentMonday.getDate() + offset * 7);
   const nextMonday = new Date(currentMonday);
   nextMonday.setDate(nextMonday.getDate() + 7);
   return { start: currentMonday, end: nextMonday };
+}
+
+function memberVietnamDateKey(date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
 function memberWeekLabel(start, end) {
@@ -90,7 +94,9 @@ async function renderMembers() {
   const weekRange = memberWeekRange();
   const weekStart = weekRange.start.getTime();
   const weekEnd = weekRange.end.getTime();
-  const weeklyAdjustments = await fetchPointAdjustmentsBetween(weekRange.start.toISOString(), weekRange.end.toISOString());
+  const weekStartDate = memberVietnamDateKey(weekRange.start);
+  const weekEndDate = memberVietnamDateKey(weekRange.end);
+  const weeklyAdjustments = await fetchPointAdjustmentsBetween(vietnamDateStartISO(weekStartDate), vietnamDateStartISO(weekEndDate));
   const weeklyPoints = {};
   STATE.profiles.forEach((p) => (weeklyPoints[p.id] = weeklyAdjustments[p.id] || 0));
   tasks
