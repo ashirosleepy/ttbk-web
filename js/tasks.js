@@ -708,7 +708,7 @@ async function helpTask(id) {
   if (task.assigned_to === STATE.me.id) return alert("Bạn không thể tự làm hộ việc của mình.");
   const reason = prompt(`Lý do bạn làm hộ "${task.title}"?`);
   if (!reason || !reason.trim()) return;
-  if (!confirm(`Bạn làm hộ "${task.title}"? Bạn nhận ${task.points || 0} điểm, người được giao bị trừ ${task.points || 0} điểm.`)) return;
+  if (!confirm(`Bạn làm hộ "${task.title}"? Bạn nhận ${task.points || 0} điểm. Người được giao đã bị trừ điểm vì quá hạn nên sẽ không bị trừ thêm.`)) return;
 
   const { data, error: helpError } = await supabaseClient.rpc("mark_task_helped", {
     p_task_id: id,
@@ -719,8 +719,8 @@ async function helpTask(id) {
   if (helpError || !data) return alert(helpError?.message || "Việc này vừa được người khác làm hộ.");
 
   const owner = findProfile(STATE.profiles, task.assigned_to);
-  await logHistory(id, STATE.me.id, "lam_ho", `${STATE.me.name} đã làm hộ ${owner ? owner.name : "người phụ trách"} việc "${task.title}". Lý do: ${reason.trim()}`);
-  await createNotification(task.assigned_to, `✅ ${STATE.me.name} đã làm hộ việc "${task.title}". Lý do: ${reason.trim()}. Bạn bị trừ ${task.points || 0} điểm.`, {
+  await logHistory(id, STATE.me.id, "lam_ho", `${STATE.me.name} đã làm hộ ${owner ? owner.name : "người phụ trách"} việc "${task.title}" (đã quá hạn, không trừ thêm điểm). Lý do: ${reason.trim()}`);
+  await createNotification(task.assigned_to, `✅ ${STATE.me.name} đã làm hộ việc "${task.title}". Lý do: ${reason.trim()}. Bạn đã bị trừ điểm khi quá hạn nên không bị trừ thêm.`, {
     type: "lam_ho",
     taskId: id,
     title: "Việc đã được làm hộ",
