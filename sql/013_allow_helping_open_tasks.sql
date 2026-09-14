@@ -34,9 +34,6 @@ begin
   awarded_points := greatest(coalesce(p_points, result_task.points), 0);
 
   insert into point_adjustments (user_id, task_id, delta, reason)
-  values (p_helper_id, p_task_id, awarded_points, 'lam_ho_bonus');
-
-  insert into point_adjustments (user_id, task_id, delta, reason)
   values (p_assigned_id, p_task_id, -awarded_points, 'bi_lam_ho');
 
   return result_task;

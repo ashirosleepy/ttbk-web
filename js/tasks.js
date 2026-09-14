@@ -730,12 +730,14 @@ async function helpTask(id) {
 }
 
 // NHÂN TÍNH NĂNG MỚI: Xử lý khi bấm hoàn thành việc Tự Động Luân Phiên
-async function handleCompleteAutoRotation(queueId) {
+async function handleCompleteAutoRotation(queueId, helped = false) {
     // Lấy thông tin queue
     const { data: queue, error: qErr } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
     if (qErr || !queue) return alert("Lỗi lấy thông tin luân phiên.");
   const holder = currentHolder(queue);
   if (!holder) return alert("Hàng đợi chưa có ai trong danh sách.");
+  const reason = helped ? prompt(`Lý do bạn làm hộ "${queue.label}" cho ${holder.name}?`) : "";
+  if (helped && (!reason || !reason.trim())) return;
 
     // Tự động tạo 1 task trạng thái "hoan_thanh" để ghi nhận điểm và lịch sử
     const payload = {
@@ -747,7 +749,7 @@ async function handleCompleteAutoRotation(queueId) {
         points: queue.points,
         due_date: todayStr(),
         completed_at: new Date().toISOString(),
-        completed_by: holder.id,
+        completed_by: helped ? STATE.me.id : holder.id,
     };
 
     const { data: task, error: tErr } = await supabaseClient.from('tasks').insert(payload).select().single();
@@ -757,13 +759,17 @@ async function handleCompleteAutoRotation(queueId) {
       await distributeAwayShadowPoints(task.id, queue.points);
     }
 
+    if (helped) {
+      await addPointAdjustment(holder.id, task.id, -Math.max(queue.points || 0, 0), "bi_lam_ho");
+    }
+
     // Ghi lịch sử: holder là người được giao, STATE.me là người thực tế bấm hoàn thành.
     const actingFor = holder.id !== STATE.me.id ? ` hộ ${holder.name}` : "";
     await logHistory(
       task.id,
       STATE.me.id,
       "hoan_thanh",
-      `${STATE.me.name} đánh dấu hoàn thành${actingFor} việc luân phiên: ${queue.label}`
+      `${STATE.me.name} đánh dấu hoàn thành${actingFor} việc luân phiên: ${queue.label}${helped ? `. Lý do làm hộ: ${reason.trim()}` : ""}`
     );
 
     // Tự động tăng current_index lên người tiếp theo
@@ -1171,6 +1177,7 @@ function bindTaskEvents(containerId = "tasks-container") {
 
     // Xử lý các nút của Phiếu việc luân phiên tự động
     if (action === "complete-rotation") await handleCompleteAutoRotation(queueId);
+    if (action === "help-rotation") await handleCompleteAutoRotation(e.target.dataset.queue, true);
     if (action === "request-handoff") await requestRotationHandoff(queueId);
     if (action === "miss-rotation") await handleMissRotation(queueId);
   });
