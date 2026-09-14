@@ -219,6 +219,15 @@ async function distributeAwayShadowPoints(taskId, points) {
 // Tổng điểm hiện tại của mỗi thành viên = tổng điểm việc đã hoàn thành (tasks.status = hoan_thanh)
 // + tổng các khoản cộng/trừ điểm (point_adjustments). Dùng cho trang Thành viên và
 // để ưu tiên chia việc mới cho người đang có ít điểm hơn.
+//
+// LƯU Ý: điểm phải tính theo NGƯỜI THỰC SỰ HOÀN THÀNH (completed_by), không phải
+// người được giao ban đầu (assigned_to) — vì khi 1 việc được "làm hộ" (đặc biệt là
+// việc quá hạn, qua RPC mark_task_helped), assigned_to vẫn giữ nguyên là người bị
+// giao ban đầu trong khi completed_by mới là người thực tế bấm hoàn thành. Nếu tính
+// theo assigned_to, người được làm hộ sẽ vô tình được cộng điểm việc mà họ không làm,
+// còn người làm hộ thật sự thì không được cộng gì cả. completed_by luôn được set khi
+// hoàn thành (xem toggleTaskDoneInternal/mark_task_helped); fallback về assigned_to
+// chỉ để an toàn cho các dòng dữ liệu cũ trước khi có cột completed_by.
 async function fetchMemberPointsMap() {
   const map = {};
   (STATE.profiles || []).forEach((p) => (map[p.id] = 0));
@@ -231,7 +240,7 @@ async function fetchMemberPointsMap() {
     console.error("Không lấy được việc đã hoàn thành:", doneErr.message);
   } else {
     (doneTasks || []).forEach((t) => {
-      const creditedUserId = t.assigned_to;
+      const creditedUserId = t.completed_by || t.assigned_to;
       if (map[creditedUserId] !== undefined) map[creditedUserId] += t.points || 0;
     });
   }
