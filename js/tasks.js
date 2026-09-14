@@ -742,7 +742,7 @@ async function handleCompleteAutoRotation(queueId) {
         points: queue.points,
         due_date: todayStr(),
         completed_at: new Date().toISOString(),
-        completed_by: STATE.me.id,
+        completed_by: holder.id,
     };
 
     const { data: task, error: tErr } = await supabaseClient.from('tasks').insert(payload).select().single();
