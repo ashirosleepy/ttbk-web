@@ -191,7 +191,7 @@ function taskTicketHTML(task) {
         </div>
         <div class="task-actions">
           ${task.assigned_to === STATE.me.id ? `<button class="btn btn-ghost btn-sm" data-action="toggle" title="Xác nhận đã làm">Tôi đã làm</button>` : ""}
-          ${task.assigned_to !== STATE.me.id ? `<button class="btn btn-primary btn-sm" data-action="help" title="Hoàn thành thay và nhận x2 điểm">Tôi đã làm hộ</button>` : ""}
+          ${task.assigned_to !== STATE.me.id ? `<button class="btn btn-primary btn-sm" data-action="help" title="Hoàn thành thay và nhận 1 lần điểm">Tôi đã làm hộ</button>` : ""}
           <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
         </div>
       </div>`;
@@ -236,7 +236,7 @@ function taskTicketHTML(task) {
             isMine
               ? `<button class="btn btn-primary btn-sm" data-action="accept">Nhận việc</button>
                  <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>`
-              : `<button class="btn btn-primary btn-sm" data-action="help" title="Làm hộ và nhận x2 điểm">Làm hộ</button>`
+              : `<button class="btn btn-primary btn-sm" data-action="help" title="Làm hộ và nhận 1 lần điểm">Làm hộ</button>`
           }
           <button class="icon-btn" data-action="miss" title="Đánh dấu không hoàn thành (trừ điểm)">✕</button>
           <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
@@ -290,7 +290,7 @@ function taskTicketHTML(task) {
         </div>
       </div>
       <div class="task-actions">
-        ${task.assigned_to !== STATE.me.id ? `<button class="btn btn-primary btn-sm" data-action="help" title="Làm hộ và nhận x2 điểm">Làm hộ</button>` : ""}
+        ${task.assigned_to !== STATE.me.id ? `<button class="btn btn-primary btn-sm" data-action="help" title="Làm hộ và nhận 1 lần điểm">Làm hộ</button>` : ""}
         <button class="icon-btn" data-action="handoff" title="Xin chuyển việc — gửi yêu cầu cho 3 người còn lại">😅</button>
         <button class="icon-btn" data-action="miss" title="Đánh dấu không hoàn thành (trừ điểm)">✕</button>
         <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
