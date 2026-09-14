@@ -67,7 +67,7 @@ async function refreshNotifBadge() {
 }
 
 function notifIconForType(type) {
-  const map = { den_luot: "🔁", xin_doi: "🔄", thong_bao: "🔔" };
+  const map = { den_luot: "🔁", xin_doi: "🔄", nhac_viec: "🔔", thong_bao: "🔔" };
   return map[type] || "🔔";
 }
 

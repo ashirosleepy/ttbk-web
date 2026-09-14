@@ -7,10 +7,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Đăng nhập — TTBK</title>
 <meta name="theme-color" content="#A13F52" />
-  <script type="module" crossorigin src="./assets/login-Cmb4ztEW.js"></script>
-  <link rel="modulepreload" crossorigin href="./assets/style-C_uAb6-X.js">
-  <link rel="modulepreload" crossorigin href="./assets/index-C6pgQ0vL.js">
-  <link rel="modulepreload" crossorigin href="./assets/login-legacy-BlDVZmA2.js">
   <link rel="stylesheet" crossorigin href="./assets/style-CP9XNevS.css">
 </head>
 <body class="auth-page">
@@ -44,6 +40,39 @@
       (Authentication → Users → Add user).
     </p>
   </div>
-
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/theme.js"></script>
+  <script>
+    (async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) window.location.href = "index.html";
+    })();
+
+    const form = document.getElementById("login-form");
+    const errorBox = document.getElementById("auth-error");
+    const loginBtn = document.getElementById("login-btn");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      errorBox.classList.remove("show");
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Đang đăng nhập...";
+      const { error } = await login(
+        document.getElementById("email").value.trim(),
+        document.getElementById("password").value
+      );
+      if (error) {
+        errorBox.textContent = "Sai email hoặc mật khẩu. Thử lại nhé.";
+        errorBox.classList.add("show");
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Đăng nhập";
+        return;
+      }
+      window.location.href = "index.html";
+    });
+  </script>
 </body>
 </html>

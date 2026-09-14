@@ -291,8 +291,42 @@ function renderTabsHTML() {
         
       html += `<button class="btn-tab" style="padding: 6px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; white-space: nowrap; ${style}" data-user="${p.id}">${escapeHTML(p.name)}</button>`;
   });
+  const selectedProfile = findProfile(STATE.profiles, selectedUserId);
+  if (selectedProfile && selectedProfile.id !== STATE.me.id) {
+    html += `<button type="button" class="btn btn-ghost btn-sm" data-action="remind-user" title="Gửi danh sách việc đang mở cho ${escapeHTML(selectedProfile.name)}">🔔 Nhắc việc</button>`;
+  }
   html += '</div>';
   return html;
+}
+
+async function remindSelectedUser(tasks, rotations) {
+  const profile = findProfile(STATE.profiles, selectedUserId);
+  if (!profile || profile.id === STATE.me.id) return;
+
+  const openTasks = tasks.filter(
+    (task) => task.assigned_to === profile.id && task.status !== "hoan_thanh" && task.status !== "bo_lo" && task.status !== "vo_chu"
+  );
+  const activeQueues = rotations.filter((queue) => {
+    if (!Array.isArray(queue.member_order) || queue.member_order.length === 0) return false;
+    const holder = typeof currentHolder === "function" ? currentHolder(queue)?.id : queue.member_order[queue.current_index];
+    return holder === profile.id && !openTasks.some((task) => task.rotation_queue_id === queue.id);
+  });
+
+  const taskLines = [
+    ...openTasks.map((task) => `${task.title}${task.due_date ? ` (hạn ${formatDateShort(task.due_date)})` : ""}`),
+    ...activeQueues.map((queue) => `${queue.icon || "🔁"} ${queue.label} (đến lượt)`),
+  ];
+  if (taskLines.length === 0) {
+    if (typeof showToast === "function") showToast(`${profile.name} hiện không có việc cần nhắc.`);
+    return;
+  }
+
+  const confirmed = confirm(`Gửi thông báo ${taskLines.length} việc cho ${profile.name}?`);
+  if (!confirmed) return;
+
+  const message = `🔔 ${STATE.me.name} nhắc bạn có ${taskLines.length} việc cần xử lý: ${taskLines.join("; ")}`;
+  await createNotification(profile.id, message, { type: "nhac_viec", title: "Nhắc việc" });
+  if (typeof showToast === "function") showToast(`Đã nhắc ${profile.name}.`);
 }
 
 // Việc luân phiên chỉ có 1 trạng thái đáng quan tâm khi CHƯA XONG: "đang tới lượt ai".
@@ -1048,6 +1082,12 @@ function bindTaskEvents(containerId = "tasks-container") {
     if (filterChip) {
       taskDisplayFilter = filterChip.dataset.filter;
       renderTasksView();
+      return;
+    }
+
+    if (e.target.closest('[data-action="remind-user"]')) {
+      const [tasks, rotations] = await Promise.all([fetchTasks(), fetchRotations()]);
+      await remindSelectedUser(tasks, rotations);
       return;
     }
 
