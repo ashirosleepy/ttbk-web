@@ -23,21 +23,24 @@ const BUSY_LEVEL_MAP = {
 let memberWeekOffset = 0;
 
 function memberWeekRange(offset = memberWeekOffset) {
-  const currentMonday = new Date(`${mondayOfWeek(todayStr())}T03:00:00+07:00`);
-  currentMonday.setDate(currentMonday.getDate() + offset * 7);
+  const currentMonday = new Date(`${mondayOfWeek(todayStr())}T00:00:00Z`);
+  currentMonday.setUTCDate(currentMonday.getUTCDate() + offset * 7);
   const nextMonday = new Date(currentMonday);
-  nextMonday.setDate(nextMonday.getDate() + 7);
-  return { start: currentMonday, end: nextMonday };
+  nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+  const startDate = currentMonday.toISOString().slice(0, 10);
+  const endDate = nextMonday.toISOString().slice(0, 10);
+  return {
+    start: new Date(`${startDate}T03:00:00+07:00`),
+    end: new Date(`${endDate}T03:00:00+07:00`),
+    startDate,
+    endDate,
+  };
 }
 
-function memberVietnamDateKey(date) {
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
-}
-
-function memberWeekLabel(start, end) {
-  const endDisplay = new Date(end);
+function memberWeekLabel(startDate, endDate) {
+  const endDisplay = new Date(`${endDate}T00:00:00Z`);
   endDisplay.setUTCDate(endDisplay.getUTCDate() - 1);
-  return `${formatDateShort(memberVietnamDateKey(start))} 03:00 - ${formatDateShort(memberVietnamDateKey(endDisplay))} 02:59`;
+  return `${formatDateShort(startDate)} 03:00 - ${formatDateShort(endDisplay.toISOString().slice(0, 10))} 02:59`;
 }
 
 // Gộp trạng thái thật của 1 thành viên, có fallback cho dữ liệu cũ (is_away)
@@ -94,8 +97,8 @@ async function renderMembers() {
   const weekRange = memberWeekRange();
   const weekStart = weekRange.start.getTime();
   const weekEnd = weekRange.end.getTime();
-  const weekStartDate = memberVietnamDateKey(weekRange.start);
-  const weekEndDate = memberVietnamDateKey(weekRange.end);
+  const weekStartDate = weekRange.startDate;
+  const weekEndDate = weekRange.endDate;
   const weeklyAdjustments = await fetchPointAdjustmentsBetween(vietnamBusinessWeekStartISO(weekStartDate), vietnamBusinessWeekStartISO(weekEndDate));
   const weeklyPoints = {};
   STATE.profiles.forEach((p) => (weeklyPoints[p.id] = weeklyAdjustments[p.id] || 0));
@@ -131,7 +134,7 @@ async function renderMembers() {
           <button type="button" class="btn btn-ghost btn-sm" data-member-week="next">Tuần sau →</button>
         </div>
       </div>
-      <div class="m-sub" style="margin-bottom:10px;">${memberWeekLabel(weekRange.start, weekRange.end)}</div>
+      <div class="m-sub" style="margin-bottom:10px;">${memberWeekLabel(weekRange.startDate, weekRange.endDate)}</div>
       ${ranking.map((row, index) => `
         <div class="progress-row">
           <span class="name">${index + 1}. ${escapeHTML(row.profile.name)}</span>
