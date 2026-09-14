@@ -105,7 +105,7 @@ async function renderMembers() {
   tasks
     .filter((task) => task.status === "hoan_thanh" && task.completed_at && new Date(task.completed_at).getTime() >= weekStart && new Date(task.completed_at).getTime() < weekEnd)
     .forEach((task) => {
-      const creditedUserId = task.completed_by || task.assigned_to;
+      const creditedUserId = task.assigned_to;
       if (weeklyPoints[creditedUserId] !== undefined) weeklyPoints[creditedUserId] += task.points || 0;
     });
 

@@ -197,7 +197,7 @@ async function renderDashboard() {
     const earned = tasks
       .filter((t) => {
         const completedAt = t.completed_at ? new Date(t.completed_at).getTime() : 0;
-        const creditedUserId = t.completed_by || t.assigned_to;
+        const creditedUserId = t.assigned_to;
         return creditedUserId === p.id && t.status === "hoan_thanh" && completedAt >= weekStart && completedAt < weekEnd;
       })
       .reduce((sum, t) => sum + (t.points || 0), 0);

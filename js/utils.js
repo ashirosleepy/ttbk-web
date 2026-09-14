@@ -231,7 +231,7 @@ async function fetchMemberPointsMap() {
     console.error("Không lấy được việc đã hoàn thành:", doneErr.message);
   } else {
     (doneTasks || []).forEach((t) => {
-      const creditedUserId = t.completed_by || t.assigned_to;
+      const creditedUserId = t.assigned_to;
       if (map[creditedUserId] !== undefined) map[creditedUserId] += t.points || 0;
     });
   }

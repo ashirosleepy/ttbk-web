@@ -61,7 +61,7 @@ begin
 
       insert into notifications (user_id, task_id, type, message)
       select p.id, task_row.id, 'lam_ho',
-        format('🆘 %s đã quên làm "%s". Ai làm hộ sẽ được x2 điểm!', owner.name, task_row.title)
+        format('🆘 %s đã quên làm "%s". Ai làm hộ sẽ được x1 điểm!', owner.name, task_row.title)
       from profiles p
       cross join profiles owner
       where owner.id = task_row.assigned_to and p.id <> task_row.assigned_to;
