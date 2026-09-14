@@ -96,6 +96,7 @@ function statusBadgeHTML(status) {
     dang_cho: `<span class="badge badge-wait">Đang chờ</span>`,
     hoan_thanh: `<span class="badge badge-done">Hoàn thành</span>`,
     bo_lo: `<span class="badge badge-missed">Bỏ việc</span>`,
+    qua_han: `<span class="badge badge-missed">Quá hạn</span>`,
     vo_chu: `<span class="badge badge-pending">✈️ Vô chủ</span>`,
   };
   return map[status] || "";
@@ -158,6 +159,22 @@ async function fetchPointAdjustmentsSince(sinceISO = null) {
   return map;
 }
 
+async function fetchPointPenaltyMap() {
+  const map = {};
+  const { data, error } = await supabaseClient
+    .from("point_adjustments")
+    .select("user_id, delta")
+    .lt("delta", 0);
+  if (error) {
+    console.error("Không lấy được điểm phạt:", error.message);
+    return map;
+  }
+  (data || []).forEach((row) => {
+    map[row.user_id] = (map[row.user_id] || 0) + Math.abs(row.delta || 0);
+  });
+  return map;
+}
+
 // ---- "Điểm bù vắng mặt" (shadow points) ----
 // Mỗi khi 1 người ĐANG CÓ MẶT hoàn thành 1 việc và nhận điểm, mọi người ĐANG ĐI VẮNG
 // được cộng thêm 1 khoản "điểm bù" = điểm việc đó / số người đang có mặt. Cộng dồn theo
@@ -189,13 +206,14 @@ async function fetchMemberPointsMap() {
 
   const { data: doneTasks, error: doneErr } = await supabaseClient
     .from("tasks")
-    .select("assigned_to, points")
+    .select("assigned_to, completed_by, points")
     .eq("status", "hoan_thanh");
   if (doneErr) {
     console.error("Không lấy được việc đã hoàn thành:", doneErr.message);
   } else {
     (doneTasks || []).forEach((t) => {
-      if (map[t.assigned_to] !== undefined) map[t.assigned_to] += t.points || 0;
+      const creditedUserId = t.completed_by || t.assigned_to;
+      if (map[creditedUserId] !== undefined) map[creditedUserId] += t.points || 0;
     });
   }
 

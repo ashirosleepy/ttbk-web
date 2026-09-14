@@ -79,7 +79,7 @@ function renderActivityLogGroup(rows) {
                   minute: "2-digit",
                 });
                 return `
-                  <div class="task-ticket" style="border-left-color:${row.actor?.avatar_color || "#ccc"}">
+                  <div class="task-ticket" style="border-left-color:${row.actor?.avatar_color || "#ccc"};${["bo_viec", "qua_han", "lam_ho"].includes(row.action) ? "font-weight:700;color:#b3261e;" : ""}">
                     <div class="task-check" style="border:none; font-size:16px;">🕘</div>
                     <div class="task-body">
                       <div class="task-title">${actorName}: ${detail}</div>

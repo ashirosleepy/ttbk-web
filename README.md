@@ -76,7 +76,11 @@ Cac module moi dung `import`/`export`. Cac module legacy dang duoc bundle trong 
 ```powershell
 supabase functions deploy ai-assign-tasks
 supabase functions deploy send-push
+supabase functions deploy process-reminders
 ```
+
+`process-reminders` cần được gọi theo lịch mỗi giờ (Supabase Dashboard -> Edge Functions -> Schedules).
+Hàm xử lý nhắc trước hạn lúc 01:00, nhắc xác nhận lúc 22:00 theo giờ Việt Nam và đẩy các thông báo quá hạn/làm hộ.
 
 Secret can thiet:
 

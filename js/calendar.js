@@ -214,7 +214,7 @@ function calChipHTML(item) {
   let cls = "cal-chip-future";
   if (!item.projected) {
     if (item.status === "hoan_thanh") cls = "cal-chip-done";
-    else if (item.status === "bo_lo") cls = "cal-chip-missed";
+    else if (item.status === "bo_lo" || item.status === "qua_han") cls = "cal-chip-missed";
     else if (item.overdueRequired) cls = "cal-chip-missed";
     else cls = "cal-chip-todo";
   }
@@ -268,11 +268,11 @@ function calOpenDetailModal(dateStr) {
   list.innerHTML = items.length
     ? items.map((item) => {
         const assignee = findProfile(STATE.profiles || [], item.assigneeId);
-        const status = item.projected ? "Dự kiến" : item.status === "hoan_thanh" ? "Đã hoàn thành" : item.status === "bo_lo" ? "Đã bỏ việc" : item.overdueRequired ? "Bắt buộc chưa hoàn thành" : "Chưa hoàn thành";
-        const statusClass = item.projected ? "future" : item.status === "hoan_thanh" ? "done" : item.status === "bo_lo" || item.overdueRequired ? "missed" : "todo";
+        const status = item.projected ? "Dự kiến" : item.status === "hoan_thanh" ? "Đã hoàn thành" : item.status === "bo_lo" ? "Đã bỏ việc" : item.status === "qua_han" ? "Quá hạn" : item.overdueRequired ? "Bắt buộc chưa hoàn thành" : "Chưa hoàn thành";
+        const statusClass = item.projected ? "future" : item.status === "hoan_thanh" ? "done" : item.status === "bo_lo" || item.status === "qua_han" || item.overdueRequired ? "missed" : "todo";
         return `
           <div class="calendar-detail-item">
-            <div class="calendar-detail-icon ${statusClass}">${item.projected ? "◷" : item.status === "hoan_thanh" ? "✓" : item.status === "bo_lo" || item.overdueRequired ? "!" : "•"}</div>
+            <div class="calendar-detail-icon ${statusClass}">${item.projected ? "◷" : item.status === "hoan_thanh" ? "✓" : item.status === "bo_lo" || item.status === "qua_han" || item.overdueRequired ? "!" : "•"}</div>
             <div class="calendar-detail-body">
               <strong>${escapeHTML(item.title)}</strong>
               <span>${assignee ? `Người làm: ${escapeHTML(assignee.name)}` : "Chưa có người làm"}</span>

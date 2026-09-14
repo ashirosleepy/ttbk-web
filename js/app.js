@@ -136,6 +136,8 @@ async function init() {
   setupMobileMenu();
   setupBottomNav();
   await generateTodayTasks(); // tự tạo việc của hôm nay từ các lịch lặp lại đang bật
+  const { error: overdueError } = await supabaseClient.rpc("process_overdue_tasks");
+  if (overdueError) console.warn("Chưa xử lý được việc quá hạn tự động:", overdueError.message);
   selectedUserId = STATE.me.id;
 
   // Mở đúng mục nếu được mở từ phím tắt PWA (VD: ?section=shopping)

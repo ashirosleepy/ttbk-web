@@ -176,6 +176,27 @@ function taskTicketHTML(task) {
 
   const isMissed = task.status === "bo_lo";
 
+  if (task.status === "qua_han") {
+    const overdueOwner = findProfile(STATE.profiles, task.assigned_to);
+    return `
+      <div class="task-ticket missed" style="border-left-color:#c0392b;" data-id="${task.id}">
+        <div class="task-check" style="border-color:#c0392b; color:#c0392b;">!</div>
+        <div class="task-body">
+          <div class="task-title">${escapeHTML(task.title)}</div>
+          <div class="task-meta">
+            ${statusBadgeHTML(task.status)}
+            <span>${escapeHTML(overdueOwner?.name || "?")} chưa hoàn thành</span>
+            <span>Đã trừ ${task.points || 0} điểm</span>
+          </div>
+        </div>
+        <div class="task-actions">
+          ${task.assigned_to === STATE.me.id ? `<button class="btn btn-ghost btn-sm" data-action="toggle" title="Xác nhận đã làm">Tôi đã làm</button>` : ""}
+          ${task.assigned_to !== STATE.me.id ? `<button class="btn btn-primary btn-sm" data-action="help" title="Hoàn thành thay và nhận x2 điểm">Tôi đã làm hộ</button>` : ""}
+          <button class="icon-btn" data-action="history" title="Xem lịch sử">🕘</button>
+        </div>
+      </div>`;
+  }
+
   // Việc bị đánh dấu "Không hoàn thành" — vẫn hiện trong danh sách (gạch ngang),
   // có thể huỷ đánh dấu để hoàn lại điểm nếu đánh dấu nhầm.
   if (isMissed) {
@@ -604,7 +625,7 @@ async function toggleTaskDoneInternal(id) {
   const ticket = document.querySelector(`.task-ticket[data-id="${id}"]`);
   if (!ticket) return;
   const isDone = ticket.classList.contains("done");
-  const currentTask = await supabaseClient.from("tasks").select("assigned_to, title, status").eq("id", id).single();
+  const currentTask = await supabaseClient.from("tasks").select("assigned_to, title, status, points").eq("id", id).single();
   if (currentTask.error || !currentTask.data) return alert("Không tìm thấy việc.");
 
   const currentStatus = currentTask.data.status;
@@ -616,7 +637,11 @@ async function toggleTaskDoneInternal(id) {
 
   const { data, error } = await supabaseClient
     .from("tasks")
-    .update({ status: newStatus, completed_at: newStatus === "hoan_thanh" ? new Date().toISOString() : null })
+    .update({
+      status: newStatus,
+      completed_at: newStatus === "hoan_thanh" ? new Date().toISOString() : null,
+      completed_by: newStatus === "hoan_thanh" ? STATE.me.id : null,
+    })
     .eq("id", id)
     .eq("status", currentStatus)
     .neq("status", newStatus)
@@ -674,6 +699,31 @@ async function toggleTaskDoneInternal(id) {
   refreshActiveView();
 }
 
+async function helpOverdueTask(id) {
+  const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
+  if (error || !task) return alert("Không tìm thấy việc.");
+  if (task.assigned_to === STATE.me.id) return alert("Bạn không thể tự làm hộ việc của mình.");
+  if (!confirm(`Bạn làm hộ "${task.title}"? Bạn nhận x2 điểm, người được giao bị trừ thêm ${task.points || 0} điểm.`)) return;
+
+  const { data, error: helpError } = await supabaseClient.rpc("mark_task_helped", {
+    p_task_id: id,
+    p_helper_id: STATE.me.id,
+    p_assigned_id: task.assigned_to,
+    p_points: task.points || 0,
+  });
+  if (helpError || !data) return alert(helpError?.message || "Việc này vừa được người khác làm hộ.");
+
+  const owner = findProfile(STATE.profiles, task.assigned_to);
+  await logHistory(id, STATE.me.id, "lam_ho", `${STATE.me.name} đã làm hộ ${owner ? owner.name : "người phụ trách"} việc "${task.title}" và nhận x2 điểm.`);
+  await createNotification(task.assigned_to, `✅ ${STATE.me.name} đã làm hộ việc "${task.title}". Bạn bị trừ thêm ${task.points || 0} điểm.`, {
+    type: "lam_ho",
+    taskId: id,
+    title: "Việc đã được làm hộ",
+  });
+  if (typeof showToast === "function") showToast(`✅ Đã làm hộ "${task.title}" và nhận x2 điểm.`);
+  refreshActiveView();
+}
+
 // NHÂN TÍNH NĂNG MỚI: Xử lý khi bấm hoàn thành việc Tự Động Luân Phiên
 async function handleCompleteAutoRotation(queueId) {
     // Lấy thông tin queue
@@ -691,7 +741,8 @@ async function handleCompleteAutoRotation(queueId) {
         status: 'hoan_thanh',
         points: queue.points,
         due_date: todayStr(),
-        completed_at: new Date().toISOString()
+        completed_at: new Date().toISOString(),
+        completed_by: STATE.me.id,
     };
 
     const { data: task, error: tErr } = await supabaseClient.from('tasks').insert(payload).select().single();
@@ -1111,6 +1162,7 @@ function bindTaskEvents(containerId = "tasks-container") {
     if (action === "history") toggleTaskHistory(id, ticket);
     if (action === "delete") deleteTask(id);
     if (action === "claim-unassigned") await claimUnassignedTask(id);
+    if (action === "help") await helpOverdueTask(id);
 
     // Xử lý các nút của Phiếu việc luân phiên tự động
     if (action === "complete-rotation") await handleCompleteAutoRotation(queueId);

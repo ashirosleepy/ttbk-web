@@ -70,7 +70,25 @@ function memberStatusBadgeHTML(status) {
 
 async function renderMembers() {
   const container = document.getElementById("members-grid");
-  const [tasks, pointsMap] = await Promise.all([fetchTasks(), fetchMemberPointsMap()]);
+  const [tasks, pointsMap, penaltyMap] = await Promise.all([fetchTasks(), fetchMemberPointsMap(), fetchPointPenaltyMap()]);
+
+  const ranking = STATE.profiles
+    .map((p) => {
+      const assigned = tasks.filter((t) => t.assigned_to === p.id);
+      const done = assigned.filter((t) => t.status === "hoan_thanh").length;
+      return {
+        profile: p,
+        completion: assigned.length ? Math.round((done / assigned.length) * 100) : 100,
+        penalty: penaltyMap[p.id] || 0,
+      };
+    })
+    .sort((a, b) => b.penalty - a.penalty || a.completion - b.completion);
+
+  const leaderboardHTML = `
+    <div class="card" style="grid-column:1/-1;margin-bottom:18px;border-left:4px solid #c0392b;">
+      <h3 style="margin:0 0 10px;font-size:15px;">🏆 Bảng vàng / phong thần</h3>
+      <div class="m-sub">${ranking.map((row, index) => `${index + 1}. ${escapeHTML(row.profile.name)} — hoàn thành ${row.completion}% · bị trừ ${row.penalty} điểm`).join("<br />")}</div>
+    </div>`;
 
   const html = STATE.profiles
     .map((p) => {
@@ -111,7 +129,7 @@ async function renderMembers() {
     })
     .join("");
 
-  container.innerHTML = html || `<p class="empty-state">Chưa có thành viên nào.</p>`;
+  container.innerHTML = html ? leaderboardHTML + html : `<p class="empty-state">Chưa có thành viên nào.</p>`;
 }
 
 async function loadMembersSection() {
