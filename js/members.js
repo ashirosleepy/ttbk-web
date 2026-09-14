@@ -71,6 +71,16 @@ function memberStatusBadgeHTML(status) {
 async function renderMembers() {
   const container = document.getElementById("members-grid");
   const [tasks, pointsMap, penaltyMap] = await Promise.all([fetchTasks(), fetchMemberPointsMap(), fetchPointPenaltyMap()]);
+  const weekStart = new Date(mondayOfWeek(todayStr()) + "T00:00:00").getTime();
+  const weeklyAdjustments = await fetchPointAdjustmentsSince(new Date(weekStart).toISOString());
+  const weeklyPoints = {};
+  STATE.profiles.forEach((p) => (weeklyPoints[p.id] = weeklyAdjustments[p.id] || 0));
+  tasks
+    .filter((task) => task.status === "hoan_thanh" && task.completed_at && new Date(task.completed_at).getTime() >= weekStart)
+    .forEach((task) => {
+      const creditedUserId = task.completed_by || task.assigned_to;
+      if (weeklyPoints[creditedUserId] !== undefined) weeklyPoints[creditedUserId] += task.points || 0;
+    });
 
   const ranking = STATE.profiles
     .map((p) => {
@@ -80,14 +90,23 @@ async function renderMembers() {
         profile: p,
         completion: assigned.length ? Math.round((done / assigned.length) * 100) : 100,
         penalty: penaltyMap[p.id] || 0,
+        weeklyPoints: weeklyPoints[p.id] || 0,
       };
     })
-    .sort((a, b) => b.penalty - a.penalty || a.completion - b.completion);
+    .sort((a, b) => b.weeklyPoints - a.weeklyPoints || b.penalty - a.penalty || a.completion - b.completion);
+
+  const maxWeeklyPoints = Math.max(1, ...ranking.map((row) => row.weeklyPoints));
 
   const leaderboardHTML = `
-    <div class="card" style="grid-column:1/-1;margin-bottom:18px;border-left:4px solid #c0392b;">
-      <h3 style="margin:0 0 10px;font-size:15px;">🏆 Bảng vàng / phong thần</h3>
-      <div class="m-sub">${ranking.map((row, index) => `${index + 1}. ${escapeHTML(row.profile.name)} — hoàn thành ${row.completion}% · bị trừ ${row.penalty} điểm`).join("<br />")}</div>
+    <div class="card" style="grid-column:1/-1;margin-bottom:18px;border-left:4px solid var(--accent);">
+      <h3 style="margin:0 0 10px;font-size:15px;">⚖️ Điểm công bằng tuần này</h3>
+      ${ranking.map((row, index) => `
+        <div class="progress-row">
+          <span class="name">${index + 1}. ${escapeHTML(row.profile.name)}</span>
+          <div class="progress-track"><div class="progress-fill" style="width:${Math.max(0, Math.round((row.weeklyPoints / maxWeeklyPoints) * 100))}%;background:${row.profile.avatar_color};"></div></div>
+          <span class="progress-pct">${row.weeklyPoints} đ</span>
+        </div>`).join("")}
+      <div class="m-sub" style="margin-top:8px;">Xếp theo điểm thực nhận trong tuần, gồm điểm hoàn thành và các khoản cộng/trừ.</div>
     </div>`;
 
   const html = STATE.profiles
@@ -97,6 +116,7 @@ async function renderMembers() {
       const missed = assigned.filter((t) => t.status === "bo_lo");
       const pending = assigned.filter((t) => t.status !== "hoan_thanh" && t.status !== "bo_lo");
       const points = pointsMap[p.id] || 0;
+      const thisWeekPoints = weeklyPoints[p.id] || 0;
 
       const status = resolveMemberStatus(p);
       const availability = estimateAvailability(p, pending.length);
@@ -118,6 +138,7 @@ async function renderMembers() {
           ${memberStatusBadgeHTML(status)}
           ${universityLine}
           <div class="m-sub">${assigned.length} việc • ${done.length} hoàn thành${missed.length ? ` • ${missed.length} bỏ việc` : ""}</div>
+          <div class="m-sub"><strong>Tuần này: ${thisWeekPoints} điểm</strong> • Tổng: ${points} điểm</div>
           <div class="m-sub m-availability">
             <span class="availability-bar">
               <span class="availability-fill" style="width:${availability}%;background:${availability >= 60 ? "#1e8a4c" : availability >= 25 ? "#a86b16" : "#b3261e"};"></span>
