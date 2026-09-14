@@ -25,7 +25,15 @@ function updateTopbar() {
 
 function setupNav() {
   document.querySelectorAll(".nav-item").forEach((btn) => {
-    btn.addEventListener("click", () => loadSection(btn.dataset.section));
+    btn.addEventListener("click", () => {
+      const destination = btn.dataset.navigate;
+      if (destination) {
+        if (typeof window.ttbkNavigate === "function") window.ttbkNavigate(destination);
+        else window.location.href = destination;
+        return;
+      }
+      loadSection(btn.dataset.section);
+    });
   });
   document.getElementById("btn-logout").addEventListener("click", logout);
 }
