@@ -586,8 +586,12 @@ async function loadSettingsSection() {
   bindSettingsEvents();
   
   // Bind debug points events if available
+  console.log('Checking if bindDebugEvents is available:', typeof bindDebugEvents);
   if (typeof bindDebugEvents === "function") {
+    console.log('Calling bindDebugEvents');
     bindDebugEvents();
+  } else {
+    console.log('bindDebugEvents not available');
   }
   
   await checkSickRecoveryPrompt();

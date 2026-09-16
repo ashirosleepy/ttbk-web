@@ -2,6 +2,8 @@
 // DEBUG-POINTS.JS — công cụ debug hệ thống điểm
 // ============================================================
 
+console.log('debug-points.js loaded');
+
 let debugData = {
   profiles: [],
   pointAdjustments: [],
@@ -272,14 +274,20 @@ function renderDebugDiagnosis() {
 }
 
 function bindDebugEvents() {
+  console.log('Binding debug events...');
   const toggleBtn = document.getElementById('st-debug-points-toggle');
   const panel = document.getElementById('debug-points-panel');
+  
+  console.log('Toggle button:', toggleBtn);
+  console.log('Panel:', panel);
   
   if (toggleBtn && !toggleBtn.dataset.bound) {
     toggleBtn.dataset.bound = "1";
     toggleBtn.addEventListener('click', async () => {
+      console.log('Debug toggle clicked');
       if (panel.style.display === 'none') {
         panel.style.display = 'block';
+        console.log('Loading debug data...');
         const success = await loadDebugData();
         if (!success) {
           document.getElementById('debug-results').innerHTML = '<p style="color:var(--danger);">Lỗi tải dữ liệu debug. Kiểm tra console.</p>';
@@ -290,6 +298,8 @@ function bindDebugEvents() {
         panel.style.display = 'none';
       }
     });
+  } else {
+    console.log('Toggle button not found or already bound');
   }
 
   const loadOverviewBtn = document.getElementById('debug-load-overview');
@@ -323,4 +333,6 @@ function bindDebugEvents() {
       renderDebugDiagnosis();
     });
   }
+  
+  console.log('Debug events bound successfully');
 }
