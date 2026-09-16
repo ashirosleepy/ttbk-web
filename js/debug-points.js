@@ -333,6 +333,126 @@ function bindDebugEvents() {
       renderDebugDiagnosis();
     });
   }
+
+  const loadAllBtn = document.getElementById('debug-load-all');
+  if (loadAllBtn && !loadAllBtn.dataset.bound) {
+    loadAllBtn.dataset.bound = "1";
+    loadAllBtn.addEventListener('click', async () => {
+      const resultsDiv = document.getElementById('debug-results');
+      resultsDiv.innerHTML = '<p>Đang tải dữ liệu và chẩn đoán...</p>';
+      
+      const success = await loadDebugData();
+      if (!success) {
+        resultsDiv.innerHTML = '<p style="color:var(--danger);">Lỗi tải dữ liệu debug. Kiểm tra console.</p>';
+        return;
+      }
+      
+      // Run all diagnostics
+      let html = '<h4 style="margin:0 0 10px;">🚀 Kết quả full chẩn đoán</h4>';
+      
+      // Overview
+      html += '<div style="margin-bottom:20px;">';
+      html += '<h5 style="margin:0 0 5px;">📊 Tổng quan điểm</h5>';
+      const userPoints = {};
+      debugData.profiles.forEach(p => {
+        userPoints[p.id] = { name: p.name, taskPoints: 0, adjustments: 0, total: 0 };
+      });
+      debugData.completedTasks.forEach(task => {
+        const creditedUserId = task.completed_by || task.assigned_to;
+        if (userPoints[creditedUserId]) userPoints[creditedUserId].taskPoints += task.points || 0;
+      });
+      debugData.pointAdjustments.forEach(adj => {
+        if (userPoints[adj.user_id]) userPoints[adj.user_id].adjustments += adj.delta || 0;
+      });
+      Object.keys(userPoints).forEach(userId => {
+        userPoints[userId].total = userPoints[userId].taskPoints + userPoints[userId].adjustments;
+      });
+      html += '<table style="width:100%; border-collapse:collapse; margin:10px 0;">';
+      html += '<tr style="background:var(--bg-muted);"><th style="padding:6px; text-align:left;">Thành viên</th><th style="padding:6px; text-align:right;">Điểm việc</th><th style="padding:6px; text-align:right;">Điều chỉnh</th><th style="padding:6px; text-align:right;">Tổng</th></tr>';
+      Object.values(userPoints).forEach(user => {
+        const adjClass = user.adjustments >= 0 ? 'color:var(--success);' : 'color:var(--danger);';
+        html += `<tr><td style="padding:6px; border-bottom:1px solid var(--border);">${user.name}</td><td style="padding:6px; text-align:right; border-bottom:1px solid var(--border);">${user.taskPoints}</td><td style="padding:6px; text-align:right; border-bottom:1px solid var(--border); ${adjClass}">${user.adjustments >= 0 ? '+' : ''}${user.adjustments}</td><td style="padding:6px; text-align:right; border-bottom:1px solid var(--border); font-weight:bold;">${user.total}</td></tr>`;
+      });
+      html += '</table></div>';
+      
+      // Diagnosis
+      const issues = [];
+      const warnings = [];
+      
+      const taskAdjustmentMap = {};
+      debugData.pointAdjustments.forEach(adj => {
+        if (adj.task_id) {
+          const key = `${adj.task_id}_${adj.user_id}_${adj.reason}`;
+          if (taskAdjustmentMap[key]) {
+            issues.push(`Trùng lặp điều chỉnh điểm: Task ${adj.task_id.substring(0,8)}... User ${getProfileName(adj.user_id)} Reason ${adj.reason}`);
+          }
+          taskAdjustmentMap[key] = true;
+        }
+      });
+      
+      debugData.completedTasks.forEach(task => {
+        const creditedUserId = task.completed_by || task.assigned_to;
+        const hasTaskPoints = task.points > 0;
+        if (hasTaskPoints) {
+          const relatedAdjustments = debugData.pointAdjustments.filter(adj => adj.task_id === task.id && adj.user_id === creditedUserId);
+          if (relatedAdjustments.length > 0) {
+            const totalAdj = relatedAdjustments.reduce((sum, adj) => sum + adj.delta, 0);
+            if (totalAdj === -task.points) {
+              warnings.push(`Task "${task.title}" (${task.id.substring(0,8)}...): Điểm việc bị hủy hoàn toàn bởi điều chỉnh`);
+            }
+          }
+        }
+      });
+      
+      const overdueAdjustments = debugData.pointAdjustments.filter(adj => adj.reason === 'qua_han');
+      const helpedAdjustments = debugData.pointAdjustments.filter(adj => adj.reason === 'bi_lam_ho');
+      overdueAdjustments.forEach(adj => {
+        const correspondingHelped = helpedAdjustments.find(h => h.task_id === adj.task_id);
+        if (correspondingHelped) {
+          warnings.push(`Task ${adj.task_id.substring(0,8)}...: Cả "qua_han" và "bi_lam_ho" đều tồn tại - có thể trùng lặp`);
+        }
+      });
+      
+      const negativeAdjustments = debugData.pointAdjustments.filter(adj => adj.delta < 0);
+      negativeAdjustments.forEach(adj => {
+        if (adj.task_id) {
+          const task = debugData.completedTasks.find(t => t.id === adj.task_id);
+          if (!task) {
+            warnings.push(`Điều chỉnh điểm âm cho task ${adj.task_id.substring(0,8)}... nhưng task không tìm thấy trong danh sách hoàn thành`);
+          }
+        }
+      });
+      
+      html += '<div style="margin-bottom:20px;">';
+      html += '<h5 style="margin:0 0 5px;">🔧 Kết quả chẩn đoán</h5>';
+      if (issues.length > 0) {
+        html += '<div style="background:var(--danger-bg); color:var(--danger); padding:10px; border-radius:4px; margin-bottom:10px;"><strong>⚠️ Vấn đề nghiêm trọng:</strong><ul style="margin:5px 0; padding-left:20px;">';
+        issues.forEach(issue => html += `<li>${issue}</li>`);
+        html += '</ul></div>';
+      }
+      if (warnings.length > 0) {
+        html += '<div style="background:var(--warning-bg); color:var(--warning); padding:10px; border-radius:4px; margin-bottom:10px;"><strong>ℹ️ Cảnh báo:</strong><ul style="margin:5px 0; padding-left:20px;">';
+        warnings.forEach(warning => html += `<li>${warning}</li>`);
+        html += '</ul></div>';
+      }
+      if (issues.length === 0 && warnings.length === 0) {
+        html += '<div style="background:var(--success-bg); color:var(--success); padding:10px; border-radius:4px; margin-bottom:10px;"><strong>✅ Không phát hiện vấn đề rõ ràng trong dữ liệu điểm.</strong></div>';
+      }
+      html += '</div>';
+      
+      // Statistics
+      html += '<div style="background:var(--bg-muted); padding:10px; border-radius:4px; margin-top:10px;">';
+      html += '<strong>Thống kê:</strong><ul style="margin:5px 0; padding-left:20px;">';
+      html += `<li>Số thành viên: ${debugData.profiles.length}</li>`;
+      html += `<li>Việc đã hoàn thành: ${debugData.completedTasks.length}</li>`;
+      html += `<li>Bản ghi điều chỉnh điểm: ${debugData.pointAdjustments.length}</li>`;
+      html += `<li>Điều chỉnh âm: ${debugData.pointAdjustments.filter(a => a.delta < 0).length}</li>`;
+      html += `<li>Điều chỉnh dương: ${debugData.pointAdjustments.filter(a => a.delta > 0).length}</li>`;
+      html += '</ul></div>';
+      
+      resultsDiv.innerHTML = html;
+    });
+  }
   
   console.log('Debug events bound successfully');
 }
