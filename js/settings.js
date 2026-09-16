@@ -505,6 +505,14 @@ function bindSettingsEvents() {
     logoutBtn.dataset.bound = "1";
     logoutBtn.addEventListener("click", logout);
   }
+
+  const debugPointsBtn = document.getElementById("st-debug-points");
+  if (debugPointsBtn && !debugPointsBtn.dataset.bound) {
+    debugPointsBtn.dataset.bound = "1";
+    debugPointsBtn.addEventListener("click", () => {
+      window.open("debug-points.html", "_blank");
+    });
+  }
 }
 
 // Nếu ngày dự kiến khỏi đã qua mà vẫn đang để chế độ Ốm, hỏi lại xem đã khoẻ
