@@ -366,7 +366,7 @@ async function loadNotificationsSection() {
 // ---------------------------------------------------------------
 // REALTIME: tự cập nhật cho mọi người khi có ai đó thay đổi dữ liệu,
 // không cần bấm F5. Cần bật Realtime cho bảng tasks/notifications
-// trong Supabase (đã có sẵn trong sql/schema.sql, mục 10).
+// trong Supabase (đã bật trong sql/schema.sql).
 // ---------------------------------------------------------------
 function subscribeRealtime() {
   supabaseClient

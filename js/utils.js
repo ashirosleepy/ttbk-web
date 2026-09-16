@@ -137,7 +137,7 @@ async function logHistory(taskId, userId, action, detail) {
 }
 
 // ---- Điểm công bằng: cộng khi hoàn thành việc, trừ khi bỏ việc / xin đổi việc ----
-// Ghi 1 khoản cộng/trừ điểm vào bảng point_adjustments (cần tạo bảng này, xem sql/point_adjustments.sql).
+// Ghi 1 khoản cộng/trừ điểm vào bảng point_adjustments (xem sql/schema.sql).
 // reason gợi ý: "bo_viec" (bỏ việc), "xin_doi" (xin đổi việc thành công).
 async function addPointAdjustment(userId, taskId, delta, reason) {
   if (!userId || !delta) return;

@@ -2,7 +2,7 @@
    js/shopping.js — Module "Nhà cần gì?" (Đồ dùng / Mua sắm / Dự phòng / Định kỳ)
    -------------------------------------------------------------------------
    BẢN SUPABASE: dữ liệu lưu ở bảng shopping_items / shopping_purchase_log /
-   expenses (xem sql/007_shopping_and_expenses.sql) — cả nhà cùng thấy 1 bộ
+   expenses (xem sql/schema.sql) — cả nhà cùng thấy 1 bộ
    dữ liệu, không còn mỗi máy 1 kiểu như bản localStorage trước.
 
    🔧 GIẢ ĐỊNH CẦN KIỂM TRA: file này gọi client Supabase qua sbClient() bên

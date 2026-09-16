@@ -6,7 +6,7 @@ Web app quan ly viec nha cho 4 thanh vien, dung HTML/CSS/JavaScript thuần, Sup
 
 1. Mo `login.html` qua GitHub Pages, localhost hoac mot web server HTTPS.
 2. Tao tai khoan trong Supabase Authentication.
-3. Chay `sql/schema.sql`, sau do chay cac migration can thiet trong `sql/`.
+3. Chay `sql/schema.sql` trong Supabase SQL Editor (an toan de chay lai).
 4. Dien Project URL va anon key vao `js/supabase-client.js`.
 5. Neu dung AI chia viec, deploy Edge Function `ai-assign-tasks` va dat secret `ANTHROPIC_API_KEY`.
 
@@ -57,7 +57,7 @@ npm run preview
 |   |-- theme.js               Dong bo theme
 |   `-- page-transition.js     Chuyen trang
 |
-|-- sql/                       Schema va migration Supabase
+|-- sql/schema.sql             Schema Supabase day du, chay lai duoc
 `-- supabase/functions/
     |-- ai-assign-tasks/       Edge Function chia viec bang AI
     `-- send-push/              Edge Function gui Web Push
@@ -93,5 +93,5 @@ Secret can thiet:
 - Giao dien mua sam sua trong `css/shopping.css`.
 - Giao dien chi tieu sua trong `css/expense.css`.
 - Logic moi khu vuc sua trong file JS cung ten.
-- Thay doi database them thanh migration moi trong `sql/`, khong sua ngược migration da chay.
+- Thay doi database sua trong `sql/schema.sql` (giu idempotent: create if not exists / add column if not exists).
 - Khi them/xoa file, cap nhat cay thu muc trong README nay.
