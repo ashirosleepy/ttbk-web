@@ -705,7 +705,20 @@
             <p style="font-size:13px;color:var(--ink-soft);margin:0 0 10px;">
               Các công cụ dùng để debug và kiểm tra hệ thống điểm.
             </p>
-            <button class="btn btn-ghost btn-sm" id="st-debug-points">🔍 Debug hệ thống điểm</button>
+            <button class="btn btn-ghost btn-sm" id="st-debug-points-toggle">🔍 Debug hệ thống điểm</button>
+            
+            <div id="debug-points-panel" style="display:none; margin-top:15px; padding:15px; background:var(--bg-soft); border-radius:8px;">
+              <h4 style="margin:0 0 10px;">🔍 Chẩn đoán hệ thống điểm</h4>
+              <div style="display:flex; gap:8px; margin-bottom:15px;">
+                <button class="btn btn-primary btn-sm" id="debug-load-overview">Tải tổng quan</button>
+                <button class="btn btn-ghost btn-sm" id="debug-load-adjustments">Điều chỉnh điểm</button>
+                <button class="btn btn-ghost btn-sm" id="debug-load-history">Nhật ký</button>
+                <button class="btn btn-ghost btn-sm" id="debug-diagnose">Chẩn đoán</button>
+              </div>
+              <div id="debug-results" style="font-size:13px; max-height:400px; overflow-y:auto;">
+                <p style="color:var(--ink-faint);">Bấm nút để xem thông tin debug...</p>
+              </div>
+            </div>
           </div>
 
           <div class="settings-block" style="margin-bottom:0;">
