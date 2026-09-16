@@ -6,7 +6,7 @@
 // Tăng CACHE_VERSION mỗi khi đổi các file tĩnh để buộc cập nhật cache.
 // ============================================================
 
-const CACHE_VERSION = "ttbk-v1";
+const CACHE_VERSION = "ttbk-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 // Các file "vỏ" app — đủ để mở lại giao diện khi mất mạng tạm thời.
@@ -67,6 +67,58 @@ self.addEventListener("fetch", (event) => {
 
       // Có cache sẵn thì trả ngay (nhanh), vẫn âm thầm cập nhật cache ở nền.
       return cached || networkFetch;
+    })
+  );
+});
+
+function notificationUrl(data) {
+  const raw = data && data.url ? data.url : "./";
+  try {
+    return new URL(raw, self.registration.scope).href;
+  } catch {
+    return self.registration.scope;
+  }
+}
+
+self.addEventListener("push", (event) => {
+  let payload = {
+    title: "TTBK",
+    body: "Bạn có thông báo mới",
+    url: "./",
+    tag: "ttbk",
+  };
+  try {
+    if (event.data) Object.assign(payload, event.data.json());
+  } catch {
+    if (event.data) payload.body = event.data.text() || payload.body;
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || "TTBK", {
+      body: payload.body || "",
+      icon: "./css/ttbk.png",
+      badge: "./css/ttbk.png",
+      tag: payload.tag || "ttbk",
+      data: { url: notificationUrl(payload) },
+      renotify: true,
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || self.registration.scope;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.startsWith(self.registration.scope) && "focus" in client) {
+          client.focus();
+          if ("navigate" in client) return client.navigate(target);
+          return client;
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
     })
   );
 });

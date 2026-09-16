@@ -154,6 +154,7 @@ async function init() {
   await loadSection(validSection);
   refreshNotifBadge(); // hiện số thông báo chưa đọc ngay trên thanh menu
   subscribeRealtime(); // tự cập nhật khi có ai đó thay đổi việc/thông báo
+  if (typeof syncPushSubscription === "function") syncPushSubscription();
 }
 
 init();

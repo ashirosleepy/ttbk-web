@@ -35,7 +35,7 @@ async function sendPush(userIds: string[], title: string, body: string, tag: str
     .in('user_id', userIds);
   await Promise.allSettled((subscriptions || []).map((row) => webpush.sendNotification(
     row.subscription,
-    JSON.stringify({ title, body, url: '/index.html?section=tasks', tag }),
+    JSON.stringify({ title, body, url: './index.html?section=tasks', tag }),
   )));
 }
 
