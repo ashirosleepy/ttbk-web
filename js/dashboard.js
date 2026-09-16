@@ -197,7 +197,12 @@ async function renderDashboard() {
     const earned = tasks
       .filter((t) => {
         const completedAt = t.completed_at ? new Date(t.completed_at).getTime() : 0;
-        const creditedUserId = t.assigned_to;
+        // Phải dùng completed_by (người THỰC SỰ bấm hoàn thành), không phải
+        // assigned_to (người được giao ban đầu) — nếu không, mỗi lần có ai đó
+        // "Làm hộ" một việc, điểm tuần sẽ bị cộng nhầm cho người được giao gốc
+        // thay vì người thật sự đã làm. Giống hệt cách fetchMemberPointsMap()
+        // trong utils.js đã làm.
+        const creditedUserId = t.completed_by || t.assigned_to;
         return creditedUserId === p.id && t.status === "hoan_thanh" && completedAt >= weekStart && completedAt < weekEnd;
       })
       .reduce((sum, t) => sum + (t.points || 0), 0);

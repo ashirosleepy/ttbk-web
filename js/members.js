@@ -105,7 +105,10 @@ async function renderMembers() {
   tasks
     .filter((task) => task.status === "hoan_thanh" && task.completed_at && new Date(task.completed_at).getTime() >= weekStart && new Date(task.completed_at).getTime() < weekEnd)
     .forEach((task) => {
-      const creditedUserId = task.assigned_to;
+      // Cùng lý do như dashboard.js: phải tính theo completed_by (người thực sự
+      // làm), không phải assigned_to (người được giao ban đầu), để việc "làm hộ"
+      // không bị cộng nhầm điểm tuần cho người không làm gì.
+      const creditedUserId = task.completed_by || task.assigned_to;
       if (weeklyPoints[creditedUserId] !== undefined) weeklyPoints[creditedUserId] += task.points || 0;
     });
 

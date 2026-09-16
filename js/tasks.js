@@ -730,7 +730,21 @@ async function helpTask(id) {
 }
 
 // NHÂN TÍNH NĂNG MỚI: Xử lý khi bấm hoàn thành việc Tự Động Luân Phiên
-async function handleCompleteAutoRotation(queueId, helped = false) {
+//
+// Bọc bằng Map dedupe theo queueId: double-click vào nút "hoàn thành lượt luân
+// phiên" trước đây sẽ tạo 2 phiếu "hoan_thanh" (cộng điểm 2 lần) và đẩy
+// current_index đi 2 bước (nhảy qua mất 1 người trong vòng xoay).
+const rotationCompleteRequests = new Map();
+
+function handleCompleteAutoRotation(queueId, helped = false) {
+  const key = `${queueId}:${helped}`;
+  if (rotationCompleteRequests.has(key)) return rotationCompleteRequests.get(key);
+  const request = handleCompleteAutoRotationInternal(queueId, helped).finally(() => rotationCompleteRequests.delete(key));
+  rotationCompleteRequests.set(key, request);
+  return request;
+}
+
+async function handleCompleteAutoRotationInternal(queueId, helped = false) {
     // Lấy thông tin queue
     const { data: queue, error: qErr } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
     if (qErr || !queue) return alert("Lỗi lấy thông tin luân phiên.");
@@ -772,12 +786,14 @@ async function handleCompleteAutoRotation(queueId, helped = false) {
       `${STATE.me.name} đánh dấu hoàn thành${actingFor} việc luân phiên: ${queue.label}${helped ? `. Lý do làm hộ: ${reason.trim()}` : ""}`
     );
 
-    // Tự động tăng current_index lên người tiếp theo
+    // Tự động tăng current_index lên người tiếp theo. .eq("current_index", ...)
+    // đảm bảo chỉ 1 lần gọi thành công nếu vô tình có 2 request chạy song song.
     const nextIndex = (queue.current_index + 1) % queue.member_order.length;
     const { error: queueError } = await supabaseClient
       .from('rotation_queues')
       .update({ current_index: nextIndex })
-      .eq('id', queueId);
+      .eq('id', queueId)
+      .eq('current_index', queue.current_index);
     if (!queueError) {
       const nextHolder = currentHolder({ ...queue, current_index: nextIndex });
       if (nextHolder && nextHolder.id !== holder.id) {
@@ -793,7 +809,16 @@ async function handleCompleteAutoRotation(queueId, helped = false) {
 // Đánh dấu lượt luân phiên hiện tại là "Không hoàn thành": tạo 1 phiếu việc trạng thái
 // bo_lo để lưu lại lịch sử + trừ điểm người đang tới lượt, rồi tự chuyển sang người kế tiếp
 // (giống hệt việc họ đã "hoàn thành" về mặt chuyển lượt, chỉ khác là bị trừ điểm thay vì cộng).
-async function handleMissRotation(queueId) {
+const rotationMissRequests = new Map();
+
+function handleMissRotation(queueId) {
+  if (rotationMissRequests.has(queueId)) return rotationMissRequests.get(queueId);
+  const request = handleMissRotationInternal(queueId).finally(() => rotationMissRequests.delete(queueId));
+  rotationMissRequests.set(queueId, request);
+  return request;
+}
+
+async function handleMissRotationInternal(queueId) {
   const { data: queue, error: qErr } = await supabaseClient.from('rotation_queues').select('*').eq('id', queueId).single();
   if (qErr || !queue) return alert("Lỗi lấy thông tin luân phiên.");
 
@@ -827,16 +852,40 @@ async function handleMissRotation(queueId) {
   await logHistory(task.id, STATE.me.id, "bo_viec", `${STATE.me.name} đánh dấu "${queue.label}" là không hoàn thành (trừ ${Math.abs(penalty)} điểm của ${holder.name}).`);
 
   const nextIndex = (queue.current_index + 1) % queue.member_order.length;
-  await supabaseClient.from('rotation_queues').update({ current_index: nextIndex }).eq('id', queueId);
+  await supabaseClient
+    .from('rotation_queues')
+    .update({ current_index: nextIndex })
+    .eq('id', queueId)
+    .eq('current_index', queue.current_index);
 
   refreshActiveView();
 }
 
 // Đánh dấu 1 việc thường/việc phát sinh đã có phiếu thật là "Không hoàn thành": đổi trạng
 // thái sang bo_lo và trừ điểm người phụ trách (một nửa điểm thưởng của việc đó).
-async function markTaskMissed(id) {
+//
+// Bọc bằng Map dedupe (giống toggleTaskDone) + optimistic lock trên câu update
+// (.eq("status", task.status)) để nếu người dùng bấm nút "✕" 2 lần liên tiếp
+// (mạng chậm, chưa kịp disable nút) thì CHỈ lần đầu tiên thực sự trừ điểm —
+// lần gọi thứ 2 sẽ thấy status đã đổi và tự dừng lại, không trừ điểm lần nữa.
+const taskMissRequests = new Map();
+
+function markTaskMissed(id) {
+  if (taskMissRequests.has(id)) return taskMissRequests.get(id);
+  const request = markTaskMissedInternal(id).finally(() => taskMissRequests.delete(id));
+  taskMissRequests.set(id, request);
+  return request;
+}
+
+async function markTaskMissedInternal(id) {
   const { data: task, error } = await supabaseClient.from("tasks").select("*").eq("id", id).single();
   if (error || !task) return alert("Không tìm thấy việc.");
+  if (task.status === "bo_lo") {
+    // Đã được đánh dấu "không hoàn thành" rồi (có thể do người khác vừa bấm) -> không trừ thêm.
+    refreshActiveView();
+    return;
+  }
+
   const assignee = findProfile(STATE.profiles, task.assigned_to);
 
   // Không phạt điểm nếu người phụ trách đang ốm (Sick Mode).
@@ -847,8 +896,20 @@ async function markTaskMissed(id) {
     : `Đánh dấu "${task.title}" là KHÔNG hoàn thành? ${assignee ? assignee.name : "Người phụ trách"} sẽ bị trừ ${Math.abs(penalty)} điểm.`;
   if (!confirm(confirmMsg)) return;
 
-  const { error: updErr } = await supabaseClient.from("tasks").update({ status: "bo_lo" }).eq("id", id);
-  if (updErr) return alert("Lỗi: " + updErr.message);
+  // Optimistic lock: chỉ ghi nếu status vẫn đúng như lúc vừa đọc ở trên và chưa phải bo_lo.
+  const { data: updated, error: updErr } = await supabaseClient
+    .from("tasks")
+    .update({ status: "bo_lo" })
+    .eq("id", id)
+    .eq("status", task.status)
+    .neq("status", "bo_lo")
+    .select()
+    .single();
+  if (updErr || !updated) {
+    // Không update được nghĩa là có người/thao tác khác đã xử lý việc này trước rồi.
+    refreshActiveView();
+    return;
+  }
 
   if (penalty !== 0 && task.assigned_to) {
     await addPointAdjustment(task.assigned_to, id, penalty, "bo_viec");
@@ -988,8 +1049,27 @@ async function claimUnassignedTask(id) {
 
 async function reassignTask(id, newUserId) {
   const newProfile = findProfile(STATE.profiles, newUserId);
-  const { error } = await supabaseClient.from("tasks").update({ assigned_to: newUserId }).eq("id", id);
-  if (error) return alert("Lỗi: " + error.message);
+
+  // CHỈ đổi người khi việc còn ở trạng thái "chưa làm". Nếu không kiểm tra điều
+  // này, một va chạm thời điểm (ví dụ việc vừa được đánh dấu "hoàn thành" ở nơi
+  // khác nhưng phiếu việc trên màn hình này chưa kịp cập nhật) có thể khiến
+  // assigned_to của MỘT VIỆC ĐÃ HOÀN THÀNH bị đổi — và vì điểm được tính dựa
+  // trên assigned_to của các việc status = hoan_thanh, người vừa làm xong việc
+  // sẽ bị "mất" điểm đó, còn người mới được chọn trong dropdown lại được tính
+  // điểm dù không làm gì cả. Đây là lỗi "tính điểm nhầm người".
+  const { data, error } = await supabaseClient
+    .from("tasks")
+    .update({ assigned_to: newUserId })
+    .eq("id", id)
+    .eq("status", "chua_lam")
+    .select()
+    .single();
+
+  if (error || !data) {
+    alert("Việc này vừa thay đổi trạng thái (có thể vừa được hoàn thành/xử lý ở nơi khác) nên không đổi người được nữa. Danh sách sẽ được tải lại.");
+    refreshActiveView();
+    return;
+  }
 
   await logHistory(id, STATE.me.id, "doi_nguoi", `${STATE.me.name} đổi người làm thành ${newProfile ? newProfile.name : "?"}`);
   if (typeof showToast === "function") showToast(`Đã đổi người làm thành ${newProfile ? newProfile.name : "?"}`);
